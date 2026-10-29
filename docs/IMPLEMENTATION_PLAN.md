@@ -72,8 +72,8 @@ Deliverables:
 Completion criteria:
 - Backend health endpoint responds and its test passes.
 - Frontend builds and its test passes.
-- PostgreSQL starts from Docker Compose and accepts connections.
-- Settings refuse to start in production mode without required secrets (SECURITY §1).
+- PostgreSQL starts from Docker Compose and accepts connections. **Deferred and unverified.** Docker is not available on the development machine, and nothing in M1 uses the database. No PostgreSQL test has been run. Verify when Docker is available and the database is first needed (M9).
+- Settings refuse to start in production mode without required secrets (SECURITY §1). **Not implemented and not waived.** M1 defines no required secret, so there is nothing to check yet. The full production startup validation is planned for M9, which introduces the first required secret (`DATABASE_URL`). Until then this criterion stays open, and the baseline below applies.
 - The existing `aitravel/` venv is not used. A new Python 3.12 environment is created, and the old 3.14 venv is removed or left as-is after the owner confirms.
 
 Verification:
@@ -87,6 +87,19 @@ cd frontend; npm ci; npm run build; npm test
 docker compose up -d db
 docker compose ps
 ```
+
+Secret-handling baseline that applies from M1 (SECURITY §1):
+- Enforced now:
+  - `.env` and `.env.*` are gitignored, and `.env.example` is kept. Real credentials are never committed.
+  - No API keys are hard-coded. `app/config.py` reads the process environment only and defines no secret yet. A test asserts it does not read an env file.
+  - `.env.example` holds names and obvious placeholders only. A test checks that secret-like variables are empty or placeholders.
+  - The health endpoint does not need `DATABASE_URL` or LLM credentials. A test runs it with both unset.
+  - The code has no logging of settings or secrets. This holds because no logging code exists yet, not because redaction is built.
+- Not implemented yet (planned, not claimed):
+  - Masking of secrets in the settings `repr` (SECURITY §1): when the first secret is added, M9.
+  - Production startup validation of required secrets: M9.
+  - Redacted structured logging and the secret-redaction test (AC-08): M8.
+- Configured but not yet run: the gitleaks secret scan and the dependency audits in CI. They have run locally for `pip-audit` and `npm audit` only.
 
 Blocked by: M0. Blocks: M2.
 
@@ -369,6 +382,7 @@ Deliverables:
 - Dependency audit results, with any findings either fixed or accepted in writing.
 - Performance check against NFR-07 (mock plan under 10 s).
 - Known-limitations list for the MVP release.
+- CI hardening (deferred from M1): pin the GitHub Actions in `.github/workflows/ci.yml` to full commit SHAs, and review the gitleaks licence terms if the repository moves to an organisation.
 
 Completion criteria:
 - Every AC passes, or the failing item is documented and approved by the owner.
@@ -450,7 +464,7 @@ Blocked by: M13 and authorization. Nothing depends on it.
 | Milestone | Status |
 |---|---|
 | M0 Docs & conventions | Complete (committed and pushed as d0b929d) |
-| M1 Foundation | Backend foundation complete (health endpoint, config, tests). Frontend scaffold, Docker Compose and CI still pending |
+| M1 Foundation | Implemented, awaiting owner review. Backend, frontend scaffold, Docker Compose file and CI workflow exist. **Open criteria:** (1) PostgreSQL start from Docker Compose is deferred and unverified (no Docker available); (2) the production-secrets startup guard is not implemented and is planned for M9. Also not yet run: the first CI run on GitHub |
 | M2 Domain model | Not started |
 | M3 Provider interfaces & mocks | Not started |
 | M4 Research tools | Not started |

@@ -51,7 +51,7 @@ TravelMate AI is a web application with a Python backend and a React frontend. T
 TravelMate AI/
 ├── CLAUDE.md                     # Permanent working rules for Claude Code
 ├── README.md
-├── docker-compose.yml            # Local PostgreSQL (app services added in Milestone 1)
+├── docker-compose.yml            # Local PostgreSQL only in M1 (app services may be added later)
 ├── .env.example                  # Variable names and safe placeholders only
 ├── .gitattributes                # Line-ending normalisation
 ├── docs/

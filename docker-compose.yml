@@ -1,0 +1,25 @@
+# Local development services. PostgreSQL only (docs/IMPLEMENTATION_PLAN.md, M1).
+# Credentials come from the environment or a local, uncommitted .env file.
+# See .env.example for the variable names.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-travelmate}
+      POSTGRES_USER: ${POSTGRES_USER:-travelmate}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your shell or a local .env file}
+    ports:
+      # Bound to localhost only. Never expose the development database publicly.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  db_data:
