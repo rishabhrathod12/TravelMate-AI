@@ -1,0 +1,56 @@
+:root {
+  color-scheme: light;
+
+  /* Surfaces and text */
+  --color-bg: #f3f6f8;
+  --color-surface: #ffffff;
+  --color-text: #14232e;
+  --color-text-muted: #44535f;
+  --color-border: #c3cfd7;
+
+  /* Brand */
+  --color-primary: #0b5f7a;
+  --color-primary-strong: #08485d;
+  --color-on-primary: #ffffff;
+  --color-focus: #9a4b00;
+
+  /* Status and provenance (background / text pairs) */
+  --color-mock-bg: #fff3cd;
+  --color-mock-text: #4d3800;
+  --color-mock-border: #b88a00;
+  --color-live-bg: #d4efdc;
+  --color-live-text: #0d4a22;
+  --color-cached-bg: #e0e6ff;
+  --color-cached-text: #1d2c78;
+  --color-bad-bg: #fbdada;
+  --color-bad-text: #7a1111;
+  --color-unknown-bg: #e4e9ed;
+  --color-unknown-text: #2f3d48;
+  --color-info-bg: #e0eff5;
+  --color-info-text: #08394b;
+  --color-warn-bg: #fde7d0;
+  --color-warn-text: #6b3300;
+
+  /* Hero */
+  --color-hero-from: #0a4a5f;
+  --color-hero-to: #0b5f7a;
+
+  /* Type and space */
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --text-hero: clamp(1.75rem, 5vw, 2.5rem);
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --radius: 0.75rem;
+  --radius-sm: 0.4rem;
+  --shadow: 0 1px 2px rgb(20 35 46 / 8%), 0 4px 12px rgb(20 35 46 / 6%);
+  --page-width: 68rem;
+}

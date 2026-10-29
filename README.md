@@ -34,12 +34,36 @@ Configuration is read from environment variables (see `.env.example`). Never com
 ```bash
 cd frontend
 npm ci
-npm run dev        # placeholder page at http://localhost:5173
+npm run dev        # the prototype, at http://localhost:5173
 npm run lint
 npm run typecheck
 npm test
 npm run build
 ```
+
+### Frontend prototype (demo data)
+
+The interface is a prototype built before the backend has trip, option or approval endpoints. To view it:
+
+```bash
+# Terminal 1 (optional): the real backend, for the status line at the top of the page
+backend/.venv/Scripts/python.exe -m uvicorn app.main:app --app-dir backend --reload
+
+# Terminal 2
+cd frontend
+npm run dev
+```
+
+Open `http://localhost:5173` (use `localhost`, not `127.0.0.1`). The page works without the backend and then shows "Backend: not reachable".
+
+What is real and what is not:
+
+- **Real:** the backend status line, which calls `GET /health` (the only endpoint that exists). In development Vite forwards `/health` to `127.0.0.1:8000`, so the browser needs no CORS.
+- **Demo:** everything shown after "Preview with demo data" (transport and hotel options, quotes, the cost estimate, the itinerary and the approval preview). It is hand-written sample data in `frontend/src/demo/demoData.ts`, labelled MOCK, with fictional names and round amounts. It is not real prices, availability or schedules, and no AI model wrote it.
+- **Nothing is booked.** The approval preview is read-only, its "Approve" button is disabled, and real booking is disabled in the project.
+- **Not stored:** the prototype saves nothing; a refresh clears it.
+
+To point the interface at a backend on another address, set `VITE_API_BASE_URL` in a local `frontend/.env.local` file (git-ignored). That value is visible in the browser, so it must never hold a secret, and the backend has no CORS policy yet, so a different origin will be blocked until Milestone 8.
 
 ## Local database
 

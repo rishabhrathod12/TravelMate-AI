@@ -474,7 +474,7 @@ Blocked by: M13 and authorization. Nothing depends on it.
 | M8 API layer | Not started |
 | M9 Persistence | Not started |
 | M10 Booking intents & approvals | Not started |
-| M11 Frontend | Not started |
+| M11 Frontend | Prototype only, started ahead of M8 with owner approval. A labelled demo-data interface exists (plan form, option cards, cost estimate, sample itinerary, read-only approval preview); only `GET /health` is real. M11 criteria are not met: no API client for real endpoints, no Playwright tests, no accessibility audit, and the approval and booking views are not connected to anything |
 | M12 Hardening & acceptance | Not started |
 | M13 Live providers | Blocked on authorization |
 | M14 Booking execution | Blocked on authorization and review |
