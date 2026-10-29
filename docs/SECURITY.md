@@ -128,3 +128,22 @@ A mock quote in MOCK mode goes through the same comparison, so the path is teste
 - Report suspected vulnerabilities to the project owner privately. Do not open a public issue with exploit details.
 - Include the affected component, steps to reproduce, and impact. Do not include real credentials or personal data in a report.
 - If a secret may have been exposed, rotate it first, then investigate.
+
+## 12. Voice sessions
+
+Status: **foundation only.** No voice provider, audio or key exists. Decisions: ADR 0002 (architecture), ADR 0003 (demo booking is separate). Plan: `docs/VOICE_ASSISTANT_PLAN.md`.
+
+What exists now:
+- **Off by default.** The routes are mounted only when `VOICE_ENABLED=true`; a normal start has no voice routes. When on, every limit must be set explicitly (session length, idle timeout, concurrent sessions and sessions per day per owner). There are no hidden defaults.
+- **Not in production.** The app refuses to start with voice enabled and `APP_ENV=production`, because voice needs real authentication (PRD Q4). Until then the API acts for one configured development principal (`VOICE_DEV_PRINCIPAL`), as §2 allows. Anonymous access is never the default.
+- **Sessions.** An opaque random ID (256 bits), an absolute time limit that activity cannot extend, an idle timeout, and per-owner concurrent and daily limits. Sessions live in memory and are lost on restart. A session carries no audio.
+- **Ownership.** Every lookup checks the owner. Another person's session, a missing one and an ended one are indistinguishable ("not found"). Error bodies never repeat an ID.
+- **Tool allow-list.** A voice conversation may only ever use `search_transport`, `search_hotels` and `get_weather`, matched exactly. There is no booking, approval, payment or demo-booking tool, and a test fails if one appears.
+- **Isolation.** The voice package may not import booking, workflow, the LLM layer, providers or any network library, and only the voice router and the app factory may import it.
+
+Requirements for the milestones still to come (not built):
+- No permanent provider key in browser code. Use a short-lived, narrowly scoped token minted by the backend, or a backend relay.
+- Tell the user before the first use which third party processes the audio. The microphone is requested only after a user action.
+- Do not store raw audio. Any retention needs the owner's approval, a retention period and a deletion path (§7). Logs follow §9 and never hold audio or full transcripts.
+- Speech and transcripts are untrusted data (§3). Voice recognition is never authorisation: only the visible approval path in §4 can approve anything, and the voice layer has no approval tool.
+- Usage caps and cost counting apply to every provider call (NFR-09).

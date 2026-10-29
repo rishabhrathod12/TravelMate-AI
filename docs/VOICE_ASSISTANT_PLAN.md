@@ -243,7 +243,7 @@ Real bookings, payments, live travel providers (core M13/M14), authentication de
 | V0 | DONE (awaiting your approval of this plan) | §2 verified from the repo on 2026-10-29; no code changed. |
 | V1 | DONE as a draft (awaiting your approval of the recommendation) | Research only. `docs/VOICE_PROVIDER_EVALUATION.md` and proposed `docs/ADR/0002-voice-architecture.md` written 2026-10-29. No account, key, or paid/live API call. Hindi/Hinglish quality is NOT verified and needs an owner-approved audio test. No vendor selected. |
 | V2 | REWORKED as "Step A" (awaiting your review; manual browser check not done) | The first V2 panel (commit `fbd15b6`, simulation buttons) was replaced on 2026-10-30 by a ChatGPT-style voice mode: one "Talk to TravelMate" button; Connecting / Listening / Thinking / Speaking / Error states; mute, interrupt, end; compact transcript; typed-chat fallback; microphone-permission notice; "Back to the trip form". Files: `frontend/src/components/voice/` (VoiceMode, VoiceOrb, VoiceTranscript, TextChat, MicPermissionNotice, DevMockControls) and `frontend/src/voice/` (VoiceAdapter, voiceMachine, useVoiceSession, mockAdapter, config). A production build has **no adapter** and shows "Voice isn't available yet"; only a development build gets the labelled MOCK, whose simulation controls sit in a separate developer section. Run 2026-10-30: `npm run lint`, `typecheck`, `build` pass; `npm test` 209 passed in 14 files. Build check: the mock adapter and its scripted replies are absent from `dist`, but the mock's UI label strings are still in the bundle (inert text). Not done: real browser, 375 px, keyboard-only and screen-reader checks (manual). **No real voice exists**: no microphone, audio, network, key or vendor is used. |
-| V3 | NOT STARTED | |
+| V3 | PARTIAL: Step B done (awaiting your review); token minting and provider connection NOT STARTED | Step B, 2026-10-30: `backend/app/voice/` (settings-driven limits, in-memory session service with absolute expiry, idle timeout, owner checks, per-owner concurrent and daily limits; read-only tool allow-list), `backend/app/api/voice.py` (`POST /api/v1/voice/sessions`, `GET` and `DELETE /api/v1/voice/sessions/{id}`, mounted only when `VOICE_ENABLED=true`, Problem Details errors), settings `VOICE_*`, SECURITY §12, architecture tests. Auth is the configured dev principal (PRD Q4 open); voice refuses to start in production. No vendor, no key, no audio. Run 2026-10-30: backend 1207 tests, ruff, ruff format and mypy clean. Not done: any real session transport, the frontend calling these endpoints (the Step A UI still uses its mock or shows "unavailable"). |
 | V4 | NOT STARTED | |
 | V5 | NOT STARTED | |
 | V6 | NOT STARTED | |
@@ -272,14 +272,21 @@ Real bookings, payments, live travel providers (core M13/M14), authentication de
   spending approval), Step D conversation context and approved tools. Open: realtime-first vs pipeline-first
   (ADR 0002 would need an amendment for realtime first), D4, D10.
 
+- 2026-10-30: Owner approved Step B. Backend voice-session foundation built (see the V3 row). Not committed.
+
 ## 13. NEXT ACTION
 
-**Owner reviews Step A**: run `npm run dev` in `frontend/`, open http://localhost:5173 and try "Talk to
-TravelMate" (in the development build it is the labelled MOCK; open "Developer mock controls" to trigger a phrase,
-a blocked microphone or a dropped connection). Also check a narrow width and keyboard-only use. Then approve
-committing Step A. Next is **Step B** (backend session foundation: session service, expiry and limits, tool
-allow-list, no-booking architecture test). Step B needs no vendor key; token minting and the real adapter (Step C)
-wait for your decisions on realtime vs pipeline, D4 and D10.
+**Owner reviews Step B and, still outstanding, Step A in a browser.** Step A: run `npm run dev` in `frontend/`,
+open http://localhost:5173 and try "Talk to TravelMate" (development build = labelled MOCK; "Developer mock
+controls" triggers a phrase, a blocked microphone or a dropped connection), plus a narrow width and keyboard-only
+use. Step B: to try it, set `VOICE_ENABLED=true`, `VOICE_DEV_PRINCIPAL`, and the four `VOICE_*` limits in your
+shell (names in `.env.example`), start the backend, and use `/docs`. Then approve committing Step B.
+
+Next is **Step C** (the real voice adapter and token minting). It cannot start until you decide: realtime or
+pipeline first (realtime needs an ADR 0002 amendment), the vendor shortlist (D4), and who supplies keys and pays
+(D10). It also needs separate approvals for any new dependency, a key, and the first live call. If you would rather
+not decide those yet, the remaining no-cost work is the frontend calling the Step B endpoints (session start and
+end against the dev backend) and the text-only conversation logic (V5).
 
 When you say "continue voice assistant", a session must read `CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, this file,
 and the relevant architecture and security docs, then run `git status`, check the code against §2, report the
