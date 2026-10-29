@@ -11,6 +11,14 @@ from enum import StrEnum
 from pydantic import Field, StrictInt
 
 from app.domain.base import DomainModel
+from app.llm.errors import (
+    LLMConfigurationError,
+    LLMError,
+    LLMOutputError,
+    LLMRateLimited,
+    LLMTimeout,
+    LLMUnavailable,
+)
 
 
 class LLMCallStatus(StrEnum):
@@ -21,6 +29,21 @@ class LLMCallStatus(StrEnum):
     INVALID_OUTPUT = "INVALID_OUTPUT"
     CONFIGURATION = "CONFIGURATION"
     ERROR = "ERROR"
+
+
+def status_of(error: LLMError) -> LLMCallStatus:
+    """The record status for a failed call."""
+    if isinstance(error, LLMTimeout):
+        return LLMCallStatus.TIMEOUT
+    if isinstance(error, LLMRateLimited):
+        return LLMCallStatus.RATE_LIMITED
+    if isinstance(error, LLMUnavailable):
+        return LLMCallStatus.UNAVAILABLE
+    if isinstance(error, LLMOutputError):
+        return LLMCallStatus.INVALID_OUTPUT
+    if isinstance(error, LLMConfigurationError):
+        return LLMCallStatus.CONFIGURATION
+    return LLMCallStatus.ERROR
 
 
 class LLMCallRecord(DomainModel):

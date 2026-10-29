@@ -39,16 +39,8 @@ from app.domain.options import HotelOption, TransportOption
 from app.domain.trip import TripRequest
 from app.domain.weather import WeatherForecast
 from app.llm.base import LLMClient
-from app.llm.errors import (
-    ItineraryRejected,
-    LLMConfigurationError,
-    LLMError,
-    LLMOutputError,
-    LLMRateLimited,
-    LLMTimeout,
-    LLMUnavailable,
-)
-from app.llm.recorder import LLMCallRecord, LLMCallRecorder, LLMCallStatus
+from app.llm.errors import ItineraryRejected, LLMError, LLMOutputError
+from app.llm.recorder import LLMCallRecord, LLMCallRecorder, LLMCallStatus, status_of
 from app.llm.retry import call_with_llm_retry
 from app.llm.types import LLMLimits, LLMMessage, LLMRequest, LLMUsage
 
@@ -263,20 +255,6 @@ def _resolve(itinerary: Itinerary, aliases: dict[str, str]) -> Itinerary:
     )
 
 
-def _status_of(error: LLMError) -> LLMCallStatus:
-    if isinstance(error, LLMTimeout):
-        return LLMCallStatus.TIMEOUT
-    if isinstance(error, LLMRateLimited):
-        return LLMCallStatus.RATE_LIMITED
-    if isinstance(error, LLMUnavailable):
-        return LLMCallStatus.UNAVAILABLE
-    if isinstance(error, LLMOutputError):
-        return LLMCallStatus.INVALID_OUTPUT
-    if isinstance(error, LLMConfigurationError):
-        return LLMCallStatus.CONFIGURATION
-    return LLMCallStatus.ERROR
-
-
 class ItineraryDrafter:
     def __init__(
         self,
@@ -334,7 +312,7 @@ class ItineraryDrafter:
             try:
                 result = self._client.structured_complete(request, Itinerary)
             except LLMError as error:
-                self._record(request.purpose, _status_of(error), None, started)
+                self._record(request.purpose, status_of(error), None, started)
                 raise
             except Exception:
                 self._record(request.purpose, LLMCallStatus.ERROR, None, started)

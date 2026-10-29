@@ -245,7 +245,7 @@ Real bookings, payments, live travel providers (core M13/M14), authentication de
 | V2 | REWORKED as "Step A" (awaiting your review; manual browser check not done) | The first V2 panel (commit `fbd15b6`, simulation buttons) was replaced on 2026-10-30 by a ChatGPT-style voice mode: one "Talk to TravelMate" button; Connecting / Listening / Thinking / Speaking / Error states; mute, interrupt, end; compact transcript; typed-chat fallback; microphone-permission notice; "Back to the trip form". Files: `frontend/src/components/voice/` (VoiceMode, VoiceOrb, VoiceTranscript, TextChat, MicPermissionNotice, DevMockControls) and `frontend/src/voice/` (VoiceAdapter, voiceMachine, useVoiceSession, mockAdapter, config). A production build has **no adapter** and shows "Voice isn't available yet"; only a development build gets the labelled MOCK, whose simulation controls sit in a separate developer section. Run 2026-10-30: `npm run lint`, `typecheck`, `build` pass; `npm test` 209 passed in 14 files. Build check: the mock adapter and its scripted replies are absent from `dist`, but the mock's UI label strings are still in the bundle (inert text). Not done: real browser, 375 px, keyboard-only and screen-reader checks (manual). **No real voice exists**: no microphone, audio, network, key or vendor is used. |
 | V3 | PARTIAL: Step B done (awaiting your review); token minting and provider connection NOT STARTED | Step B, 2026-10-30: `backend/app/voice/` (settings-driven limits, in-memory session service with absolute expiry, idle timeout, owner checks, per-owner concurrent and daily limits; read-only tool allow-list), `backend/app/api/voice.py` (`POST /api/v1/voice/sessions`, `GET` and `DELETE /api/v1/voice/sessions/{id}`, mounted only when `VOICE_ENABLED=true`, Problem Details errors), settings `VOICE_*`, SECURITY §12, architecture tests. Auth is the configured dev principal (PRD Q4 open); voice refuses to start in production. No vendor, no key, no audio. Run 2026-10-30: backend 1207 tests, ruff, ruff format and mypy clean. Not done: any real session transport. **Step B2 (2026-10-30, uncommitted):** the Step A UI can now open real sessions through a development-only "session-only" adapter (`VITE_VOICE_ADAPTER=session`): `frontend/src/api/voiceSessions.ts` (typed client), `frontend/src/voice/sessionAdapter.ts`, a `/api` dev proxy in `vite.config.ts`, and a new backend `POST /api/v1/voice/sessions/{id}/activity` so the idle timer can restart (reading a session is not activity). The adapter never asks for the microphone, says it cannot hear or speak (`hearsUser: false`), shows no mute control, ends the server session on End, watches for expiry, and answers a typed message with a plain "notice, not an answer" (no assistant exists). Errors added: unavailable, limit reached, session ended. Production builds still get no adapter. Run 2026-10-30: backend 1210 tests, ruff, ruff format, mypy clean; frontend lint, typecheck, build clean, 309 tests pass. Not checked in a real browser. |
 | V4 | NOT STARTED | |
-| V5 | NOT STARTED | |
+| V5 | DONE for typed text, backend only (awaiting your review; uncommitted) | `backend/app/conversation/` (separate from `voice/`): `dates.py` reads explicit dates itself ("12 December 2026", "12/12", ISO; relative words like "tomorrow", "kal", "parso" give nothing; a year-less date takes the next such day and is flagged); `claims.py` checks every detail the model proposes against the traveller's own words (the quote must appear in the message, place names must appear, the date must equal the one code read from the quote, the number must be written in the quote, preferences are stored as the traveller's verbatim words); `draft.py` is the immutable draft (merge reports changes, conflicts such as one-way plus a return date are asked about, never fixed quietly, trip type is never guessed); `manager.py` runs one turn through `LLMClient` (delimited data block, no tools, today's date never shown to the model, one retry for timeout or rate limit, one repair attempt, then a polite failure with the draft unchanged). The domain `TripRequest` has the final say. Refactor: `status_of` moved from the drafter to `llm/recorder.py`. Run 2026-10-30: backend 1344 tests, ruff, ruff format, mypy clean; a mutation check confirmed the date-safety tests fail if dates are read leniently. **Not done:** any endpoint, any UI, any real model (only `FakeLLMClient`), Hinglish month names, Devanagari place names, follow-up questions in Hinglish (D6: English questions for now), traveller-count and text limits (PRD Q14 stays open; the message length cap is a required constructor argument, not a decided value). |
 | V6 | NOT STARTED | |
 | V7 | NOT STARTED | |
 | V8 | BLOCKED | Core M7, Q9–Q18, langgraph approval. |
@@ -275,19 +275,21 @@ Real bookings, payments, live travel providers (core M13/M14), authentication de
 - 2026-10-30: Owner approved Step B. Backend voice-session foundation built (see the V3 row), committed and pushed as `f2f29f4`.
 - 2026-10-30: Owner approved "option 1": connect the Step A UI to the Step B endpoints (Step B2, see the V3 row). Added a backend activity endpoint, which was needed for the idle timeout to be usable. Not committed.
 
+- 2026-10-30: Owner approved V5 with recommendations (module in `app/conversation/`, explicit-date rule, English questions, Q14 left open). Built and tested with fakes only. Not committed.
+
 ## 13. NEXT ACTION
 
-**Owner reviews Step B and, still outstanding, Step A in a browser.** Step A: run `npm run dev` in `frontend/`,
-open http://localhost:5173 and try "Talk to TravelMate" (development build = labelled MOCK; "Developer mock
-controls" triggers a phrase, a blocked microphone or a dropped connection), plus a narrow width and keyboard-only
-use. Step B: to try it, set `VOICE_ENABLED=true`, `VOICE_DEV_PRINCIPAL`, and the four `VOICE_*` limits in your
-shell (names in `.env.example`), start the backend, and use `/docs`. Then approve committing Step B.
+**Owner reviews V5 (uncommitted) and, still outstanding, the browser checks of Steps A, B and B2.** Browser: run
+`npm run dev` in `frontend/`, open http://localhost:5173 and try "Talk to TravelMate" (development build = labelled
+MOCK, or the session-only adapter with `VITE_VOICE_ADAPTER=session` and the backend started with the `VOICE_*`
+settings), plus a narrow width and keyboard-only use. V5 has no UI or endpoint yet, so it is reviewed by reading
+the tests (`backend/tests/unit/test_conversation_*.py`). Then approve committing V5.
 
 Next is **Step C** (the real voice adapter and token minting). It cannot start until you decide: realtime or
 pipeline first (realtime needs an ADR 0002 amendment), the vendor shortlist (D4), and who supplies keys and pays
-(D10). It also needs separate approvals for any new dependency, a key, and the first live call. If you would rather
-not decide those yet, the remaining no-cost work is the frontend calling the Step B endpoints (session start and
-end against the dev backend) and the text-only conversation logic (V5).
+(D10). It also needs separate approvals for any new dependency, a key, and the first live call. No-cost work that
+remains: an endpoint and chat UI for the V5 conversation (typed chat, fake model until a key exists), and
+Hinglish follow-up questions (D6).
 
 When you say "continue voice assistant", a session must read `CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, this file,
 and the relevant architecture and security docs, then run `git status`, check the code against §2, report the
