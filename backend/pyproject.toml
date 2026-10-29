@@ -11,6 +11,8 @@ dependencies = [
     "fastapi>=0.115,<1",
     "pydantic>=2.7,<3",
     "pydantic-settings>=2.3,<3",
+    # IANA time-zone data for zoneinfo. Windows has none; Linux CI does (PRD NFR-11).
+    "tzdata>=2026.5",
     "uvicorn>=0.30,<1",
 ]
 

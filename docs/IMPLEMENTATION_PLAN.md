@@ -112,11 +112,11 @@ Note: installing dependencies is a separate approval step. This milestone's firs
 Goal: the core types everything else uses, with no I/O.
 
 Deliverables:
-- Entities and value objects: `TripRequest`, `Location`, `DateRange`, `Traveller`, `Money`, `Provenance`, `Option` (transport, hotel, weather base types), `Quote`, `CostEstimate`, `CostLine`, `Itinerary`, `BookingIntent`, `Approval`.
+- Entities and value objects: `TripRequest` (with `TripType`, `departure_date` and an optional `return_date`), `Location`, `Traveller`, `Money`, `Provenance`, `Option` (transport, hotel, weather base types), `Quote`, `CostEstimate`, `CostLine`, `Itinerary`, `BookingIntent`, `Approval`.
 - `Money` as integer minor units plus ISO 4217 currency, with addition, comparison and currency-mismatch errors.
 - Enums: `Provenance` (LIVE, CACHED_LIVE, MOCK), `BookingStatus` (the states in ARCHITECTURE §6), `RunStatus`.
 - UTC time handling and a destination time-zone helper.
-- Validation rules for trip requests (for example, return date after departure, traveller count range).
+- Validation rules for trip requests: one-way, round-trip and same-day return trips are supported. A one-way trip has no return date; a round trip needs a return date on or after the departure date. The traveller count range is an open decision (PRD §11, Q14).
 
 Completion criteria:
 - Unit tests cover money arithmetic, currency mismatch, state transition table (valid and invalid transitions), and request validation.
@@ -464,8 +464,8 @@ Blocked by: M13 and authorization. Nothing depends on it.
 | Milestone | Status |
 |---|---|
 | M0 Docs & conventions | Complete (committed and pushed as d0b929d) |
-| M1 Foundation | Implemented, awaiting owner review. Backend, frontend scaffold, Docker Compose file and CI workflow exist. **Open criteria:** (1) PostgreSQL start from Docker Compose is deferred and unverified (no Docker available); (2) the production-secrets startup guard is not implemented and is planned for M9. Also not yet run: the first CI run on GitHub |
-| M2 Domain model | Not started |
+| M1 Foundation | Implemented, awaiting owner review. Backend, frontend scaffold, Docker Compose file and CI workflow exist. **Open criteria:** (1) PostgreSQL start from Docker Compose is deferred and unverified (no Docker available); (2) the production-secrets startup guard is not implemented and is planned for M9. CI has run: all three jobs (backend, frontend, secret-scan) passed for the M1 commit 0204410 (GitHub Actions run 40890476155; job status read, logs not read) |
+| M2 Domain model | Implemented except a weather type and `budget` on `TripRequest`; awaiting owner review. Done and unit-tested: `TripRequest`, `Money`, UTC and time-zone helpers, `SourceMetadata`, transport and hotel options, `Quote`, cost types, `Itinerary`, the `BookingStatus` transition table (17 allowed edges, all other pairs rejected), `BookingIntent`, `Approval`, `RunStatus`, and the domain import-rule test. Several choices are provisional and several transitions are deliberately rejected pending owner decisions (PRD §10 A5–A9, §11 Q9–Q16). Not closed |
 | M3 Provider interfaces & mocks | Not started |
 | M4 Research tools | Not started |
 | M5 Cost estimator | Not started |

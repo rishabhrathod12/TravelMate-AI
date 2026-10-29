@@ -7,3 +7,11 @@ class DomainError(Exception):
 
 class CurrencyMismatchError(DomainError):
     """Raised when money in different currencies is added or compared."""
+
+
+class InvalidTransitionError(DomainError):
+    """Raised when a booking status change is not in the allowed transition table."""
+
+
+class UnknownTimeZoneError(DomainError):
+    """Raised when a time-zone name is not a known IANA zone."""

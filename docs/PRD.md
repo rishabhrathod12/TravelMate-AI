@@ -40,7 +40,7 @@ TravelMate AI is an agent-assisted planner. It researches and compares options, 
 
 | ID | Requirement | Priority |
 |---|---|---|
-| FR-01 | Accept a trip request: origin, destination, dates, number of travellers, budget (optional), preferences (optional). | Must |
+| FR-01 | Accept a trip request: origin, destination, trip type (one-way or round trip), departure date, return date (round trip only; a same-day return is allowed), number of travellers, budget (optional), preferences (optional). | Must |
 | FR-02 | Research transport options (flight, train, bus, road) between origin and destination through the transport provider interface. | Must |
 | FR-03 | Research hotel options at the destination for the given dates and occupancy through the hotel provider interface. | Must |
 | FR-04 | Retrieve weather for the destination and travel dates through the weather provider interface, with forecast-horizon limits reported. | Must |
@@ -77,7 +77,7 @@ TravelMate AI is an agent-assisted planner. It researches and compares options, 
 ## 6. MVP scope
 
 Included:
-- Trip request intake with validation and clarification questions (FR-01, FR-15).
+- Trip request intake with validation and clarification questions (FR-01, FR-15). One-way, round-trip and same-day return trips are supported.
 - Transport, hotel, and weather research through provider interfaces, with **mock providers only** (FR-02 to FR-04, FR-14).
 - Option comparison and itinerary drafting (FR-05, FR-06).
 - Cost estimation with provenance (FR-07).
@@ -97,7 +97,7 @@ Not included in the MVP:
 
 ## 7. User journey (Indore to Goa)
 
-1. The user enters origin **Indore**, destination **Goa**, dates, traveller count and an optional budget.
+1. The user enters origin **Indore**, destination **Goa**, the trip type, the departure date and (for a round trip) the return date, traveller count and an optional budget.
 2. The system checks whether required fields are present. If not, it asks targeted questions.
 3. The planner runs transport, hotel and weather research in parallel. Each result carries its provenance label. Failed providers are reported, not hidden.
 4. The user sees a comparison table of transport options and hotel options, with provenance and timestamps.
@@ -138,6 +138,11 @@ Not included in the MVP:
 - A2: The Indore to Goa route is used as a scenario in mock mode. Any real route, schedule, or fare facts must come from a provider, not from this document.
 - A3: The OpenAI API is the first LLM provider, accessed through a replaceable interface.
 - A4: Weather is queried through a provider interface. The specific weather service is not yet selected.
+- A5 (provisional, M2): Source metadata for MOCK records has the same four fields as live records (§9: switching MOCK to LIVE does not change the API contract).
+- A6 (provisional, M2): Availability is one of AVAILABLE, UNAVAILABLE or UNKNOWN, and defaults to UNKNOWN. Quote fees are itemised separately from the price and use the price's currency. Provider-quoted prices and fees are not negative.
+- A7 (provisional, M2): An itinerary identifies days by number. Calendar dates are worked out by code, never written by the LLM.
+- A8 (provisional, M2): Run statuses other than `stopped_limit` (ARCHITECTURE §8) are inferred from the human pauses in ARCHITECTURE §4 and §7.
+- A9 (provisional, M2): Trip dates are calendar dates with no time zone attached. A quote or approval counts as expired from the instant its expiry time is reached.
 
 ## 11. Open questions
 
@@ -151,3 +156,11 @@ Not included in the MVP:
 | Q6 | What freshness window applies to each provider type? | Project owner | Provenance labelling |
 | Q7 | What is the approval expiry for a quote (default proposed: 15 minutes)? | Project owner | Booking milestone |
 | Q8 | Which payment model applies (direct provider payment, merchant of record, or none)? | Project owner | Payments (post-MVP) |
+| Q9 | When an approval expires or an approved quote lapses, does the booking intent become EXPIRED, or return to AWAITING_APPROVAL for a new approval? Not decided; no such transition is allowed yet. | Project owner | M10 |
+| Q10 | May a booking in flight (BOOKING) or an unclear one (NEEDS_REVIEW) be cancelled or expired? How are FAILED and NEEDS_REVIEW resolved? ARCHITECTURE §6 says CANCELLED/EXPIRED are reachable "from any state before CONFIRMED"; the domain table currently allows them only before execution starts. | Project owner | M14 |
+| Q11 | Idempotency keys: ARCHITECTURE §5 and plan M10 describe a caller-supplied key on the booking intent; SECURITY §6 describes a key derived from the intent and approval IDs for each booking attempt. Are these two separate keys? | Project owner | M10, M14 |
+| Q12 | What is the basis of a quoted price (per traveller, per party, per night)? | Project owner | M3, M5 |
+| Q13 | What are the rules for hotel stay windows, the weather window and itinerary length for one-way and same-day trips? | Project owner | M3, M4, M6 |
+| Q14 | What are the limits for traveller count and preferences text, and the rules for a budget (positive? currency, see Q5)? | Project owner | M7 (intake), M8 |
+| Q15 | How is a quote's content hash built (algorithm, exact inputs including traveller details)? | Project owner | M10 |
+| Q16 | What is the order of LIVE and CACHED_LIVE when an estimate mixes them ("lowest provenance")? | Project owner | M5 |

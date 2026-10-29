@@ -80,6 +80,7 @@ TravelMate AI/
 │   │   └── observability/        # Logging, request IDs, redaction
 │   └── tests/
 │       ├── unit/
+│       ├── architecture/         # Dependency-rule tests (import checks)
 │       ├── integration/          # Requires PostgreSQL via Docker Compose
 │       ├── contract/             # Provider adapters against recorded fixtures
 │       └── fixtures/             # Deterministic mock data (labelled MOCK)
@@ -127,7 +128,7 @@ Money is stored as `amount_minor BIGINT` plus `currency CHAR(3)`. Timestamps are
 | Table | Purpose | Key fields |
 |---|---|---|
 | `trips` | Trip container and owner. | `id`, `owner_id` (nullable until Q4 is resolved), `title`, `status`, timestamps. |
-| `trip_requests` | Validated input, versioned per run. | `id`, `trip_id`, origin, destination, dates, travellers, budget. |
+| `trip_requests` | Validated input, versioned per run. | `id`, `trip_id`, origin, destination, `trip_type`, `departure_date`, `return_date` (null for one-way), travellers, budget. |
 | `agent_runs` | One planning execution. | `id`, `trip_id`, `status`, `checkpoint_ref`, `llm_calls`, `provider_calls`, timestamps. |
 | `provider_calls` | Each external call. | `id`, `run_id`, `category`, `provider_name`, `mode` (MOCK/LIVE), `status`, `latency_ms`, `error_code`. |
 | `options` | Research results. | `id`, `run_id`, `category`, `payload` (JSONB), `provenance`, `retrieved_at`. |

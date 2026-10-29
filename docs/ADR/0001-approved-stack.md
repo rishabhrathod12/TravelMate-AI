@@ -46,6 +46,10 @@ TravelMate AI needs a backend for a multi-step planning workflow with human paus
 - Secret scanning: `gitleaks` through `gitleaks/gitleaks-action@v2`. The action's free licence covers personal accounts; revisit if the repository moves to an organisation.
 - CI actions are pinned to major version tags. Pinning them to full commit SHAs is a planned CI hardening task in M12 (see `docs/IMPLEMENTATION_PLAN.md`).
 
+## M2 additions
+
+- `tzdata` (`>=2026.5`) is a runtime dependency of the backend. Python's `zoneinfo` needs IANA time-zone data, which Windows does not provide (`ZoneInfo("Asia/Kolkata")` failed in `backend/.venv` before the install), while the Linux CI runner has it. It is needed for the destination time-zone helper (PRD NFR-11, plan M2). The package contains data only and is licensed Apache-2.0. Version 2026.5 (released 2026-10-03, over two weeks before installation) is installed; `pip check` and `pip-audit` report no problems. Added during M2; owner review of this addition is pending.
+
 ## Open items
 
 - PostgreSQL start from Docker Compose is deferred and unverified. Docker is not available on the development machine. Verify it when Docker is available and the database is first needed (M9).
