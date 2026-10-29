@@ -15,7 +15,7 @@ Weather is not an option here; it is not selected by the user (ARCHITECTURE §4)
 
 from datetime import timedelta
 from enum import StrEnum
-from typing import Self
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, StrictInt, field_validator, model_validator
 
@@ -62,8 +62,44 @@ class OptionBase(DomainModel):
         return value or None
 
 
+def _blank_to_none(value: str | None) -> str | None:
+    return value or None
+
+
+class FlightDetails(DomainModel):
+    """Facts only a flight has. Every field is optional: a missing fact stays missing."""
+
+    kind: Literal["FLIGHT"] = "FLIGHT"
+    cabin_class: str | None = None
+
+    blank_becomes_none = field_validator("cabin_class")(_blank_to_none)
+
+
+class TrainDetails(DomainModel):
+    kind: Literal["TRAIN"] = "TRAIN"
+    travel_class: str | None = None
+
+    blank_becomes_none = field_validator("travel_class")(_blank_to_none)
+
+
+class BusDetails(DomainModel):
+    kind: Literal["BUS"] = "BUS"
+    seat_type: str | None = None
+
+    blank_becomes_none = field_validator("seat_type")(_blank_to_none)
+
+
+ModeDetails = Annotated[FlightDetails | TrainDetails | BusDetails, Field(discriminator="kind")]
+
+
 class TransportOption(OptionBase):
-    """One way of getting from one place to another."""
+    """One way of getting from one place to another.
+
+    `operator_name` and `service_label` identify who runs the service and which one it is,
+    as the provider names them. They are text for display. A mock supplies only fictional
+    names. `details` carries facts that exist for one mode only, so a train never has a
+    cabin class. It must match `mode`.
+    """
 
     mode: TransportMode
     origin: Location
@@ -72,11 +108,22 @@ class TransportOption(OptionBase):
     arrives_at: UtcDateTime
     stops: StrictInt | None = Field(default=None, ge=0)
     price: NonNegativeMoney | None = None
+    operator_name: str | None = None
+    service_label: str | None = None
+    details: ModeDetails | None = None
+
+    blank_names_become_none = field_validator("operator_name", "service_label")(_blank_to_none)
 
     @model_validator(mode="after")
     def _arrival_follows_departure(self) -> Self:
         if self.arrives_at <= self.departs_at:
             raise ValueError("arrival must be after departure")
+        return self
+
+    @model_validator(mode="after")
+    def _details_match_the_mode(self) -> Self:
+        if self.details is not None and self.details.kind != self.mode.value:
+            raise ValueError(f"{self.details.kind} details do not fit a {self.mode.value} option")
         return self
 
     @property

@@ -4,7 +4,9 @@ import { ApprovalPreview } from "../components/ApprovalPreview";
 import { CostBreakdown } from "../components/CostBreakdown";
 import { HeroArt } from "../components/HeroArt";
 import { ItineraryView } from "../components/ItineraryView";
-import { HotelCard, TransportCard } from "../components/OptionCards";
+import { DemoBookingPanel } from "../components/demoBooking/DemoBookingPanel";
+import { HotelCard } from "../components/OptionCards";
+import { TransportBrowser } from "../components/transport/TransportBrowser";
 import { StatusMessage } from "../components/StatusMessage";
 import { TripForm } from "../components/TripForm";
 import { VoiceMode } from "../components/voice/VoiceMode";
@@ -115,17 +117,12 @@ export function PlanTripView() {
             {request.trip_type === "ROUND_TRIP" && (
               <p className="field-hint">Outbound options only. Return-leg options are not modelled in this prototype.</p>
             )}
-            <div className="card-grid">
-              {demo.transport.map((option) => (
-                <TransportCard
-                  key={option.id}
-                  option={option}
-                  quote={demo.quotes[option.id]}
-                  selected={option.id === transportId}
-                  onToggle={() => setTransportId(option.id === transportId ? null : option.id)}
-                />
-              ))}
-            </div>
+            <TransportBrowser
+              options={demo.transport}
+              quotes={demo.quotes}
+              selectedId={transportId}
+              onToggleSelect={(id) => setTransportId(id === transportId ? null : id)}
+            />
           </section>
 
           <section aria-labelledby="hotel-title">
@@ -192,6 +189,20 @@ export function PlanTripView() {
                 onClear={clearSelection}
               />
             )}
+          </section>
+
+          <section aria-labelledby="demo-booking-title">
+            <h2 id="demo-booking-title">Demo booking (simulation)</h2>
+            <p className="field-hint">
+              Separate from the approval preview above. A simulated booking is not a real booking
+              and cannot become one.
+            </p>
+            <DemoBookingPanel
+              transport={transport}
+              quote={transport === null ? undefined : demo.quotes[transport.id]}
+              request={request}
+              estimate={buildDemoCostEstimate(request, transport, hotel, demo.quotes)}
+            />
           </section>
         </div>
       )}

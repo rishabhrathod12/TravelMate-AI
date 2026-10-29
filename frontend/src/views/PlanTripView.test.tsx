@@ -12,6 +12,9 @@ function selectButton(name: RegExp) {
   return screen.getByRole("button", { name });
 }
 
+// Several options share a mode, so the buttons are told apart by operator.
+const TRAIN_ONE = /Select Train.*Sample Rail Express/;
+
 describe("before a preview", () => {
   test("shows the form and an empty state, and no results", () => {
     render(<PlanTripView />);
@@ -32,8 +35,9 @@ describe("after previewing the example trip", () => {
     expect(results).toHaveFocus();
     expect(screen.getByRole("heading", { name: "Transport options (demo)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Hotel options (demo)" })).toBeInTheDocument();
-    // One MOCK badge for each of the five demo options, and no other source label.
-    expect(screen.getAllByText(/MOCK · demo data/)).toHaveLength(5);
+    // One MOCK badge for each of the nine demo options (seven transport, two hotels), and no
+    // other source label.
+    expect(screen.getAllByText(/MOCK · demo data/)).toHaveLength(9);
     expect(screen.queryByText(/^LIVE$/)).not.toBeInTheDocument();
   });
 
@@ -62,7 +66,9 @@ describe("after previewing the example trip", () => {
     previewExampleTrip();
 
     expect(screen.getByText("Unavailable options cannot be selected.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Select Flight/ })).not.toBeInTheDocument();
+    // The unavailable flight has no select button; the other two flights do.
+    expect(screen.queryByRole("button", { name: /Select Flight.*Demo Air/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Select Flight.*Sample Wings/ })).toBeInTheDocument();
   });
 
   test("prices say that their basis is not defined", () => {
@@ -98,7 +104,7 @@ describe("selection, cost and approval preview", () => {
     render(<PlanTripView />);
     previewExampleTrip();
 
-    fireEvent.click(selectButton(/Select Train/));
+    fireEvent.click(selectButton(TRAIN_ONE));
     fireEvent.click(selectButton(/Select Sample Beach Resort/));
 
     const table = screen.getByRole("table", { name: /Demo cost estimate/ });
@@ -113,7 +119,7 @@ describe("selection, cost and approval preview", () => {
     render(<PlanTripView />);
     previewExampleTrip();
 
-    const train = selectButton(/Select Train/);
+    const train = selectButton(TRAIN_ONE);
     expect(train).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(train);
@@ -127,7 +133,7 @@ describe("selection, cost and approval preview", () => {
     render(<PlanTripView />);
     previewExampleTrip();
 
-    fireEvent.click(selectButton(/Select Train/));
+    fireEvent.click(selectButton(TRAIN_ONE));
 
     expect(screen.getByText("Preview only. Nothing is booked.")).toBeInTheDocument();
     const approve = screen.getByRole("button", { name: /Approve \(not available\)/ });
@@ -140,7 +146,7 @@ describe("selection, cost and approval preview", () => {
     render(<PlanTripView />);
     previewExampleTrip();
 
-    fireEvent.click(selectButton(/Select Train/));
+    fireEvent.click(selectButton(TRAIN_ONE));
 
     expect(screen.getByText(/Estimated total so far \(incomplete\)/)).toBeInTheDocument();
   });
@@ -148,28 +154,28 @@ describe("selection, cost and approval preview", () => {
   test("clear selection resets the choices and the preview", () => {
     render(<PlanTripView />);
     previewExampleTrip();
-    fireEvent.click(selectButton(/Select Train/));
+    fireEvent.click(selectButton(TRAIN_ONE));
 
     fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
 
-    expect(selectButton(/Select Train/)).toHaveAttribute("aria-pressed", "false");
+    expect(selectButton(TRAIN_ONE)).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText("Nothing to preview")).toBeInTheDocument();
   });
 
   test("a new preview forgets the earlier selection", () => {
     render(<PlanTripView />);
     previewExampleTrip();
-    fireEvent.click(selectButton(/Select Train/));
+    fireEvent.click(selectButton(TRAIN_ONE));
 
     fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
 
-    expect(selectButton(/Select Train/)).toHaveAttribute("aria-pressed", "false");
+    expect(selectButton(TRAIN_ONE)).toHaveAttribute("aria-pressed", "false");
   });
 
   test("show option from the itinerary moves focus to that card", () => {
     render(<PlanTripView />);
     previewExampleTrip();
-    fireEvent.click(selectButton(/Select Train/));
+    fireEvent.click(selectButton(TRAIN_ONE));
 
     fireEvent.click(screen.getByRole("button", { name: /Show option: train to Goa/ }));
 
@@ -184,7 +190,7 @@ describe("one-way and same-day trips", () => {
     fireEvent.click(screen.getByRole("radio", { name: kind }));
 
     fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
-    fireEvent.click(selectButton(/Select Train/));
+    fireEvent.click(selectButton(TRAIN_ONE));
     fireEvent.click(selectButton(/Select Sample Beach Resort/));
 
     expect(screen.getByText("Stay length is not defined for this trip")).toBeInTheDocument();

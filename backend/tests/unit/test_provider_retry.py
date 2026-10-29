@@ -94,7 +94,7 @@ class TestRetries:
 
         options = run(provider, recorder)
 
-        assert len(options) == 3
+        assert len(options) == 7
         assert provider.calls == 1
         assert recorder.sleeps == []
 
@@ -107,7 +107,7 @@ class TestRetries:
 
         options = run(provider, recorder)
 
-        assert len(options) == 3
+        assert len(options) == 7
         assert provider.calls == 3
         assert len(recorder.sleeps) == 2
 

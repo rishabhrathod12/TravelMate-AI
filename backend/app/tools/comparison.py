@@ -20,7 +20,7 @@ from enum import StrEnum
 
 from app.domain.errors import CurrencyMismatchError
 from app.domain.money import Money
-from app.domain.options import AvailabilityStatus, HotelOption, TransportOption
+from app.domain.options import AvailabilityStatus, HotelOption, TransportMode, TransportOption
 
 
 class TransportSortKey(StrEnum):
@@ -78,6 +78,20 @@ def sort_hotels(
         return (rate is None, 0 if rate is None else rate.amount_minor, option.id)
 
     return tuple(sorted(options, key=sort_key))
+
+
+def group_transport_by_mode(
+    options: Sequence[TransportOption],
+) -> dict[TransportMode, tuple[TransportOption, ...]]:
+    """Split by mode for display. Only modes that have options appear, in a fixed order.
+
+    The order of the options inside a mode is kept, so sort first if an order is wanted.
+    """
+    return {
+        mode: found
+        for mode in TransportMode
+        if (found := tuple(option for option in options if option.mode is mode))
+    }
 
 
 def missing_fields(option: TransportOption | HotelOption) -> tuple[str, ...]:

@@ -71,6 +71,7 @@ Controls:
 - **No agent approval.** No LLM, tool, or background job can create an approval.
 - **Approval expiry.** Approvals expire after the period set by PRD Q7. An expired approval is not used.
 - **Enablement is a deliberate change.** Turning on booking requires a code review of the booking executor, a reviewed configuration change, and a passing test suite that includes the approval and revalidation tests.
+- **Simulated demo booking.** A clearly labelled simulation of a mock booking may exist (ADR 0003). It is a separate type and code path with no I/O, never uses `BookingIntent`, `Approval` or `CONFIRMED`, is not reachable by voice or by any LLM tool, and its reference is never a provider confirmation. It does not weaken the rules above: real booking stays off.
 - **Payments.** Payment capture is not designed or implemented. Any future payment feature needs its own security review and an ADR before work starts (PRD Q8).
 
 ## 5. Price revalidation

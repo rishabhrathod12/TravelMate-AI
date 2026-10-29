@@ -148,7 +148,15 @@ class TestSortTransport:
 
         ordered = sort_transport(MockTransportProvider().search(query))
 
-        assert [option.mode.value for option in ordered] == ["BUS", "TRAIN", "FLIGHT"]
+        assert [option.service_label for option in ordered] == [
+            "DEMO-T202",
+            "DEMO-B302",
+            "DEMO-B301",
+            "DEMO-T201",
+            "DEMO-F103",
+            "DEMO-F102",
+            "DEMO-F101",
+        ]
 
 
 class TestSortHotels:

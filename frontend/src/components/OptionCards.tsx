@@ -1,15 +1,8 @@
-import type { HotelOption, Money, Quote, TransportMode, TransportOption } from "../contracts/types";
-import { formatDuration, formatUtcDateTime } from "../lib/dates";
+import type { HotelOption, Money, Quote, TransportOption } from "../contracts/types";
+import { MODE_LABEL, transportFacts } from "../lib/transport";
 import { AvailabilityBadge } from "./Badges";
 import { MoneyText } from "./MoneyText";
 import { SourceLine } from "./SourceLine";
-
-const MODE_LABEL: Record<TransportMode, string> = {
-  FLIGHT: "Flight",
-  TRAIN: "Train",
-  BUS: "Bus",
-  ROAD: "Road",
-};
 
 interface SelectableProps {
   selected: boolean;
@@ -73,13 +66,33 @@ function SelectButton({
   );
 }
 
+interface CompareControl {
+  checked: boolean;
+  disabled: boolean;
+  onChange: () => void;
+}
+
 interface TransportCardProps extends SelectableProps {
   option: TransportOption;
   quote: Quote | undefined;
+  /** When given, the card offers a "Compare" checkbox. */
+  compare?: CompareControl;
+  /** Heading level of the card title; 4 when the card sits under a category heading. */
+  headingLevel?: 3 | 4;
 }
 
-export function TransportCard({ option, quote, selected, onToggle }: TransportCardProps) {
+export function TransportCard({
+  option,
+  quote,
+  selected,
+  onToggle,
+  compare,
+  headingLevel = 3,
+}: TransportCardProps) {
+  const Heading = headingLevel === 4 ? "h4" : "h3";
   const title = `${MODE_LABEL[option.mode]}: ${option.origin.name} to ${option.destination.name}`;
+  // The accessible name tells apart several options of one mode.
+  const accessibleName = option.operator_name === null ? title : `${title}, ${option.operator_name}`;
   return (
     <article
       className={selected ? "card option-card is-selected" : "card option-card"}
@@ -88,30 +101,21 @@ export function TransportCard({ option, quote, selected, onToggle }: TransportCa
       aria-labelledby={`${option.id}-title`}
     >
       <header className="option-header">
-        <h3 id={`${option.id}-title`}>{title}</h3>
+        <Heading id={`${option.id}-title`}>
+          {title}
+          {option.operator_name !== null && (
+            <span className="option-operator"> · {option.operator_name}</span>
+          )}
+        </Heading>
         <AvailabilityBadge availability={option.availability} />
       </header>
       <dl className="facts">
-        <div>
-          <dt>Departs</dt>
-          <dd>{formatUtcDateTime(option.departs_at)}</dd>
-        </div>
-        <div>
-          <dt>Arrives</dt>
-          <dd>{formatUtcDateTime(option.arrives_at)}</dd>
-        </div>
-        <div>
-          <dt>Duration</dt>
-          <dd>{formatDuration(option.departs_at, option.arrives_at)}</dd>
-        </div>
-        <div>
-          <dt>Stops</dt>
-          <dd>{option.stops === null ? "Not supplied" : option.stops}</dd>
-        </div>
-        <div>
-          <dt>Cancellation</dt>
-          <dd>{option.cancellation_terms ?? "Not supplied"}</dd>
-        </div>
+        {transportFacts(option).map((fact) => (
+          <div key={fact.label}>
+            <dt>{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
       </dl>
       <PriceBlock label="Quoted price" price={option.price} quote={quote} />
       <SourceLine source={option.source} />
@@ -119,8 +123,19 @@ export function TransportCard({ option, quote, selected, onToggle }: TransportCa
         selected={selected}
         onToggle={onToggle}
         unavailable={option.availability === "UNAVAILABLE"}
-        name={title}
+        name={accessibleName}
       />
+      {compare !== undefined && (
+        <label className="compare-toggle">
+          <input
+            type="checkbox"
+            checked={compare.checked}
+            disabled={compare.disabled}
+            onChange={compare.onChange}
+          />{" "}
+          Compare <span className="visually-hidden">{accessibleName}</span>
+        </label>
+      )}
     </article>
   );
 }

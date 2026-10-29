@@ -1,0 +1,153 @@
+{
+  "note": "Generated from backend/app/providers/mock/fixtures.py. Do not edit by hand. Every value is fictional demo data labelled MOCK.",
+  "mock_text_note": "Mock fixture text: not a real provider statement.",
+  "services": [
+    {
+      "key": "train-1",
+      "mode": "TRAIN",
+      "operator_name": "Sample Rail Express",
+      "service_label": "DEMO-T201",
+      "departs": {
+        "hour": 4,
+        "minute": 0
+      },
+      "arrives": {
+        "day_offset": 0,
+        "hour": 16,
+        "minute": 30
+      },
+      "stops": 1,
+      "price_minor": 150000,
+      "currency": "INR",
+      "availability": "AVAILABLE",
+      "cancellation_terms": "Mock fixture text: not a real provider statement.",
+      "detail": "Sleeper (demo)"
+    },
+    {
+      "key": "train-2",
+      "mode": "TRAIN",
+      "operator_name": "Example Intercity",
+      "service_label": "DEMO-T202",
+      "departs": {
+        "hour": 21,
+        "minute": 0
+      },
+      "arrives": {
+        "day_offset": 1,
+        "hour": 11,
+        "minute": 15
+      },
+      "stops": 2,
+      "price_minor": 90000,
+      "currency": "INR",
+      "availability": "AVAILABLE",
+      "cancellation_terms": null,
+      "detail": "Chair car (demo)"
+    },
+    {
+      "key": "bus-1",
+      "mode": "BUS",
+      "operator_name": "Demo Coaches",
+      "service_label": "DEMO-B301",
+      "departs": {
+        "hour": 2,
+        "minute": 0
+      },
+      "arrives": {
+        "day_offset": 0,
+        "hour": 17,
+        "minute": 0
+      },
+      "stops": null,
+      "price_minor": 120000,
+      "currency": "INR",
+      "availability": "UNKNOWN",
+      "cancellation_terms": null,
+      "detail": null
+    },
+    {
+      "key": "bus-2",
+      "mode": "BUS",
+      "operator_name": "Example Travels",
+      "service_label": "DEMO-B302",
+      "departs": {
+        "hour": 19,
+        "minute": 30
+      },
+      "arrives": {
+        "day_offset": 1,
+        "hour": 10,
+        "minute": 30
+      },
+      "stops": 3,
+      "price_minor": 100000,
+      "currency": "INR",
+      "availability": "AVAILABLE",
+      "cancellation_terms": "Mock fixture text: not a real provider statement.",
+      "detail": "Seater (demo)"
+    },
+    {
+      "key": "flight-1",
+      "mode": "FLIGHT",
+      "operator_name": "Demo Air",
+      "service_label": "DEMO-F101",
+      "departs": {
+        "hour": 8,
+        "minute": 0
+      },
+      "arrives": {
+        "day_offset": 0,
+        "hour": 9,
+        "minute": 45
+      },
+      "stops": 0,
+      "price_minor": 500000,
+      "currency": "INR",
+      "availability": "UNAVAILABLE",
+      "cancellation_terms": null,
+      "detail": "Economy (demo)"
+    },
+    {
+      "key": "flight-2",
+      "mode": "FLIGHT",
+      "operator_name": "Sample Wings",
+      "service_label": "DEMO-F102",
+      "departs": {
+        "hour": 14,
+        "minute": 30
+      },
+      "arrives": {
+        "day_offset": 0,
+        "hour": 16,
+        "minute": 15
+      },
+      "stops": 0,
+      "price_minor": 450000,
+      "currency": "INR",
+      "availability": "AVAILABLE",
+      "cancellation_terms": "Mock fixture text: not a real provider statement.",
+      "detail": "Economy (demo)"
+    },
+    {
+      "key": "flight-3",
+      "mode": "FLIGHT",
+      "operator_name": "Example Airways",
+      "service_label": "DEMO-F103",
+      "departs": {
+        "hour": 6,
+        "minute": 10
+      },
+      "arrives": {
+        "day_offset": 0,
+        "hour": 10,
+        "minute": 40
+      },
+      "stops": 1,
+      "price_minor": 380000,
+      "currency": "INR",
+      "availability": "UNKNOWN",
+      "cancellation_terms": null,
+      "detail": null
+    }
+  ]
+}

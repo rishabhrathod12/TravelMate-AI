@@ -194,14 +194,14 @@ class TestInputIsValidatedBeforeAnyProviderIsCalled:
     def test_dates_may_arrive_as_text_as_they_would_from_a_model(self) -> None:
         result = tools_for(mock_providers()).search_transport(TRANSPORT_ARGS)
 
-        assert len(result.options) == 3
+        assert len(result.options) == 7
 
 
 class TestSuccess:
     def test_transport_returns_typed_options_and_no_errors(self) -> None:
         result = tools_for(mock_providers()).search_transport(TRANSPORT_ARGS)
 
-        assert len(result.options) == 3
+        assert len(result.options) == 7
         assert result.errors == ()
         assert result.empty_reason is None
 
@@ -336,7 +336,7 @@ class TestAProviderFailureNeverHidesTheOthers:
 
         result = tools.search_transport(TRANSPORT_ARGS)
 
-        assert len(result.options) == 3 and result.errors == ()
+        assert len(result.options) == 7 and result.errors == ()
         assert [r.status for r in tools.recorder.records] == [
             CallStatus.TIMEOUT,
             CallStatus.TIMEOUT,
@@ -406,7 +406,7 @@ class TestMockDataCanNeverPassAsLive:
 
         result = tools.search_transport(TRANSPORT_ARGS)
 
-        assert len(result.options) == 3 and result.errors == ()
+        assert len(result.options) == 7 and result.errors == ()
 
     def test_the_same_guard_covers_hotels_and_weather(self) -> None:
         real_hotels = MockHotelProvider().search(

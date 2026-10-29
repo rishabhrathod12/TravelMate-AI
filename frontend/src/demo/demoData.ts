@@ -1,11 +1,12 @@
 /**
  * DEMO DATA. Nothing in this file comes from a provider.
  *
- * Every value is hand-written, typed to the backend contract and labelled MOCK.
- * Names are fictional and amounts are round placeholders. They must never be
- * shown as real prices, schedules or availability. The real mock providers
- * arrive with Milestone 3 on the backend; this file only lets the screens be
- * viewed before then.
+ * Every value is fictional, typed to the backend contract and labelled MOCK. Hotels,
+ * quotes and fees are hand-written here. The flight, train and bus services are templates
+ * generated from the backend mock fixtures (`transportFixtures.json`), so there is one
+ * source of truth. Names are fictional and amounts are round placeholders. They must never
+ * be shown as real prices, schedules or availability. Nothing here calls a backend: only
+ * `GET /health` exists today.
  *
  * Prices are not scaled by traveller count or room count: what a quoted price
  * covers is an open decision (PRD Q12).
@@ -23,8 +24,9 @@ import type {
   TransportOption,
   TripRequest,
 } from "../contracts/types";
-import { daysBetween } from "../lib/dates";
+import { addDays, daysBetween } from "../lib/dates";
 import { multiplyMoney, sumMoney } from "../lib/money";
+import transportFixtures from "./transportFixtures.json";
 
 export const DEMO_NOTICE =
   "Demo data: sample values written by hand. They are not real prices, availability, schedules or weather, and nothing is booked.";
@@ -54,6 +56,80 @@ export interface DemoOptions {
   quotes: Record<string, Quote>;
 }
 
+/**
+ * One fictional service template, exported from the backend mock fixtures
+ * (`backend/app/providers/mock/fixtures.py`). The file is generated; a backend test fails if it
+ * is out of date, so the two sides cannot drift apart.
+ */
+interface TransportTemplate {
+  key: string;
+  mode: Exclude<TransportOption["mode"], "ROAD">;
+  operator_name: string;
+  service_label: string;
+  departs: { hour: number; minute: number };
+  arrives: { day_offset: number; hour: number; minute: number };
+  stops: number | null;
+  price_minor: number;
+  currency: string;
+  availability: TransportOption["availability"];
+  cancellation_terms: string | null;
+  detail: string | null;
+}
+
+export const TRANSPORT_FIXTURES = transportFixtures as unknown as {
+  note: string;
+  mock_text_note: string;
+  services: TransportTemplate[];
+};
+
+/** Sample fees, keyed by mode. They exist only in this prototype; the backend mock has no fees. */
+const TRANSPORT_FEES: Record<TransportOption["mode"], { label: string; amount_minor: number }> = {
+  FLIGHT: { label: "Sample convenience fee", amount_minor: 15_000 },
+  TRAIN: { label: "Sample booking fee", amount_minor: 5_000 },
+  BUS: { label: "Sample booking fee", amount_minor: 2_000 },
+  ROAD: { label: "Sample fee", amount_minor: 0 },
+};
+
+function isoAt(day: string, dayOffset: number, hour: number, minute: number): string {
+  return `${addDays(day, dayOffset)}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00Z`;
+}
+
+function detailsFor(template: TransportTemplate): TransportOption["details"] {
+  if (template.detail === null) {
+    return null;
+  }
+  switch (template.mode) {
+    case "FLIGHT":
+      return { kind: "FLIGHT", cabin_class: template.detail };
+    case "TRAIN":
+      return { kind: "TRAIN", travel_class: template.detail };
+    case "BUS":
+      return { kind: "BUS", seat_type: template.detail };
+  }
+}
+
+function transportFromTemplate(
+  template: TransportTemplate,
+  day: string,
+  route: Pick<TransportOption, "origin" | "destination">,
+): TransportOption {
+  return {
+    id: `demo-${template.key}`,
+    source: DEMO_SOURCE,
+    availability: template.availability,
+    cancellation_terms: template.cancellation_terms,
+    mode: template.mode,
+    ...route,
+    departs_at: isoAt(day, 0, template.departs.hour, template.departs.minute),
+    arrives_at: isoAt(day, template.arrives.day_offset, template.arrives.hour, template.arrives.minute),
+    stops: template.stops,
+    price: { amount_minor: template.price_minor, currency: template.currency },
+    operator_name: template.operator_name,
+    service_label: template.service_label,
+    details: detailsFor(template),
+  };
+}
+
 function demoQuote(
   suffix: string,
   option: { id: string; availability: Quote["availability"]; cancellation_terms: string | null },
@@ -62,7 +138,7 @@ function demoQuote(
   feeLabel: string,
 ): Quote {
   return {
-    id: `00000000-0000-4000-8000-0000000000${suffix}`,
+    id: `00000000-0000-4000-8000-${suffix.padStart(12, "0")}`,
     option_id: option.id,
     price,
     fees: [{ label: feeLabel, amount: inr(feeAmount) }],
@@ -77,42 +153,9 @@ export function buildDemoOptions(request: TripRequest): DemoOptions {
   const day = request.departure_date;
   const route = { origin: request.origin, destination: request.destination };
 
-  const train: TransportOption = {
-    id: "demo-train-1",
-    source: DEMO_SOURCE,
-    availability: "AVAILABLE",
-    cancellation_terms: "Demo text: cancellation terms would come from the provider.",
-    mode: "TRAIN",
-    ...route,
-    departs_at: `${day}T04:00:00Z`,
-    arrives_at: `${day}T16:30:00Z`,
-    stops: 1,
-    price: inr(150_000),
-  };
-  const bus: TransportOption = {
-    id: "demo-bus-1",
-    source: DEMO_SOURCE,
-    availability: "UNKNOWN",
-    cancellation_terms: null,
-    mode: "BUS",
-    ...route,
-    departs_at: `${day}T02:00:00Z`,
-    arrives_at: `${day}T17:00:00Z`,
-    stops: null,
-    price: inr(120_000),
-  };
-  const flight: TransportOption = {
-    id: "demo-flight-1",
-    source: DEMO_SOURCE,
-    availability: "UNAVAILABLE",
-    cancellation_terms: null,
-    mode: "FLIGHT",
-    ...route,
-    departs_at: `${day}T08:00:00Z`,
-    arrives_at: `${day}T09:45:00Z`,
-    stops: 0,
-    price: inr(500_000),
-  };
+  const transport = TRANSPORT_FIXTURES.services.map((service) =>
+    transportFromTemplate(service, day, route),
+  );
 
   const resort: HotelOption = {
     id: "demo-hotel-1",
@@ -134,13 +177,24 @@ export function buildDemoOptions(request: TripRequest): DemoOptions {
   };
 
   const quotes: Record<string, Quote> = {
-    [train.id]: demoQuote("a1", train, inr(150_000), 5_000, "Sample booking fee"),
-    [bus.id]: demoQuote("a2", bus, inr(120_000), 2_000, "Sample booking fee"),
     [resort.id]: demoQuote("b1", resort, inr(600_000), 10_000, "Sample resort tax"),
     [inn.id]: demoQuote("b2", inn, inr(300_000), 5_000, "Sample city tax"),
   };
+  // An unavailable option has nothing to quote.
+  transport.forEach((option, index) => {
+    if (option.price !== null && option.availability !== "UNAVAILABLE") {
+      const fee = TRANSPORT_FEES[option.mode];
+      quotes[option.id] = demoQuote(
+        `a${String(index + 1).padStart(2, "0")}`,
+        option,
+        option.price,
+        fee.amount_minor,
+        fee.label,
+      );
+    }
+  });
 
-  return { transport: [train, bus, flight], hotels: [resort, inn], quotes };
+  return { transport, hotels: [resort, inn], quotes };
 }
 
 /** Nights between departure and return; 0 for one-way and same-day trips. */

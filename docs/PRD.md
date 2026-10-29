@@ -57,6 +57,7 @@ TravelMate AI is an agent-assisted planner. It researches and compares options, 
 | FR-15 | Ask the user for clarification when required trip inputs are missing. | Should |
 | FR-16 | Let a user compare two itinerary versions. | Could |
 | FR-17 | Let the user hold a spoken conversation with the planner in Hindi, Hinglish or English. The spoken flow uses the same planning tools, validation and provenance rules as the text flow, offers a text fallback, and cannot approve or execute a booking. Not part of the MVP until the voice milestones in `docs/VOICE_ASSISTANT_PLAN.md` pass. Language support per provider is unverified. | Could |
+| FR-18 | Show flights, trains and buses as separate, comparable categories with fields that fit each mode, and let the user walk through a clearly labelled **simulated** booking of a mock option. A simulated booking reserves nothing, issues no ticket, collects no payment, and is never a provider confirmation (ADR 0003). Real booking and payment stay disabled. Mock data only until a live provider is authorised (Q1). | Could |
 
 ### 5.2 Non-functional requirements
 

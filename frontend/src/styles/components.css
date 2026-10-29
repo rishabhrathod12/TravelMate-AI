@@ -823,3 +823,125 @@ input[aria-invalid="true"] {
   font-size: var(--text-sm);
   font-weight: 600;
 }
+
+/* ---------- Transport browser and comparison ---------- */
+
+.transport-browser {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.transport-sort select {
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font: inherit;
+}
+
+.transport-group h3 {
+  margin-bottom: var(--space-2);
+}
+
+.option-operator {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.compare-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  font-weight: 600;
+}
+
+.compare-scroll {
+  overflow-x: auto;
+}
+
+.compare-table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+}
+
+.compare-table caption {
+  padding-bottom: var(--space-2);
+  text-align: left;
+  font-weight: 700;
+}
+
+.compare-table th,
+.compare-table td {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.compare-table thead th,
+.compare-table tbody th {
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+/* ---------- Demo booking (simulation) ---------- */
+
+.demo-booking {
+  display: grid;
+  gap: var(--space-3);
+  border: 2px dashed var(--color-mock-border);
+  background: var(--color-mock-bg);
+  color: var(--color-mock-text);
+}
+
+.demo-ribbon {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.demo-disclaimers {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.demo-result {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 2px solid var(--color-mock-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.demo-stamp {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 3px double var(--color-mock-border);
+  background: var(--color-mock-bg);
+  color: var(--color-mock-text);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.demo-reference {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.demo-duplicate {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+  font-weight: 600;
+}

@@ -80,8 +80,13 @@ class TestTransportContract:
         options = self.provider.search(transport_query())
 
         assert isinstance(options, tuple)
-        assert len(options) == 3
+        assert len(options) == 7
         assert all(isinstance(option, TransportOption) for option in options)
+
+    def test_there_are_flights_trains_and_buses_and_no_other_mode(self) -> None:
+        modes = {option.mode for option in self.provider.search(transport_query())}
+
+        assert modes == {TransportMode.FLIGHT, TransportMode.TRAIN, TransportMode.BUS}
 
     def test_every_option_is_labelled_mock(self) -> None:
         for option in self.provider.search(transport_query()):
@@ -110,7 +115,7 @@ class TestTransportContract:
     def test_the_return_leg_is_available_as_a_second_search(self) -> None:
         options = self.provider.search(transport_query("Goa", "Indore"))
 
-        assert len(options) == 3
+        assert len(options) == 7
         assert all(option.origin.name == "Goa" for option in options)
         assert all(option.destination.name == "Indore" for option in options)
 
@@ -124,15 +129,21 @@ class TestTransportContract:
         assert self.provider.search(transport_query("Indore", "Indore")) == ()
 
     def test_the_fixture_shows_every_availability_and_every_missing_fact_kind(self) -> None:
-        options = {option.mode: option for option in self.provider.search(transport_query())}
+        options = self.provider.search(transport_query())
 
-        assert {o.availability.value for o in options.values()} == {
-            "AVAILABLE",
-            "UNAVAILABLE",
-            "UNKNOWN",
-        }
-        assert options[TransportMode.BUS].stops is None
-        assert options[TransportMode.BUS].cancellation_terms is None
+        assert {o.availability.value for o in options} == {"AVAILABLE", "UNAVAILABLE", "UNKNOWN"}
+        assert any(o.stops is None for o in options)
+        assert any(o.cancellation_terms is None for o in options)
+        assert any(o.details is None for o in options)
+
+    def test_every_mode_has_at_least_one_available_option_to_try_a_demo_booking_on(self) -> None:
+        options = self.provider.search(transport_query())
+
+        for mode in (TransportMode.FLIGHT, TransportMode.TRAIN, TransportMode.BUS):
+            assert any(
+                o.mode is mode and o.availability.value == "AVAILABLE" and o.price is not None
+                for o in options
+            )
 
     def test_amounts_are_whole_minor_units(self) -> None:
         for option in self.provider.search(transport_query()):

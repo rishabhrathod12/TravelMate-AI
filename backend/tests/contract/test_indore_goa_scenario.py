@@ -109,7 +109,7 @@ def test_a_same_day_return_gives_transport_but_no_valid_hotel_stay() -> None:
         )
     )
 
-    assert len(legs) == 3
+    assert len(legs) == 7
     try:
         HotelQuery(
             destination=same_day.destination,

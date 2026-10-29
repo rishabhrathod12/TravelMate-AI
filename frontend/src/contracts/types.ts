@@ -57,6 +57,12 @@ interface OptionBase {
   cancellation_terms: string | null;
 }
 
+/** Facts that exist for one transport mode only. It always matches the option's `mode`. */
+export type ModeDetails =
+  | { kind: "FLIGHT"; cabin_class: string | null }
+  | { kind: "TRAIN"; travel_class: string | null }
+  | { kind: "BUS"; seat_type: string | null };
+
 export interface TransportOption extends OptionBase {
   mode: TransportMode;
   origin: Location;
@@ -65,6 +71,10 @@ export interface TransportOption extends OptionBase {
   arrives_at: string;
   stops: number | null;
   price: Money | null;
+  /** The operator and service as the provider names them. Fictional in MOCK data. */
+  operator_name: string | null;
+  service_label: string | null;
+  details: ModeDetails | null;
 }
 
 export interface HotelOption extends OptionBase {
