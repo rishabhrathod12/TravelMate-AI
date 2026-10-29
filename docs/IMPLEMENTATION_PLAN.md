@@ -74,7 +74,7 @@ Completion criteria:
 - Frontend builds and its test passes.
 - PostgreSQL starts from Docker Compose and accepts connections. **Deferred and unverified.** Docker is not available on the development machine, and nothing in M1 uses the database. No PostgreSQL test has been run. Verify when Docker is available and the database is first needed (M9).
 - Settings refuse to start in production mode without required secrets (SECURITY §1). **Not implemented and not waived.** M1 defines no required secret, so there is nothing to check yet. The full production startup validation is planned for M9, which introduces the first required secret (`DATABASE_URL`). Until then this criterion stays open, and the baseline below applies.
-- The existing `aitravel/` venv is not used. A new Python 3.12 environment is created, and the old 3.14 venv is removed or left as-is after the owner confirms.
+- A Python 3.12 environment is used: `backend/.venv`. The old 3.14 `aitravel/` venv was rebuilt on 3.12.10 on 2026-10-29 and may be used as a fallback; it must not be 3.14.
 
 Verification:
 ```powershell

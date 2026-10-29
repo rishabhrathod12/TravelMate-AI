@@ -9,9 +9,10 @@ A short brief for starting a new working session. Update only the lines marked *
 - Repository: github.com/rishabhrathod12/TravelMate-AI, branch `main`.
 
 ## Current state (UPDATE after every commit)
-- Last pushed commit: `b950e13`, CI green. Local and not yet pushed: `803f9d6` (M6). CI has not run for it.
-- Tests: 1084 backend pass (run locally on Python 3.12.10 on 2026-10-29). The last recorded frontend count is 142 at `b950e13` and was not re-run. Ruff and strict mypy were last recorded clean at `b950e13` and were not re-run for M6.
-- **Done:** M0, M1\*, M2\*, M3, M4, M5, M6 (\* see open items). M6 is awaiting owner review.
+- Last pushed commit: `b950e13`, CI green when it was pushed. Local and not yet pushed: `803f9d6` (M6) and the docs commits after it. CI has run only for `b950e13`.
+- Tests: at `803f9d6`, 1084 backend tests pass (run locally on Python 3.12.10 on 2026-10-29). The last recorded frontend count is 142 at `b950e13` and was not re-run. Ruff and strict mypy were last recorded clean at `b950e13` and were not re-run for M6.
+- **Complete:** M0.
+- **Implemented, awaiting owner review:** M1 to M6. Each is "not closed" in the plan's status table. Open items: M1 (Docker and PostgreSQL start, production-secrets guard), M2 (`budget` on `TripRequest`), and the Q9 to Q19 decisions below.
 - **M11 is a frontend prototype only**, built with hand-written demo data labelled MOCK. The only real endpoint it calls is `GET /health`.
 - **M6 (itinerary drafter and LLM interface)** is committed with fakes only, including 106 prompt-injection tests. No live model call has ever been made, no vendor SDK is installed, and the OpenAI adapter has no real transport.
 - **Pending:** M7, M8, M9, M10, M12.
@@ -21,7 +22,7 @@ A short brief for starting a new working session. Update only the lines marked *
   - Docker and PostgreSQL start (Docker is not installed on the development machine).
   - The production-secrets startup guard (not built; planned for M9).
   - The frontend has not been checked visually in a browser.
-  - The workflow, persistence and any live LLM call do not exist yet.
+  - Ruff and strict mypy for M6, and the OpenAI wire format against the live API.
 
 ## Decided by the owner (UPDATE as questions are answered)
 - A trip request has an explicit `trip_type` (`ONE_WAY` or `ROUND_TRIP`). A same-day return is a round trip with the same date.
@@ -52,8 +53,8 @@ A short brief for starting a new working session. Update only the lines marked *
 - Human approval is required before any real booking or payment. No secrets in files, logs or output.
 
 ## Environment notes
-- Windows. The owner's shell may have the `aitravel` virtual environment active, so call `backend/.venv/Scripts/python.exe` by absolute path.
-- `aitravel` was rebuilt on Python 3.12.10 on 2026-10-29 (it was 3.14, which the project rejects) and the full backend suite passes in it. `backend/.venv` remains the documented environment. Treat `aitravel` as an equivalent fallback and do not recreate it on 3.14.
+- Windows. The owner's shell may have the `aitravel` virtual environment active, so call `backend/.venv/Scripts/python.exe` by absolute path. It is Python 3.12.10, but the test suite has not been run in it yet.
+- `aitravel` was rebuilt on Python 3.12.10 on 2026-10-29 (it was 3.14, which the project rejects) and the full backend suite passed in it. Use it as a fallback and do not recreate it on 3.14.
 - Docker is not installed. Open the frontend at `http://localhost:5173` (not `127.0.0.1`).
 - Backend checks: `pytest backend/tests`, `ruff check`, `ruff format --check`, and `mypy` (run inside `backend/`).
 - Frontend checks (in `frontend/`): `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
