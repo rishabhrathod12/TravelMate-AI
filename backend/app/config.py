@@ -7,7 +7,7 @@ process manager.
 
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     provider_mode_transport: Literal["mock", "live"] = "mock"
     provider_mode_hotel: Literal["mock", "live"] = "mock"
     provider_mode_weather: Literal["mock", "live"] = "mock"
+
+    # Language model (SECURITY §1). Optional: the local demo and every test run without
+    # them. The key is a SecretStr, so printing the settings never shows it, and it is
+    # read only from the environment. A blank value counts as not set.
+    openai_api_key: SecretStr | None = None
+    llm_model: str | None = None
 
     @model_validator(mode="after")
     def _booking_must_stay_disabled(self) -> "Settings":
