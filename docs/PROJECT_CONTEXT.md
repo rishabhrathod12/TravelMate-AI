@@ -9,11 +9,11 @@ A short brief for starting a new working session. Update only the lines marked *
 - Repository: github.com/rishabhrathod12/TravelMate-AI, branch `main`.
 
 ## Current state (UPDATE after every commit)
-- Last pushed commit: `b950e13`, CI green.
-- Tests at that commit: 784 backend, 142 frontend. Ruff and strict mypy clean.
-- **Done:** M0, M1\*, M2\*, M3, M4, M5 (\* see open items).
+- Last pushed commit: `b950e13`, CI green. Local and not yet pushed: `803f9d6` (M6). CI has not run for it.
+- Tests: 1084 backend pass (run locally on Python 3.12.10 on 2026-10-29). The last recorded frontend count is 142 at `b950e13` and was not re-run. Ruff and strict mypy were last recorded clean at `b950e13` and were not re-run for M6.
+- **Done:** M0, M1\*, M2\*, M3, M4, M5, M6 (\* see open items). M6 is awaiting owner review.
 - **M11 is a frontend prototype only**, built with hand-written demo data labelled MOCK. The only real endpoint it calls is `GET /health`.
-- **Implemented but not yet committed:** M6 (itinerary drafter and LLM interface), with fakes only. 1084 backend tests pass locally, including 106 prompt-injection tests. No live model call has ever been made, no vendor SDK is installed, and the OpenAI adapter has no real transport.
+- **M6 (itinerary drafter and LLM interface)** is committed with fakes only, including 106 prompt-injection tests. No live model call has ever been made, no vendor SDK is installed, and the OpenAI adapter has no real transport.
 - **Pending:** M7, M8, M9, M10, M12.
 - **Blocked on the owner's authorization:** M13 (live providers) and M14 (booking execution).
 - Real booking is disabled and must stay disabled (`BOOKING_ENABLED` must be false).
@@ -52,12 +52,13 @@ A short brief for starting a new working session. Update only the lines marked *
 - Human approval is required before any real booking or payment. No secrets in files, logs or output.
 
 ## Environment notes
-- Windows. The owner's shell has the old `aitravel` virtual environment active, so always call `backend/.venv/Scripts/python.exe` by absolute path.
+- Windows. The owner's shell may have the `aitravel` virtual environment active, so call `backend/.venv/Scripts/python.exe` by absolute path.
+- `aitravel` was rebuilt on Python 3.12.10 on 2026-10-29 (it was 3.14, which the project rejects) and the full backend suite passes in it. `backend/.venv` remains the documented environment. Treat `aitravel` as an equivalent fallback and do not recreate it on 3.14.
 - Docker is not installed. Open the frontend at `http://localhost:5173` (not `127.0.0.1`).
 - Backend checks: `pytest backend/tests`, `ruff check`, `ruff format --check`, and `mypy` (run inside `backend/`).
 - Frontend checks (in `frontend/`): `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
 ## Next task (UPDATE)
-- Review and commit M6, then push and check CI.
+- Owner reviews M6; then push `803f9d6` and check CI.
 - Before M7 (the LangGraph workflow), the owner needs to rule on Q12, Q13, Q14 and Q18, and decide Q19 (model, limits, key) before any live LLM call.
 - Connecting a real LLM needs three separate approvals: the `openai` dependency and a real transport, an owner-supplied key, and the first live call.

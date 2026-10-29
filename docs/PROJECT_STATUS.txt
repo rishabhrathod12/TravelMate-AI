@@ -1,0 +1,111 @@
+TRAVELMATE AI - PROJECT STATUS AND SUGGESTIONS
+Written 2026-10-29 from docs/IMPLEMENTATION_PLAN.md, docs/PROJECT_CONTEXT.md and the code tree.
+Test counts below come from a run on 2026-10-29. Everything else is taken from the docs.
+
+======================================================================
+1. WHAT THE PROJECT IS
+======================================================================
+An agentic AI travel planner (portfolio project). First scenario: Indore <-> Goa.
+Stack: Python 3.12, FastAPI, Pydantic v2, strict mypy, Ruff. Frontend: React 19,
+TypeScript, Vite. Planned: LangGraph, PostgreSQL/SQLAlchemy/Alembic, OpenAI LLM.
+Hard rules: no invented travel data; every value labelled LIVE / CACHED_LIVE / MOCK;
+money as integer minor units; booking stays disabled (BOOKING_ENABLED=false);
+no secrets in files or logs; stop for owner review after every milestone.
+
+======================================================================
+2. STATUS BY SECTION
+======================================================================
+DONE (implemented and tested, awaiting owner review where noted)
+  M0  Docs and conventions ............. complete (PRD, ARCHITECTURE, SECURITY, plan, ADR)
+  M1  Repo foundation .................. done, 2 criteria open (see section 3)
+  M2  Domain model ..................... done, except "budget" on TripRequest (deferred)
+  M3  Provider interfaces + mocks ...... done; mock providers only, no live adapter
+  M4  Research tools + comparison ...... done; ratings not modelled
+  M5  Cost estimator ................... done; pure arithmetic, no defaults wired
+  M6  Itinerary drafter + LLM interface  done with FAKES ONLY (commit 803f9d6, local)
+        - OpenAI adapter has no real transport, no "openai" package, never run live
+  Backend test suite: 1084 passed (Python 3.12.10, new aitravel venv).
+
+PARTIAL
+  M11 Frontend ......................... prototype with labelled demo data only.
+        Only GET /health is real. No API client, no Playwright, no accessibility audit,
+        never checked visually in a browser (per PROJECT_CONTEXT).
+
+NOT STARTED (needs code)
+  M7  Planning workflow (LangGraph) .... graph, interrupts, step limits, run recording
+  M8  API layer ........................ trips/runs/selections/itinerary/cost routers,
+                                         auth, problem-details errors, redacted logging
+  M9  Persistence ...................... SQLAlchemy models, Alembic, audit-events role,
+                                         PostgreSQL integration tests
+  M10 Booking intents + approvals ...... approval path with a DisabledBookingExecutor
+  M12 Hardening + MVP acceptance ....... AC-01..AC-10 run, audits, CI SHA pinning
+
+BLOCKED ON OWNER AUTHORIZATION
+  M13 Live providers ................... needs PRD Q1-Q3, an ADR, owner credentials
+  M14 Booking execution ................ needs M13, ADR, security review, written approval
+
+What the running server exposes today: GET /health, /docs, /redoc. Nothing else.
+
+======================================================================
+3. KNOWN GAPS AND UNVERIFIED ITEMS
+======================================================================
+ - Docker/PostgreSQL start never verified (Docker not installed on the dev machine).
+ - Production-secrets startup guard not built (planned M9).
+ - Secret masking in settings repr and redacted structured logging: planned M9 / M8.
+ - gitleaks scan configured in CI but not confirmed run beyond M1; CI not yet checked
+   for the M6 commit (it has not been pushed).
+ - Frontend never viewed in a browser.
+ - No live LLM call has ever been made.
+ - Open owner decisions: Q9-Q19, plus provisional assumptions A5-A13.
+   Q12, Q13, Q14, Q18 block M7. Q19 blocks any live LLM call.
+
+======================================================================
+4. SUGGESTED UPDATES TO THE DOCS (txt/md files)
+======================================================================
+docs/PROJECT_CONTEXT.md is now out of date. Change:
+ - "Last pushed commit: b950e13" -> still true, but add "local, unpushed: 803f9d6 (M6)".
+ - "Implemented but not yet committed: M6" -> M6 is committed (803f9d6), not pushed.
+ - "Done: M0..M5" -> add M6 (fakes only, awaiting review).
+ - Tests: "784 backend" -> 1084 backend (142 frontend not re-run today).
+ - Environment notes: it says to use backend/.venv and avoid the old aitravel venv.
+   The aitravel venv was rebuilt on Python 3.12.10 today and the full suite passes in
+   it. Decide which one is canonical and say so. IMPLEMENTATION_PLAN M1 still says
+   "the existing aitravel/ venv is not used" - update that too.
+ - Next task: "Review and commit M6" -> "Review M6, push, check CI".
+docs/IMPLEMENTATION_PLAN.md:
+ - Add a one-line note that the Windows venv is Python 3.12 and how to create it.
+ - Keep the M6 row's "real transport not done" wording; it is accurate.
+docs/PRD.md sections 10-11:
+ - Record answers as the owner decides Q12, Q13, Q14, Q18, Q19.
+README.md (if missing or thin): add how to run backend (uvicorn app.main:app from
+ backend/), frontend (npm run dev, open localhost:5173) and tests.
+
+======================================================================
+5. SUGGESTED NEXT STEPS (in order)
+======================================================================
+ 1. Owner reviews M6; push 803f9d6 and confirm CI is green.
+ 2. Update PROJECT_CONTEXT.md per section 4.
+ 3. Owner rules on Q12, Q13, Q14, Q18 (needed before M7 can wire the estimator).
+ 4. M7 workflow with an in-memory checkpointer and FakeLLMClient (needs the
+    langgraph dependency approval).
+ 5. M9 persistence early: Docker must be available first, or use a hosted/local
+    PostgreSQL. Add the production-secrets guard there.
+ 6. M8 API, then connect the frontend to it (replace demo data), add Playwright.
+ 7. M10 approvals with booking disabled; M12 acceptance run.
+ 8. Only then, with authorization: Q19 and the OpenAI transport (3 separate approvals),
+    then M13 live providers. M14 booking last, if ever.
+
+======================================================================
+6. OVERALL SUGGESTIONS
+======================================================================
+ - Biggest risk is drift between docs and code: keep PROJECT_CONTEXT.md updated in the
+   same commit as the work.
+ - Install Docker (or pick a PostgreSQL option) soon; M9 and M7 checkpointing depend on it.
+ - Do a browser check of the frontend now; it has never been looked at.
+ - Resolve open questions in batches rather than one at a time so M7 is not stalled.
+ - Consider adding a README "quick start" and a single task runner (Makefile or script)
+   so the lint/type/test commands live in one place (M1 asked for this).
+ - Keep the live-call approvals separate and written down; the booking guardrails are
+   the project's strongest feature, so do not weaken them for convenience.
+ - Quieter dependency note: Starlette warns that httpx in TestClient is deprecated
+   (httpx2 suggested); low priority.
