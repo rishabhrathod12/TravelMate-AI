@@ -242,7 +242,7 @@ Real bookings, payments, live travel providers (core M13/M14), authentication de
 |---|---|---|
 | V0 | DONE (awaiting your approval of this plan) | §2 verified from the repo on 2026-10-29; no code changed. |
 | V1 | DONE as a draft (awaiting your approval of the recommendation) | Research only. `docs/VOICE_PROVIDER_EVALUATION.md` and proposed `docs/ADR/0002-voice-architecture.md` written 2026-10-29. No account, key, or paid/live API call. Hindi/Hinglish quality is NOT verified and needs an owner-approved audio test. No vendor selected. |
-| V2 | NOT STARTED | |
+| V2 | DONE (awaiting your review; manual browser check not done) | Mock-only prototype in `frontend/src/voice/` and `components/VoicePanel.tsx`, mounted on the Plan page. Run 2026-10-29: `npm run lint`, `typecheck`, `build` pass; `npm test` 203 passed in 13 files (the count before V2 was not re-measured). Not done: viewing it in a real browser, 375 px visual check, screen-reader check, keyboard walkthrough (all manual). No microphone, audio, network or key is used. |
 | V3 | NOT STARTED | |
 | V4 | NOT STARTED | |
 | V5 | NOT STARTED | |
@@ -262,12 +262,17 @@ Real bookings, payments, live travel providers (core M13/M14), authentication de
   `docs/VOICE_PROVIDER_EVALUATION.md` and draft `docs/ADR/0002-voice-architecture.md` (PROPOSED). No code, no
   keys, no paid calls. Not committed. Core M7 remains paused.
 
+- 2026-10-29: Owner approved D9. ADR 0002 marked Accepted; FR-17 added to `docs/PRD.md` (priority Could, not MVP).
+  V2 built: voice state machine, `VoiceAdapter` interface, mock adapter, `useVoiceSession`, `VoicePanel`,
+  `Transcript`, styles. Not committed.
+
 ## 13. NEXT ACTION
 
-**Owner reviews `docs/VOICE_PROVIDER_EVALUATION.md` and `docs/ADR/0002-voice-architecture.md` and answers D9, D4
-and D10.** If approved, mark ADR 0002 Accepted, apply the PRD wording, then start **V2** (frontend voice
-prototype with a mock adapter; no keys, no paid calls). The Hindi/Hinglish audio test is separate and needs your
-keys and approval.
+**Owner reviews V2**: run `npm run dev` in `frontend/`, open http://localhost:5173 and try the voice panel
+(start, simulate a phrase, interrupt, error, type a message; also at a narrow width and with the keyboard only).
+Then approve committing V2. After that the next milestone is **V3** (voice session and security foundation:
+backend session service, expiry and limits). V3 adds backend code and settings but no vendor key; any provider
+dependency or token minting waits for your vendor decision (D4, D10).
 
 When you say "continue voice assistant", a session must read `CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, this file,
 and the relevant architecture and security docs, then run `git status`, check the code against §2, report the

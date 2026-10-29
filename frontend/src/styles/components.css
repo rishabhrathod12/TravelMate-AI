@@ -602,3 +602,102 @@ input[aria-invalid="true"] {
   margin-top: 0;
   font-size: var(--text-lg);
 }
+
+/* ---------- Voice panel (mock) ---------- */
+
+.voice-panel {
+  display: grid;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+
+.voice-mock-note {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-mock-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-mock-bg);
+  color: var(--color-mock-text);
+}
+
+.voice-state {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-unknown-bg);
+  color: var(--color-unknown-text);
+  font-weight: 600;
+}
+
+.voice-state-listening {
+  background: var(--color-live-bg);
+  color: var(--color-live-text);
+}
+
+.voice-state-thinking,
+.voice-state-speaking {
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+.voice-state-interrupted {
+  background: var(--color-warn-bg);
+  color: var(--color-warn-text);
+}
+
+.voice-state-error {
+  background: var(--color-bad-bg);
+  color: var(--color-bad-text);
+}
+
+.voice-text-fallback label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-weight: 600;
+}
+
+.voice-text-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.voice-text-row input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+.transcript {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transcript-entry {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  overflow-wrap: anywhere;
+}
+
+.transcript-assistant {
+  background: var(--color-info-bg);
+}
+
+.transcript-speaker {
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.transcript-source {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}

@@ -1,7 +1,8 @@
 # ADR 0002 — Voice assistant architecture
 
-Status: **PROPOSED. Not accepted.** Draft written 2026-10-29 in milestone V1. It becomes binding only when the
-project owner changes this status to Accepted. Evidence: `docs/VOICE_PROVIDER_EVALUATION.md`.
+Status: **ACCEPTED on 2026-10-29** by the project owner (decision D9 in `docs/VOICE_ASSISTANT_PLAN.md`), as
+drafted in milestone V1. Decision point 7 stands: no vendor is selected by this ADR. Evidence:
+`docs/VOICE_PROVIDER_EVALUATION.md`.
 
 ## Context
 
