@@ -449,8 +449,8 @@ Blocked by: M13 and authorization. Nothing depends on it.
 
 | Milestone | Status |
 |---|---|
-| M0 Docs & conventions | In progress (this document set) |
-| M1 Foundation | Not started |
+| M0 Docs & conventions | Complete (committed and pushed as d0b929d) |
+| M1 Foundation | Backend foundation complete (health endpoint, config, tests). Frontend scaffold, Docker Compose and CI still pending |
 | M2 Domain model | Not started |
 | M3 Provider interfaces & mocks | Not started |
 | M4 Research tools | Not started |
