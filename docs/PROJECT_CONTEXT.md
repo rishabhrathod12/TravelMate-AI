@@ -9,7 +9,7 @@ A short brief for starting a new working session. Update only the lines marked *
 - Repository: github.com/rishabhrathod12/TravelMate-AI, branch `main`.
 
 ## Current state (UPDATE after every commit)
-- Last pushed commit: `b950e13`, CI green when it was pushed. Local and not yet pushed: `803f9d6` (M6) and the docs commits after it. CI has run only for `b950e13`.
+- Last pushed commit: `f7f33c5` (includes M6 at `803f9d6`). CI passed, as reported by the owner; the run was not read by Claude.
 - Tests: at `803f9d6`, 1084 backend tests pass (run locally on Python 3.12.10 on 2026-10-29). The last recorded frontend count is 142 at `b950e13` and was not re-run. At `803f9d6` (checked 2026-10-29, Python 3.12.10): `ruff check` passes, `ruff format --check` finds 85 files already formatted, and strict `mypy app` reports no issues in 47 source files. Mypy covers `app/` only, not the tests.
 - **Complete:** M0.
 - **Implemented, awaiting owner review:** M1 to M6. Each is "not closed" in the plan's status table. Open items: M1 (Docker and PostgreSQL start, production-secrets guard), M2 (`budget` on `TripRequest`), and the Q9 to Q19 decisions below.
@@ -60,6 +60,6 @@ A short brief for starting a new working session. Update only the lines marked *
 - Frontend checks (in `frontend/`): `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
 ## Next task (UPDATE)
-- Owner reviews M6; then push `803f9d6` and check CI.
+- Owner reviews M6 (pushed, CI passed).
 - Before M7 (the LangGraph workflow), the owner needs to rule on Q12, Q13, Q14 and Q18, and decide Q19 (model, limits, key) before any live LLM call.
 - Connecting a real LLM needs three separate approvals: the `openai` dependency and a real transport, an owner-supplied key, and the first live call.
