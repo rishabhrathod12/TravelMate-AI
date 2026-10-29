@@ -1,87 +1,115 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
-import { SIMULATED_USER_PHRASE } from "./mockAdapter";
-import { VoiceAbortedError, type VoiceAdapter } from "./VoiceAdapter";
-import { initialVoiceState, voiceReducer } from "./voiceMachine";
+import {
+  VoiceConnectionError,
+  type AdapterEvent,
+  type VoiceAdapter,
+} from "./VoiceAdapter";
+import { initialVoiceState, voiceReducer, type VoiceMode } from "./voiceMachine";
 
 /** Runs a voice session: the state machine plus the adapter calls that drive it. */
-export function useVoiceSession(adapter: VoiceAdapter) {
+export function useVoiceSession(adapter: VoiceAdapter | null) {
   const [state, dispatch] = useReducer(voiceReducer, initialVoiceState);
-  const current = useRef<AbortController | null>(null);
+  // Bumped whenever a session is ended, so a connection that finishes late is ignored.
+  const generation = useRef(0);
 
-  const abortCurrent = useCallback(() => {
-    current.current?.abort();
-    current.current = null;
+  const onEvent = useCallback((event: AdapterEvent) => {
+    switch (event.type) {
+      case "listening":
+      case "thinking":
+      case "speaking":
+        dispatch({ type: "PHASE", phase: event.type });
+        break;
+      case "transcript":
+        dispatch({
+          type: "TRANSCRIPT",
+          speaker: event.speaker,
+          text: event.text,
+          source: event.source,
+        });
+        break;
+      case "error":
+        dispatch({ type: "FAIL", code: event.code, message: event.message });
+        break;
+    }
   }, []);
 
-  // Leaving the page must not leave a reply running.
-  useEffect(() => abortCurrent, [abortCurrent]);
-
-  const runTurn = useCallback(
-    async (userText: string) => {
-      abortCurrent();
-      const controller = new AbortController();
-      current.current = controller;
-      try {
-        const reply = await adapter.respond(userText, controller.signal);
-        if (controller.signal.aborted) {
-          return;
-        }
-        dispatch({ type: "ASSISTANT_TEXT", text: reply });
-        await adapter.speak(reply, controller.signal);
-        if (controller.signal.aborted) {
-          return;
-        }
-        dispatch({ type: "SPEAK_DONE" });
-      } catch (error) {
-        if (controller.signal.aborted || error instanceof VoiceAbortedError) {
-          return;
-        }
-        dispatch({
-          type: "FAIL",
-          message: "The voice assistant could not answer. You can try again or type instead.",
-        });
-      }
+  // Leaving the page must release the microphone and stop any reply.
+  useEffect(
+    () => () => {
+      generation.current += 1;
+      adapter?.disconnect();
     },
-    [adapter, abortCurrent],
+    [adapter],
   );
 
-  const canSend =
-    state.status === "idle" || state.status === "listening" || state.status === "interrupted";
+  const connect = useCallback(
+    async (mode: VoiceMode): Promise<boolean> => {
+      if (adapter === null) {
+        return false;
+      }
+      generation.current += 1;
+      const mine = generation.current;
+      dispatch({ type: "CONNECT", mode });
+      try {
+        await adapter.connect({ microphone: mode === "voice" }, onEvent);
+      } catch (error) {
+        if (generation.current === mine) {
+          dispatch(
+            error instanceof VoiceConnectionError
+              ? { type: "FAIL", code: error.code, message: error.message }
+              : { type: "FAIL", code: "unknown", message: "The voice session could not start." },
+          );
+        }
+        return false;
+      }
+      if (generation.current !== mine) {
+        return false;
+      }
+      dispatch({ type: "CONNECTED" });
+      return true;
+    },
+    [adapter, onEvent],
+  );
 
-  const send = useCallback(
-    (text: string, source: "typed" | "simulated") => {
-      if (!canSend || text.trim() === "") {
+  const stop = useCallback(() => {
+    generation.current += 1;
+    adapter?.disconnect();
+    dispatch({ type: "END" });
+  }, [adapter]);
+
+  const toggleMute = useCallback(() => {
+    adapter?.setMuted(!state.muted);
+    dispatch({ type: "SET_MUTED", muted: !state.muted });
+  }, [adapter, state.muted]);
+
+  const interrupt = useCallback(() => adapter?.interrupt(), [adapter]);
+
+  const sendText = useCallback(
+    async (raw: string) => {
+      const text = raw.trim();
+      if (adapter === null || text === "" || state.status === "connecting" || state.status === "error") {
         return;
       }
-      if (state.status === "idle") {
-        dispatch({ type: "START" });
+      if (state.status === "idle" && !(await connect("text"))) {
+        return;
       }
-      dispatch({ type: "USER_TEXT", text, source });
-      void runTurn(text.trim());
+      dispatch({ type: "TRANSCRIPT", speaker: "user", text, source: "typed" });
+      adapter.sendText(text);
     },
-    [canSend, state.status, runTurn],
+    [adapter, connect, state.status],
   );
 
   return {
     state,
-    canSend,
-    start: useCallback(() => dispatch({ type: "START" }), []),
-    stop: useCallback(() => {
-      abortCurrent();
-      dispatch({ type: "STOP" });
-    }, [abortCurrent]),
-    sendText: useCallback((text: string) => send(text, "typed"), [send]),
-    simulateSpeech: useCallback(() => send(SIMULATED_USER_PHRASE, "simulated"), [send]),
-    interrupt: useCallback(() => {
-      abortCurrent();
-      dispatch({ type: "INTERRUPT" });
-    }, [abortCurrent]),
-    resume: useCallback(() => dispatch({ type: "RESUME" }), []),
-    simulateError: useCallback(() => {
-      abortCurrent();
-      dispatch({ type: "FAIL", message: "Simulated error. Nothing is wrong with your device." });
-    }, [abortCurrent]),
+    available: adapter !== null,
+    startVoice: useCallback(() => connect("voice"), [connect]),
+    startText: useCallback(() => connect("text"), [connect]),
+    retry: useCallback(() => connect(state.mode), [connect, state.mode]),
+    stop,
+    toggleMute,
+    interrupt,
+    sendText,
     dismissError: useCallback(() => dispatch({ type: "DISMISS_ERROR" }), []),
   };
 }

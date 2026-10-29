@@ -1,6 +1,15 @@
-import { VoiceAbortedError, type VoiceAdapter } from "./VoiceAdapter";
+import {
+  VoiceConnectionError,
+  type AdapterEvent,
+  type AdapterListener,
+  type VoiceAdapter,
+} from "./VoiceAdapter";
 
-/** A scripted conversation. It does not read or understand what the user says. */
+/**
+ * DEVELOPMENT MOCK. It uses no microphone, plays no sound and makes no network call. Its replies
+ * are scripted and do not depend on what the user says. It is offered only in development builds
+ * (see `chooseVoiceAdapter`) and is always labelled MOCK in the interface.
+ */
 export const MOCK_REPLIES: readonly string[] = [
   "Bilkul! Aap kis date ko travel karna chahte hain?",
   "Theek hai. Kitne log travel karenge?",
@@ -10,54 +19,133 @@ export const MOCK_REPLIES: readonly string[] = [
 export const SIMULATED_USER_PHRASE = "Mujhe Indore se Goa jana hai. Saste options batao.";
 
 export interface MockVoiceOptions {
+  connectMs?: number;
   thinkMs?: number;
   speakMs?: number;
   /** Fail the reply at this zero-based turn, to exercise the error state. */
   failAtTurn?: number;
 }
 
-function wait(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new VoiceAbortedError());
-      return;
-    }
-    const timer = setTimeout(() => {
-      signal.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(new VoiceAbortedError());
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-  });
-}
-
-/**
- * Mock voice: no microphone, no audio, no network. Replies come from MOCK_REPLIES in order and the
- * last one repeats. `speak` only waits, so the panel can show the speaking state.
- */
 export function createMockVoiceAdapter(options: MockVoiceOptions = {}): VoiceAdapter {
+  const connectMs = options.connectMs ?? 500;
   const thinkMs = options.thinkMs ?? 700;
-  const speakMs = options.speakMs ?? 1200;
+  const speakMs = options.speakMs ?? 1500;
+
+  let listener: AdapterListener | null = null;
+  const timers = new Set<ReturnType<typeof setTimeout>>();
+  let rejectConnect: ((error: Error) => void) | null = null;
+  let connected = false;
+  let microphone = false;
+  let muted = false;
+  let denyNextMicrophone = false;
   let turn = 0;
+
+  const emit = (event: AdapterEvent) => listener?.(event);
+
+  function later(ms: number, action: () => void) {
+    const timer = setTimeout(() => {
+      timers.delete(timer);
+      action();
+    }, ms);
+    timers.add(timer);
+  }
+
+  function clearTimers() {
+    timers.forEach(clearTimeout);
+    timers.clear();
+  }
+
+  function reply() {
+    clearTimers();
+    emit({ type: "thinking" });
+    later(thinkMs, () => {
+      const current = turn;
+      turn += 1;
+      if (options.failAtTurn === current) {
+        emit({ type: "error", code: "connection", message: "Mock voice failure (simulated)." });
+        return;
+      }
+      const text = MOCK_REPLIES[Math.min(current, MOCK_REPLIES.length - 1)] ?? "";
+      emit({ type: "transcript", speaker: "assistant", text, source: "mock-reply" });
+      emit({ type: "speaking" });
+      later(speakMs, () => emit({ type: "listening" }));
+    });
+  }
 
   return {
     name: "Mock voice",
     isMock: true,
     playsAudio: false,
-    async respond(_userText, signal) {
-      await wait(thinkMs, signal);
-      const current = turn;
-      turn += 1;
-      if (options.failAtTurn === current) {
-        throw new Error("Mock voice failure (simulated)");
-      }
-      return MOCK_REPLIES[Math.min(current, MOCK_REPLIES.length - 1)] ?? "";
+    audioDisclosure: null,
+
+    devControls: {
+      simulateUserPhrase() {
+        if (!connected || !microphone || muted) {
+          return;
+        }
+        emit({
+          type: "transcript",
+          speaker: "user",
+          text: SIMULATED_USER_PHRASE,
+          source: "simulated",
+        });
+        reply();
+      },
+      simulateError() {
+        if (connected) {
+          clearTimers();
+          emit({ type: "error", code: "connection", message: "Simulated connection loss." });
+        }
+      },
+      denyMicrophoneNextTime() {
+        denyNextMicrophone = true;
+      },
     },
-    async speak(_text, signal) {
-      await wait(speakMs, signal);
+
+    connect(connectOptions, nextListener) {
+      listener = nextListener;
+      microphone = connectOptions.microphone;
+      return new Promise<void>((resolve, reject) => {
+        rejectConnect = reject;
+        later(connectMs, () => {
+          rejectConnect = null;
+          if (microphone && denyNextMicrophone) {
+            denyNextMicrophone = false;
+            reject(
+              new VoiceConnectionError("permission_denied", "Microphone permission was refused."),
+            );
+            return;
+          }
+          connected = true;
+          resolve();
+        });
+      });
+    },
+
+    disconnect() {
+      clearTimers();
+      rejectConnect?.(new VoiceConnectionError("connection", "The session was closed."));
+      rejectConnect = null;
+      connected = false;
+      muted = false;
+      listener = null;
+    },
+
+    setMuted(next) {
+      muted = next;
+    },
+
+    interrupt() {
+      if (connected) {
+        clearTimers();
+        emit({ type: "listening" });
+      }
+    },
+
+    sendText() {
+      if (connected) {
+        reply();
+      }
     },
   };
 }

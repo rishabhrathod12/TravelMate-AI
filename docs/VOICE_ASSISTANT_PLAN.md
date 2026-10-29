@@ -242,7 +242,7 @@ Real bookings, payments, live travel providers (core M13/M14), authentication de
 |---|---|---|
 | V0 | DONE (awaiting your approval of this plan) | §2 verified from the repo on 2026-10-29; no code changed. |
 | V1 | DONE as a draft (awaiting your approval of the recommendation) | Research only. `docs/VOICE_PROVIDER_EVALUATION.md` and proposed `docs/ADR/0002-voice-architecture.md` written 2026-10-29. No account, key, or paid/live API call. Hindi/Hinglish quality is NOT verified and needs an owner-approved audio test. No vendor selected. |
-| V2 | DONE (awaiting your review; manual browser check not done) | Mock-only prototype in `frontend/src/voice/` and `components/VoicePanel.tsx`, mounted on the Plan page. Run 2026-10-29: `npm run lint`, `typecheck`, `build` pass; `npm test` 203 passed in 13 files (the count before V2 was not re-measured). Not done: viewing it in a real browser, 375 px visual check, screen-reader check, keyboard walkthrough (all manual). No microphone, audio, network or key is used. |
+| V2 | REWORKED as "Step A" (awaiting your review; manual browser check not done) | The first V2 panel (commit `fbd15b6`, simulation buttons) was replaced on 2026-10-30 by a ChatGPT-style voice mode: one "Talk to TravelMate" button; Connecting / Listening / Thinking / Speaking / Error states; mute, interrupt, end; compact transcript; typed-chat fallback; microphone-permission notice; "Back to the trip form". Files: `frontend/src/components/voice/` (VoiceMode, VoiceOrb, VoiceTranscript, TextChat, MicPermissionNotice, DevMockControls) and `frontend/src/voice/` (VoiceAdapter, voiceMachine, useVoiceSession, mockAdapter, config). A production build has **no adapter** and shows "Voice isn't available yet"; only a development build gets the labelled MOCK, whose simulation controls sit in a separate developer section. Run 2026-10-30: `npm run lint`, `typecheck`, `build` pass; `npm test` 209 passed in 14 files. Build check: the mock adapter and its scripted replies are absent from `dist`, but the mock's UI label strings are still in the bundle (inert text). Not done: real browser, 375 px, keyboard-only and screen-reader checks (manual). **No real voice exists**: no microphone, audio, network, key or vendor is used. |
 | V3 | NOT STARTED | |
 | V4 | NOT STARTED | |
 | V5 | NOT STARTED | |
@@ -266,13 +266,20 @@ Real bookings, payments, live travel providers (core M13/M14), authentication de
   V2 built: voice state machine, `VoiceAdapter` interface, mock adapter, `useVoiceSession`, `VoicePanel`,
   `Transcript`, styles. Not committed.
 
+- 2026-10-30: Owner asked for a ChatGPT-style voice experience and approved "Step A" (UI only, no keys, no
+  paid calls). Voice mode rebuilt as described in the V2 row; staged plan: Step A UI (done, uncommitted), Step B
+  backend session foundation, Step C real realtime adapter plus Hindi/Hinglish test (needs vendor, key and
+  spending approval), Step D conversation context and approved tools. Open: realtime-first vs pipeline-first
+  (ADR 0002 would need an amendment for realtime first), D4, D10.
+
 ## 13. NEXT ACTION
 
-**Owner reviews V2**: run `npm run dev` in `frontend/`, open http://localhost:5173 and try the voice panel
-(start, simulate a phrase, interrupt, error, type a message; also at a narrow width and with the keyboard only).
-Then approve committing V2. After that the next milestone is **V3** (voice session and security foundation:
-backend session service, expiry and limits). V3 adds backend code and settings but no vendor key; any provider
-dependency or token minting waits for your vendor decision (D4, D10).
+**Owner reviews Step A**: run `npm run dev` in `frontend/`, open http://localhost:5173 and try "Talk to
+TravelMate" (in the development build it is the labelled MOCK; open "Developer mock controls" to trigger a phrase,
+a blocked microphone or a dropped connection). Also check a narrow width and keyboard-only use. Then approve
+committing Step A. Next is **Step B** (backend session foundation: session service, expiry and limits, tool
+allow-list, no-booking architecture test). Step B needs no vendor key; token minting and the real adapter (Step C)
+wait for your decisions on realtime vs pipeline, D4 and D10.
 
 When you say "continue voice assistant", a session must read `CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, this file,
 and the relevant architecture and security docs, then run `git status`, check the code against §2, report the

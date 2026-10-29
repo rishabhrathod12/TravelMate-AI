@@ -1,13 +1,15 @@
 /**
- * The voice session as a pure state machine (docs/VOICE_ASSISTANT_PLAN.md, V2).
+ * The voice session as a pure state machine (docs/VOICE_ASSISTANT_PLAN.md).
  *
  * It knows nothing about microphones, audio or providers. An event that is not allowed in the
  * current state is ignored, so a late or duplicate event from an adapter cannot corrupt the session.
  */
 
-export type VoiceState = "idle" | "listening" | "thinking" | "speaking" | "interrupted" | "error";
+import type { TranscriptSource, VoiceErrorCode } from "./VoiceAdapter";
 
-export type TranscriptSource = "typed" | "simulated" | "mock-reply";
+export type VoiceState = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "error";
+export type VoiceMode = "voice" | "text";
+export type VoicePhase = "listening" | "thinking" | "speaking";
 
 export interface TranscriptEntry {
   id: number;
@@ -18,89 +20,91 @@ export interface TranscriptEntry {
 
 export interface VoiceSessionState {
   status: VoiceState;
+  mode: VoiceMode;
+  muted: boolean;
   transcript: readonly TranscriptEntry[];
-  errorMessage: string | null;
+  error: { code: VoiceErrorCode; message: string } | null;
   nextId: number;
 }
 
 export type VoiceEvent =
-  | { type: "START" }
-  | { type: "USER_TEXT"; text: string; source: "typed" | "simulated" }
-  | { type: "ASSISTANT_TEXT"; text: string }
-  | { type: "SPEAK_DONE" }
-  | { type: "INTERRUPT" }
-  | { type: "RESUME" }
-  | { type: "FAIL"; message: string }
+  | { type: "CONNECT"; mode: VoiceMode }
+  | { type: "CONNECTED" }
+  | { type: "PHASE"; phase: VoicePhase }
+  | { type: "TRANSCRIPT"; speaker: "user" | "assistant"; text: string; source: TranscriptSource }
+  | { type: "SET_MUTED"; muted: boolean }
+  | { type: "FAIL"; code: VoiceErrorCode; message: string }
   | { type: "DISMISS_ERROR" }
-  | { type: "STOP" };
+  | { type: "END" };
 
 export const initialVoiceState: VoiceSessionState = {
   status: "idle",
+  mode: "voice",
+  muted: false,
   transcript: [],
-  errorMessage: null,
+  error: null,
   nextId: 1,
 };
 
-function append(
-  state: VoiceSessionState,
-  speaker: TranscriptEntry["speaker"],
-  text: string,
-  source: TranscriptSource,
-): Pick<VoiceSessionState, "transcript" | "nextId"> {
-  return {
-    transcript: [...state.transcript, { id: state.nextId, speaker, text, source }],
-    nextId: state.nextId + 1,
-  };
+function isLive(status: VoiceState): status is VoicePhase {
+  return status === "listening" || status === "thinking" || status === "speaking";
 }
 
 export function voiceReducer(state: VoiceSessionState, event: VoiceEvent): VoiceSessionState {
   switch (event.type) {
-    case "START":
-      // A new session starts clean. Leaving an error keeps what was said so far.
+    case "CONNECT":
       if (state.status === "idle") {
-        return { ...initialVoiceState, status: "listening" };
+        // A new session starts clean.
+        return { ...initialVoiceState, status: "connecting", mode: event.mode };
+      }
+      if (state.status === "error") {
+        // Trying again after an error keeps what was said so far.
+        return { ...state, status: "connecting", mode: event.mode, muted: false, error: null };
       }
       return state;
 
-    case "USER_TEXT": {
-      const text = event.text.trim();
-      if (text === "" || (state.status !== "listening" && state.status !== "interrupted")) {
-        return state;
-      }
-      return { ...state, ...append(state, "user", text, event.source), status: "thinking" };
-    }
+    case "CONNECTED":
+      return state.status === "connecting" ? { ...state, status: "listening" } : state;
 
-    case "ASSISTANT_TEXT":
-      if (state.status !== "thinking") {
+    case "PHASE":
+      return isLive(state.status) ? { ...state, status: event.phase } : state;
+
+    case "TRANSCRIPT": {
+      const text = event.text.trim();
+      if (text === "" || !isLive(state.status)) {
         return state;
       }
       return {
         ...state,
-        ...append(state, "assistant", event.text, "mock-reply"),
-        status: "speaking",
+        transcript: [
+          ...state.transcript,
+          { id: state.nextId, speaker: event.speaker, text, source: event.source },
+        ],
+        nextId: state.nextId + 1,
       };
+    }
 
-    case "SPEAK_DONE":
-      return state.status === "speaking" ? { ...state, status: "listening" } : state;
-
-    case "INTERRUPT":
-      return state.status === "thinking" || state.status === "speaking"
-        ? { ...state, status: "interrupted" }
+    case "SET_MUTED":
+      // Muting only means something when a microphone is in use.
+      return isLive(state.status) && state.mode === "voice"
+        ? { ...state, muted: event.muted }
         : state;
-
-    case "RESUME":
-      return state.status === "interrupted" ? { ...state, status: "listening" } : state;
 
     case "FAIL":
       if (state.status === "idle" || state.status === "error") {
         return state;
       }
-      return { ...state, status: "error", errorMessage: event.message };
+      return {
+        ...state,
+        status: "error",
+        muted: false,
+        error: { code: event.code, message: event.message },
+      };
 
     case "DISMISS_ERROR":
-      return state.status === "error" ? { ...state, status: "idle", errorMessage: null } : state;
+      return state.status === "error" ? { ...state, status: "idle", error: null } : state;
 
-    case "STOP":
-      return state.status === "idle" ? state : { ...state, status: "idle", errorMessage: null };
+    case "END":
+      return state.status === "idle" ? state : { ...state, status: "idle", muted: false, error: null };
   }
 }

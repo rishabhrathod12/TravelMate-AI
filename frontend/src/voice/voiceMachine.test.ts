@@ -12,133 +12,153 @@ function run(events: VoiceEvent[], from: VoiceSessionState = initialVoiceState) 
   return events.reduce(voiceReducer, from);
 }
 
-const user: VoiceEvent = { type: "USER_TEXT", text: "hello", source: "typed" };
-const reply: VoiceEvent = { type: "ASSISTANT_TEXT", text: "hi" };
+const connectVoice: VoiceEvent = { type: "CONNECT", mode: "voice" };
+const connectText: VoiceEvent = { type: "CONNECT", mode: "text" };
+const connected: VoiceEvent = { type: "CONNECTED" };
+const say: VoiceEvent = { type: "TRANSCRIPT", speaker: "user", text: "hello", source: "voice" };
+const fail: VoiceEvent = { type: "FAIL", code: "connection", message: "boom" };
 
-describe("normal conversation", () => {
-  test("idle to listening to thinking to speaking and back to listening", () => {
-    expect(run([{ type: "START" }]).status).toBe("listening");
-    expect(run([{ type: "START" }, user]).status).toBe("thinking");
-    expect(run([{ type: "START" }, user, reply]).status).toBe("speaking");
-    expect(run([{ type: "START" }, user, reply, { type: "SPEAK_DONE" }]).status).toBe("listening");
+const live = [connectVoice, connected];
+
+describe("a normal conversation", () => {
+  test("idle, connecting, listening, thinking, speaking, listening", () => {
+    expect(run([connectVoice]).status).toBe("connecting");
+    expect(run(live).status).toBe("listening");
+    expect(run([...live, { type: "PHASE", phase: "thinking" }]).status).toBe("thinking");
+    expect(run([...live, { type: "PHASE", phase: "speaking" }]).status).toBe("speaking");
+    expect(run([...live, { type: "PHASE", phase: "speaking" }, { type: "PHASE", phase: "listening" }]).status).toBe("listening");
   });
 
-  test("keeps both sides of the conversation in order with unique ids", () => {
-    const state = run([{ type: "START" }, user, reply]);
+  test("keeps both sides in order with unique ids and trims text", () => {
+    const state = run([
+      ...live,
+      { type: "TRANSCRIPT", speaker: "user", text: "  hi  ", source: "voice" },
+      { type: "TRANSCRIPT", speaker: "assistant", text: "hello", source: "assistant" },
+    ]);
 
     expect(state.transcript.map((entry) => [entry.speaker, entry.text, entry.source])).toEqual([
-      ["user", "hello", "typed"],
-      ["assistant", "hi", "mock-reply"],
+      ["user", "hi", "voice"],
+      ["assistant", "hello", "assistant"],
     ]);
     expect(new Set(state.transcript.map((entry) => entry.id)).size).toBe(2);
   });
 
-  test("trims typed text and ignores empty text", () => {
-    const listening = run([{ type: "START" }]);
+  test("ignores empty text and text outside a live session", () => {
+    const empty: VoiceEvent = { type: "TRANSCRIPT", speaker: "user", text: "  ", source: "typed" };
 
-    expect(run([{ type: "USER_TEXT", text: "  hi  ", source: "typed" }], listening).transcript[0]?.text).toBe("hi");
-    expect(run([{ type: "USER_TEXT", text: "   ", source: "typed" }], listening)).toBe(listening);
+    expect(run([...live, empty]).transcript).toEqual([]);
+    expect(run([say])).toBe(initialVoiceState);
+    expect(run([connectVoice, say]).transcript).toEqual([]);
+  });
+
+  test("the user can speak while the assistant is speaking (interruption)", () => {
+    const state = run([...live, { type: "PHASE", phase: "speaking" }, { type: "PHASE", phase: "listening" }, say]);
+
+    expect(state.status).toBe("listening");
+    expect(state.transcript).toHaveLength(1);
   });
 });
 
-describe("interruption", () => {
-  test("can interrupt while thinking or speaking, then resume listening", () => {
-    const thinking = run([{ type: "START" }, user]);
-    const speaking = run([reply], thinking);
+describe("muting", () => {
+  test("toggles in a live voice session and clears on end", () => {
+    const muted = run([...live, { type: "SET_MUTED", muted: true }]);
 
-    expect(run([{ type: "INTERRUPT" }], thinking).status).toBe("interrupted");
-    expect(run([{ type: "INTERRUPT" }], speaking).status).toBe("interrupted");
-    expect(run([{ type: "INTERRUPT" }, { type: "RESUME" }], speaking).status).toBe("listening");
+    expect(muted.muted).toBe(true);
+    expect(run([{ type: "SET_MUTED", muted: false }], muted).muted).toBe(false);
+    expect(run([{ type: "END" }], muted).muted).toBe(false);
   });
 
-  test("the user can speak again straight after an interruption", () => {
-    const interrupted = run([{ type: "START" }, user, reply, { type: "INTERRUPT" }]);
+  test("does nothing in a text session or before the session is live", () => {
+    const text = run([connectText, connected, { type: "SET_MUTED", muted: true }]);
 
-    expect(run([user], interrupted).status).toBe("thinking");
-  });
-
-  test("a late reply after an interruption is ignored", () => {
-    const interrupted = run([{ type: "START" }, user, { type: "INTERRUPT" }]);
-
-    expect(run([reply, { type: "SPEAK_DONE" }], interrupted)).toBe(interrupted);
+    expect(text.muted).toBe(false);
+    expect(run([connectVoice, { type: "SET_MUTED", muted: true }]).muted).toBe(false);
   });
 });
 
 describe("errors", () => {
-  test("a failure shows the message and keeps the transcript", () => {
-    const state = run([{ type: "START" }, user, { type: "FAIL", message: "boom" }]);
+  test("shows the code and message and keeps the transcript", () => {
+    const state = run([...live, say, fail]);
 
     expect(state.status).toBe("error");
-    expect(state.errorMessage).toBe("boom");
+    expect(state.error).toEqual({ code: "connection", message: "boom" });
     expect(state.transcript).toHaveLength(1);
   });
 
-  test("dismissing an error returns to idle and clears the message", () => {
-    const state = run([{ type: "START" }, { type: "FAIL", message: "boom" }, { type: "DISMISS_ERROR" }]);
+  test("a failure can happen while connecting, for example a refused microphone", () => {
+    const state = run([connectVoice, { type: "FAIL", code: "permission_denied", message: "no" }]);
 
-    expect(state.status).toBe("idle");
-    expect(state.errorMessage).toBeNull();
+    expect(state.status).toBe("error");
+    expect(state.error?.code).toBe("permission_denied");
   });
 
-  test("a failure while idle is ignored", () => {
-    expect(run([{ type: "FAIL", message: "boom" }])).toBe(initialVoiceState);
-  });
-});
+  test("dismissing returns to idle; retrying keeps the transcript and the mode", () => {
+    const failed = run([...live, say, fail]);
 
-describe("stopping and restarting", () => {
-  test("ending a session returns to idle and keeps the transcript visible", () => {
-    const state = run([{ type: "START" }, user, reply, { type: "STOP" }]);
-
-    expect(state.status).toBe("idle");
-    expect(state.transcript).toHaveLength(2);
+    expect(run([{ type: "DISMISS_ERROR" }], failed)).toMatchObject({ status: "idle", error: null });
+    const retried = run([connectText], failed);
+    expect(retried).toMatchObject({ status: "connecting", mode: "text", error: null });
+    expect(retried.transcript).toHaveLength(1);
   });
 
-  test("starting a new session clears the old transcript", () => {
-    const state = run([{ type: "START" }, user, { type: "STOP" }, { type: "START" }]);
-
-    expect(state.status).toBe("listening");
-    expect(state.transcript).toEqual([]);
+  test("a failure while idle or already failed is ignored", () => {
+    expect(run([fail])).toBe(initialVoiceState);
+    const failed = run([...live, fail]);
+    expect(voiceReducer(failed, { type: "FAIL", code: "unknown", message: "later" })).toBe(failed);
   });
 });
 
-describe("transitions that are not allowed", () => {
+describe("ending and restarting", () => {
+  test("ending returns to idle and keeps the transcript; a new session clears it", () => {
+    const ended = run([...live, say, { type: "END" }]);
+
+    expect(ended.status).toBe("idle");
+    expect(ended.transcript).toHaveLength(1);
+    expect(run([connectVoice], ended).transcript).toEqual([]);
+  });
+
+  test("ending can happen during connecting and after an error", () => {
+    expect(run([connectVoice, { type: "END" }]).status).toBe("idle");
+    expect(run([connectVoice, fail, { type: "END" }]).status).toBe("idle");
+  });
+});
+
+describe("events that are not allowed in a state are ignored", () => {
   const events: Record<string, VoiceEvent> = {
-    START: { type: "START" },
-    USER_TEXT: user,
-    ASSISTANT_TEXT: reply,
-    SPEAK_DONE: { type: "SPEAK_DONE" },
-    INTERRUPT: { type: "INTERRUPT" },
-    RESUME: { type: "RESUME" },
+    CONNECT: connectVoice,
+    CONNECTED: connected,
+    PHASE: { type: "PHASE", phase: "thinking" },
+    TRANSCRIPT: say,
+    SET_MUTED: { type: "SET_MUTED", muted: true },
     DISMISS_ERROR: { type: "DISMISS_ERROR" },
   };
 
-  // Every state keyed by the events that must leave it unchanged.
   const ignored: Record<VoiceState, string[]> = {
-    idle: ["ASSISTANT_TEXT", "SPEAK_DONE", "INTERRUPT", "RESUME", "DISMISS_ERROR", "USER_TEXT"],
-    listening: ["START", "ASSISTANT_TEXT", "SPEAK_DONE", "INTERRUPT", "RESUME", "DISMISS_ERROR"],
-    thinking: ["START", "USER_TEXT", "SPEAK_DONE", "RESUME", "DISMISS_ERROR"],
-    speaking: ["START", "USER_TEXT", "ASSISTANT_TEXT", "RESUME", "DISMISS_ERROR"],
-    interrupted: ["START", "ASSISTANT_TEXT", "SPEAK_DONE", "INTERRUPT", "DISMISS_ERROR"],
-    error: ["START", "USER_TEXT", "ASSISTANT_TEXT", "SPEAK_DONE", "INTERRUPT", "RESUME"],
+    idle: ["CONNECTED", "PHASE", "TRANSCRIPT", "SET_MUTED", "DISMISS_ERROR"],
+    connecting: ["CONNECT", "PHASE", "TRANSCRIPT", "SET_MUTED", "DISMISS_ERROR"],
+    listening: ["CONNECT", "CONNECTED", "DISMISS_ERROR"],
+    thinking: ["CONNECT", "CONNECTED", "DISMISS_ERROR"],
+    speaking: ["CONNECT", "CONNECTED", "DISMISS_ERROR"],
+    error: ["CONNECTED", "PHASE", "TRANSCRIPT", "SET_MUTED"],
   };
 
   const reach: Record<VoiceState, VoiceEvent[]> = {
     idle: [],
-    listening: [{ type: "START" }],
-    thinking: [{ type: "START" }, user],
-    speaking: [{ type: "START" }, user, reply],
-    interrupted: [{ type: "START" }, user, { type: "INTERRUPT" }],
-    error: [{ type: "START" }, { type: "FAIL", message: "boom" }],
+    connecting: [connectVoice],
+    listening: live,
+    thinking: [...live, { type: "PHASE", phase: "thinking" }],
+    speaking: [...live, { type: "PHASE", phase: "speaking" }],
+    error: [connectVoice, fail],
   };
 
   for (const [status, names] of Object.entries(ignored) as [VoiceState, string[]][]) {
     for (const name of names) {
       test(`${name} is ignored while ${status}`, () => {
         const state = run(reach[status]);
-        const event = events[name];
-        expect(event).toBeDefined();
+        const event = events[name] as VoiceEvent;
 
-        expect(voiceReducer(state, event as VoiceEvent)).toBe(state);
+        // PHASE to the state it is already in is a valid no-change, so compare by value there.
+        expect(voiceReducer(state, event)).toEqual(state);
       });
     }
   }

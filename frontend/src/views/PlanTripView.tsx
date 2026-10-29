@@ -7,7 +7,7 @@ import { ItineraryView } from "../components/ItineraryView";
 import { HotelCard, TransportCard } from "../components/OptionCards";
 import { StatusMessage } from "../components/StatusMessage";
 import { TripForm } from "../components/TripForm";
-import { VoicePanel } from "../components/VoicePanel";
+import { VoiceMode } from "../components/voice/VoiceMode";
 import type { TripRequest } from "../contracts/types";
 import {
   buildDemoCostEstimate,
@@ -16,7 +16,7 @@ import {
   stayNights,
 } from "../demo/demoData";
 import { formatDay } from "../lib/dates";
-import { createMockVoiceAdapter } from "../voice/mockAdapter";
+import { chooseVoiceAdapter } from "../voice/config";
 
 function tripLabel(request: TripRequest): string {
   if (request.trip_type === "ONE_WAY") {
@@ -36,8 +36,14 @@ export function PlanTripView() {
   const [transportId, setTransportId] = useState<string | null>(null);
   const [hotelId, setHotelId] = useState<string | null>(null);
   const resultsHeading = useRef<HTMLHeadingElement>(null);
-  // Mock voice only. A real adapter is chosen elsewhere once one exists (ADR 0002).
-  const [voiceAdapter] = useState(() => createMockVoiceAdapter());
+  const planner = useRef<HTMLDivElement>(null);
+  // `null` in a production build: no real voice back end exists yet (ADR 0002).
+  const [voiceAdapter] = useState(() => chooseVoiceAdapter());
+
+  function focusPlanner() {
+    planner.current?.focus();
+    planner.current?.scrollIntoView?.({ block: "start" });
+  }
 
   const demo = useMemo(() => (request === null ? null : buildDemoOptions(request)), [request]);
 
@@ -74,9 +80,11 @@ export function PlanTripView() {
         <HeroArt />
       </section>
 
-      <TripForm onSubmit={handleSubmit} />
+      <VoiceMode adapter={voiceAdapter} onReturnToPlanner={focusPlanner} />
 
-      <VoicePanel adapter={voiceAdapter} />
+      <div ref={planner} tabIndex={-1} className="planner-anchor">
+        <TripForm onSubmit={handleSubmit} />
+      </div>
 
       {request === null || demo === null ? (
         <StatusMessage kind="empty" title="No preview yet">
