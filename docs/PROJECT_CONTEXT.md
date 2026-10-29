@@ -10,7 +10,7 @@ A short brief for starting a new working session. Update only the lines marked *
 
 ## Current state (UPDATE after every commit)
 - Last pushed commit: `b950e13`, CI green when it was pushed. Local and not yet pushed: `803f9d6` (M6) and the docs commits after it. CI has run only for `b950e13`.
-- Tests: at `803f9d6`, 1084 backend tests pass (run locally on Python 3.12.10 on 2026-10-29). The last recorded frontend count is 142 at `b950e13` and was not re-run. Ruff and strict mypy were last recorded clean at `b950e13` and were not re-run for M6.
+- Tests: at `803f9d6`, 1084 backend tests pass (run locally on Python 3.12.10 on 2026-10-29). The last recorded frontend count is 142 at `b950e13` and was not re-run. At `803f9d6` (checked 2026-10-29, Python 3.12.10): `ruff check` passes, `ruff format --check` finds 85 files already formatted, and strict `mypy app` reports no issues in 47 source files. Mypy covers `app/` only, not the tests.
 - **Complete:** M0.
 - **Implemented, awaiting owner review:** M1 to M6. Each is "not closed" in the plan's status table. Open items: M1 (Docker and PostgreSQL start, production-secrets guard), M2 (`budget` on `TripRequest`), and the Q9 to Q19 decisions below.
 - **M11 is a frontend prototype only**, built with hand-written demo data labelled MOCK. The only real endpoint it calls is `GET /health`.
@@ -22,7 +22,7 @@ A short brief for starting a new working session. Update only the lines marked *
   - Docker and PostgreSQL start (Docker is not installed on the development machine).
   - The production-secrets startup guard (not built; planned for M9).
   - The frontend has not been checked visually in a browser.
-  - Ruff and strict mypy for M6, and the OpenAI wire format against the live API.
+  - The OpenAI wire format against the live API.
 
 ## Decided by the owner (UPDATE as questions are answered)
 - A trip request has an explicit `trip_type` (`ONE_WAY` or `ROUND_TRIP`). A same-day return is a round trip with the same date.
