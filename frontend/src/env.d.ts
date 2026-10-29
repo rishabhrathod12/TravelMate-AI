@@ -7,4 +7,9 @@ interface ImportMetaEnv {
    * must never hold a secret.
    */
   readonly VITE_API_BASE_URL?: string;
+  /**
+   * Development only. "session" opens real sessions on the backend (no audio, no voice service).
+   * Anything else, or unset, uses the labelled mock. Ignored in a production build.
+   */
+  readonly VITE_VOICE_ADAPTER?: string;
 }

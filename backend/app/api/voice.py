@@ -97,6 +97,20 @@ def read_session(
         return _error_response(error)
 
 
+@router.post("/sessions/{session_id}/activity", response_model=VoiceSessionResponse)
+def record_activity(
+    session_id: str, principal: Principal, service: Service
+) -> VoiceSessionResponse | JSONResponse:
+    """Tell the server the user did something, so the idle timer restarts.
+
+    It never extends the absolute time limit. Reading a session (GET) is not activity.
+    """
+    try:
+        return _describe(service.touch(session_id, principal), service)
+    except VoiceError as error:
+        return _error_response(error)
+
+
 @router.delete("/sessions/{session_id}", status_code=204)
 def end_session(session_id: str, principal: Principal, service: Service) -> Response:
     try:

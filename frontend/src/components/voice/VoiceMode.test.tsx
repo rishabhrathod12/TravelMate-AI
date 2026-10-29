@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
+import { VoiceApiError, type VoiceSessionApi, type VoiceSessionInfo } from "../../api/voiceSessions";
 import { createMockVoiceAdapter, MOCK_REPLIES, SIMULATED_USER_PHRASE } from "../../voice/mockAdapter";
+import { createSessionOnlyAdapter, NO_ASSISTANT_NOTICE } from "../../voice/sessionAdapter";
 import {
   VoiceConnectionError,
   type AdapterListener,
@@ -23,6 +25,7 @@ function fakeRealAdapter(overrides: Partial<VoiceAdapter> = {}) {
     name: "Fake realtime",
     isMock: false,
     playsAudio: true,
+    hearsUser: true,
     audioDisclosure: "Your voice is processed by a third-party voice service.",
     connect: vi.fn((_options, next: AdapterListener) => {
       listener = next;
@@ -312,5 +315,119 @@ describe("returning to the trip planner", () => {
     fireEvent.click(button("Back to the trip form"));
 
     expect(onReturn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the session-only adapter (a real server session, no audio, no assistant)", () => {
+  const INFO: VoiceSessionInfo = {
+    session_id: "session-1",
+    expires_at: "2026-12-01T09:10:00Z",
+    max_seconds: 600,
+    idle_timeout_seconds: 120,
+    provider: null,
+    notice: "No voice provider is connected.",
+  };
+
+  function sessionApi(overrides: Partial<VoiceSessionApi> = {}) {
+    return {
+      create: vi.fn(() => Promise.resolve(INFO)),
+      read: vi.fn(() => Promise.resolve(INFO)),
+      activity: vi.fn(() => Promise.resolve(INFO)),
+      end: vi.fn(() => Promise.resolve()),
+      ...overrides,
+    } satisfies VoiceSessionApi;
+  }
+
+  function renderSession(api = sessionApi(), pollMs = 60_000) {
+    render(<VoiceMode adapter={createSessionOnlyAdapter({ api, pollMs })} />);
+    return api;
+  }
+
+  test("is labelled as a development session with no voice service, and not as a mock", () => {
+    renderSession();
+
+    const note = screen.getByRole("note");
+    expect(note).toHaveTextContent("Voice session mode (development build)");
+    expect(note).toHaveTextContent("TravelMate cannot hear or speak");
+    expect(screen.queryByText(/MOCK/)).not.toBeInTheDocument();
+    expect(screen.getByText(/No audio is captured, recorded or sent anywhere/)).toBeInTheDocument();
+  });
+
+  test("opening a session never says it is listening, and offers no mute control", async () => {
+    const api = renderSession();
+
+    fireEvent.click(button("Talk to TravelMate"));
+
+    await waitFor(() => expect(status()).toHaveTextContent("can't hear or speak yet"));
+    expect(status()).not.toHaveTextContent("Listening");
+    expect(maybeButton("Mute")).not.toBeInTheDocument();
+    expect(api.create).toHaveBeenCalledTimes(1);
+  });
+
+  test("a typed message gets a notice that is labelled as not an answer", async () => {
+    const api = renderSession();
+
+    fireEvent.change(screen.getByLabelText("Or type a message"), { target: { value: "Goa trip" } });
+    fireEvent.click(button("Send"));
+
+    const log = await screen.findByRole("log", { name: "Transcript" });
+    await waitFor(() => expect(within(log).getAllByRole("listitem")).toHaveLength(2));
+    const [mine, notice] = within(log).getAllByRole("listitem");
+    expect(mine).toHaveTextContent("Goa trip");
+    expect(notice).toHaveTextContent(NO_ASSISTANT_NOTICE);
+    expect(notice).toHaveTextContent("notice, not an answer");
+    expect(notice).not.toHaveTextContent("MOCK reply");
+    expect(api.activity).toHaveBeenCalledTimes(1);
+  });
+
+  test("ending the session ends it on the server", async () => {
+    const api = renderSession();
+    fireEvent.click(button("Talk to TravelMate"));
+    await waitFor(() => expect(status()).toHaveTextContent("can't hear or speak yet"));
+
+    fireEvent.click(button("End session"));
+
+    expect(api.end).toHaveBeenCalledWith("session-1");
+    expect(button("Talk to TravelMate")).toBeEnabled();
+  });
+
+  test.each([
+    [404, null, "Voice is not available", "turned off"],
+    [429, "the active voice session limit has been reached", "Voice session limit reached", "active voice session limit"],
+    [null, null, "Voice is not available", "could not be reached"],
+  ])("when the server answers %s the alert explains it", async (status_, detail, title, text) => {
+    renderSession(
+      sessionApi({ create: vi.fn(() => Promise.reject(new VoiceApiError(status_, detail))) }),
+    );
+
+    fireEvent.click(button("Talk to TravelMate"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(title);
+    expect(alert).toHaveTextContent(text);
+  });
+
+  test("a session that ends on the server while open shows the expiry alert", async () => {
+    renderSession(
+      sessionApi({ read: vi.fn(() => Promise.reject(new VoiceApiError(410, null))) }),
+      10,
+    );
+
+    fireEvent.click(button("Talk to TravelMate"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("The voice session ended");
+    expect(alert).toHaveTextContent("Start a new one");
+  });
+
+  test("it never asks the browser for the microphone", async () => {
+    const getUserMedia = vi.fn();
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
+    renderSession();
+
+    fireEvent.click(button("Talk to TravelMate"));
+    await waitFor(() => expect(status()).toHaveTextContent("can't hear or speak yet"));
+
+    expect(getUserMedia).not.toHaveBeenCalled();
   });
 });

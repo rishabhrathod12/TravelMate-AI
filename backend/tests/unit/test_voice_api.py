@@ -124,7 +124,46 @@ def test_there_is_no_audio_upload_or_booking_route() -> None:
     client = TestClient(create_app(Settings.model_validate(GOOD)))
     voice_paths = {path for path in client.get("/openapi.json").json()["paths"] if "voice" in path}
 
-    assert voice_paths == {"/api/v1/voice/sessions", "/api/v1/voice/sessions/{session_id}"}
+    assert voice_paths == {
+        "/api/v1/voice/sessions",
+        "/api/v1/voice/sessions/{session_id}",
+        "/api/v1/voice/sessions/{session_id}/activity",
+    }
+
+
+def test_recording_activity_returns_the_same_session_and_keeps_the_absolute_expiry() -> None:
+    client = client_for()
+    created = client.post("/api/v1/voice/sessions").json()
+
+    response = client.post(f"/api/v1/voice/sessions/{created['session_id']}/activity")
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] == created["session_id"]
+    assert response.json()["expires_at"] == created["expires_at"]
+
+
+def test_activity_for_an_unknown_or_ended_session_is_not_found() -> None:
+    client = client_for()
+    session_id = client.post("/api/v1/voice/sessions").json()["session_id"]
+    client.delete(f"/api/v1/voice/sessions/{session_id}")
+
+    ended = client.post(f"/api/v1/voice/sessions/{session_id}/activity")
+    unknown = client.post("/api/v1/voice/sessions/not-a-real-session-id/activity")
+
+    assert ended.status_code == unknown.status_code == 404
+    assert ended.headers["content-type"].startswith("application/problem+json")
+
+
+def test_another_principal_cannot_record_activity_on_someone_elses_session() -> None:
+    app = create_app(Settings.model_validate(GOOD))
+    client = TestClient(app)
+    session_id = client.post("/api/v1/voice/sessions").json()["session_id"]
+
+    app.dependency_overrides[get_principal] = lambda: "someone-else"
+    response = client.post(f"/api/v1/voice/sessions/{session_id}/activity")
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 404
 
 
 def test_real_booking_stays_disabled_whatever_voice_is_set_to() -> None:

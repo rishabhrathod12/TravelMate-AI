@@ -4,9 +4,23 @@
  * a real adapter is a later step (docs/VOICE_ASSISTANT_PLAN.md).
  */
 
-export type VoiceErrorCode = "permission_denied" | "no_microphone" | "connection" | "unknown";
+export type VoiceErrorCode =
+  | "permission_denied"
+  | "no_microphone"
+  | "connection"
+  | "unavailable"
+  | "limit_reached"
+  | "session_expired"
+  | "unknown";
 
-export type TranscriptSource = "voice" | "typed" | "simulated" | "assistant" | "mock-reply";
+/** `notice` is a message from the system itself, not an answer from an assistant. */
+export type TranscriptSource =
+  | "voice"
+  | "typed"
+  | "simulated"
+  | "assistant"
+  | "mock-reply"
+  | "notice";
 
 /** Events an adapter reports after a connection is made. */
 export type AdapterEvent =
@@ -43,6 +57,12 @@ export interface VoiceAdapter {
   readonly isMock: boolean;
   /** False when nothing is played aloud, so the interface never claims otherwise. */
   readonly playsAudio: boolean;
+  /**
+   * False when the session cannot hear the user at all. The interface then says so and offers
+   * no mute control, instead of showing "Listening". A labelled mock may say true to let the
+   * screens be reviewed.
+   */
+  readonly hearsUser: boolean;
   /**
    * Shown before the first use: who processes the audio. `null` only when no audio leaves the
    * device, as in the mock.

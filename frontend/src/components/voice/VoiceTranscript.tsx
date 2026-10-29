@@ -7,6 +7,7 @@ const SOURCE_LABEL: Record<TranscriptSource, string> = {
   simulated: "simulated, not heard",
   assistant: "assistant",
   "mock-reply": "MOCK reply",
+  notice: "notice, not an answer",
 };
 
 /** A compact, scrollable conversation. It sits below the controls and stays small. */

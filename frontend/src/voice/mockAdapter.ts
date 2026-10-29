@@ -76,6 +76,8 @@ export function createMockVoiceAdapter(options: MockVoiceOptions = {}): VoiceAda
     name: "Mock voice",
     isMock: true,
     playsAudio: false,
+    // The mock pretends to listen so the screens can be reviewed; its note says it does not.
+    hearsUser: true,
     audioDisclosure: null,
 
     devControls: {

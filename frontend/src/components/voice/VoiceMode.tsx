@@ -17,13 +17,16 @@ interface VoiceModeProps {
   onReturnToPlanner?: () => void;
 }
 
-function statusText(state: VoiceSessionState, playsAudio: boolean): string {
+function statusText(state: VoiceSessionState, playsAudio: boolean, hearsUser: boolean): string {
   switch (state.status) {
     case "idle":
       return "Ready when you are.";
     case "connecting":
       return "Connecting…";
     case "listening":
+      if (!hearsUser) {
+        return "Session open. No voice service is connected, so TravelMate can't hear or speak yet. Type below.";
+      }
       if (state.mode === "text") {
         return "Ready. Type your message.";
       }
@@ -62,6 +65,14 @@ export function VoiceMode({ adapter, onReturnToPlanner }: VoiceModeProps) {
         </p>
       )}
 
+      {adapter !== null && !adapter.isMock && !adapter.hearsUser && (
+        <p className="voice-mock-note" role="note">
+          <strong>Voice session mode (development build).</strong> This opens a real session on the
+          TravelMate server, but no voice service or assistant is connected. TravelMate cannot hear
+          or speak, no microphone is used, and nothing you type is sent to an assistant.
+        </p>
+      )}
+
       {adapter === null && (
         <StatusMessage kind="info" title="Voice isn't available yet">
           Voice conversations need a connected voice service, which this version does not have. Use
@@ -72,7 +83,7 @@ export function VoiceMode({ adapter, onReturnToPlanner }: VoiceModeProps) {
       <div className="voice-stage">
         <VoiceOrb status={state.status} muted={state.muted} />
         <p className="voice-status" role="status">
-          {statusText(state, adapter?.playsAudio ?? false)}
+          {statusText(state, adapter?.playsAudio ?? false, adapter?.hearsUser ?? false)}
         </p>
       </div>
 
@@ -114,7 +125,7 @@ export function VoiceMode({ adapter, onReturnToPlanner }: VoiceModeProps) {
 
         {inSession && (
           <div className="button-row">
-            {state.mode === "voice" && (
+            {state.mode === "voice" && adapter?.hearsUser === true && (
               <button
                 type="button"
                 className="button button-secondary"

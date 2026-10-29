@@ -4,10 +4,12 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [react()],
   server: {
-    // Development only: forwards the one real endpoint to the backend so the
-    // browser needs no CORS. Run the backend on port 8000 (see README).
+    // Development only: forwards the real endpoints to the backend so the browser needs no
+    // CORS. Run the backend on port 8000 (see README). `/api` carries the voice-session
+    // endpoints, which exist only when the backend is started with VOICE_ENABLED=true.
     proxy: {
       "/health": "http://127.0.0.1:8000",
+      "/api": "http://127.0.0.1:8000",
     },
   },
   test: {

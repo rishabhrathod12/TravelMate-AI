@@ -5,6 +5,9 @@ const TITLE: Record<VoiceErrorCode, string> = {
   permission_denied: "Microphone access was blocked",
   no_microphone: "No microphone was found",
   connection: "The voice connection was lost",
+  unavailable: "Voice is not available",
+  limit_reached: "Voice session limit reached",
+  session_expired: "The voice session ended",
   unknown: "Voice could not start",
 };
 
@@ -14,6 +17,12 @@ const HELP: Record<VoiceErrorCode, string> = {
   no_microphone:
     "Connect a microphone and try again, or chat by typing instead.",
   connection: "Check your connection and try again, or chat by typing instead.",
+  unavailable:
+    "The server could not provide a voice session. It may be offline, or voice may be switched off on it. Use the trip form to plan a trip.",
+  limit_reached:
+    "You have reached a limit on voice sessions. End an open session or try again later.",
+  session_expired:
+    "Voice sessions end after a time limit or when they sit idle. Start a new one to continue.",
   unknown: "Try again, or chat by typing instead.",
 };
 
