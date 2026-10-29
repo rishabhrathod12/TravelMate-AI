@@ -9,7 +9,7 @@ A short brief for starting a new working session. Update only the lines marked *
 - Repository: github.com/rishabhrathod12/TravelMate-AI, branch `main`.
 
 ## Current state (UPDATE after every commit)
-- Last pushed commit: `f7f33c5` (includes M6 at `803f9d6`). CI passed, as reported by the owner; the run was not read by Claude.
+- Last pushed commit: `5401234` (transport categories and demo booking; includes M6 at `803f9d6` and the voice work up to Step A). CI passed for `5401234`, as reported by the owner; the run was not read by Claude. CI results for the intermediate pushes (`0ad3730`, `afd22b4`, `32902cb`) were not reported to Claude. Local commits made after this file was written are not covered.
 - Tests: at `803f9d6`, 1084 backend tests pass (run locally on Python 3.12.10 on 2026-10-29). The last recorded frontend count is 142 at `b950e13` and was not re-run. At `803f9d6` (checked 2026-10-29, Python 3.12.10): `ruff check` passes, `ruff format --check` finds 85 files already formatted, and strict `mypy app` reports no issues in 47 source files. Mypy covers `app/` only, not the tests.
 - **Complete:** M0.
 - **Implemented, awaiting owner review:** M1 to M6. Each is "not closed" in the plan's status table. Open items: M1 (Docker and PostgreSQL start, production-secrets guard), M2 (`budget` on `TripRequest`), and the Q9 to Q19 decisions below.
