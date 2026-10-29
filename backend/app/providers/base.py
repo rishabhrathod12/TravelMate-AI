@@ -9,6 +9,7 @@ Every result carries `SourceMetadata`. A mock provider must label its results
 MOCK; this module cannot enforce that, the contract tests do.
 """
 
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
@@ -52,3 +53,12 @@ class WeatherProvider(Protocol):
     def mode(self) -> ProviderMode: ...
 
     def get_forecast(self, query: WeatherQuery) -> WeatherForecast: ...
+
+
+@dataclass(frozen=True)
+class Providers:
+    """The three providers a run uses. Built once, at startup, by `factory.build_providers`."""
+
+    transport: TransportProvider
+    hotel: HotelProvider
+    weather: WeatherProvider

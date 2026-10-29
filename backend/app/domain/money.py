@@ -38,6 +38,21 @@ class Money(DomainModel):
         self._require_same_currency(other)
         return Money(amount_minor=self.amount_minor + other.amount_minor, currency=self.currency)
 
+    def __sub__(self, other: object) -> "Money":
+        if not isinstance(other, Money):
+            return NotImplemented
+        self._require_same_currency(other)
+        return Money(amount_minor=self.amount_minor - other.amount_minor, currency=self.currency)
+
+    def __mul__(self, factor: object) -> "Money":
+        """Multiply by a whole number (nights, travellers, ...). Never by a float."""
+        if isinstance(factor, bool) or not isinstance(factor, int):
+            return NotImplemented
+        return Money(amount_minor=self.amount_minor * factor, currency=self.currency)
+
+    def __rmul__(self, factor: object) -> "Money":
+        return self.__mul__(factor)
+
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, Money):
             return NotImplemented

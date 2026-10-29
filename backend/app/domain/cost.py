@@ -8,9 +8,9 @@ The total is computed from the lines, so it can never disagree with them and
 cannot be supplied from outside. An estimate with no lines must say what is
 missing, so a total is never silently zero (plan M5).
 
-The provenance of the whole estimate is not defined yet: "MOCK if any input is
-MOCK" is documented, but the order of LIVE and CACHED_LIVE is an open decision.
-Each line carries its own provenance.
+Each line carries its own provenance, and the estimate's provenance is the weakest
+of its lines ("MOCK if any input is MOCK", PRD §4). How LIVE and CACHED_LIVE rank
+against each other is an open decision (PRD Q16); see `combine_provenance`.
 """
 
 from enum import StrEnum
@@ -20,7 +20,7 @@ from pydantic import Field, model_validator
 
 from app.domain.base import DomainModel
 from app.domain.money import CurrencyCode, Money
-from app.domain.provenance import Provenance
+from app.domain.provenance import Provenance, combine_provenance
 
 
 class CostLineKind(StrEnum):
@@ -63,6 +63,13 @@ class CostEstimate(DomainModel):
         for line in self.lines:
             total = total + line.amount
         return total
+
+    @property
+    def provenance(self) -> Provenance | None:
+        """The weakest line's label, or None when there are no lines to label."""
+        if not self.lines:
+            return None
+        return combine_provenance(line.provenance for line in self.lines)
 
     @property
     def is_incomplete(self) -> bool:

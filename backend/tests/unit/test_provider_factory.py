@@ -13,11 +13,12 @@ from app.main import create_app
 from app.providers.base import (
     HotelProvider,
     ProviderMode,
+    Providers,
     TransportProvider,
     WeatherProvider,
 )
 from app.providers.errors import ProviderConfigurationError
-from app.providers.factory import Providers, build_providers
+from app.providers.factory import build_providers
 from app.providers.mock.hotel import MockHotelProvider
 from app.providers.mock.transport import MockTransportProvider
 from app.providers.mock.weather import MockWeatherProvider

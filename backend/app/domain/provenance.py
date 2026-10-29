@@ -5,10 +5,15 @@ labelled LIVE. Mock providers (M3) are responsible for emitting MOCK; this
 module cannot prove a label is honest, it only makes the label mandatory.
 
 Provisional, not yet approved: MOCK records carry the same four fields as live
-ones (PRD §9: switching MOCK to LIVE "does not change the API contract"). The
-relative order of LIVE and CACHED_LIVE is deliberately not defined here.
+ones (PRD §9: switching MOCK to LIVE "does not change the API contract").
+
+Combining labels follows the documented rule "MOCK if any input is MOCK" (PRD §4,
+plan M5). A mix of LIVE and CACHED_LIVE with no MOCK takes CACHED_LIVE, the weaker
+label, so the result never overstates freshness. That last step is provisional,
+not yet approved (PRD §10 A12, question Q16).
 """
 
+from collections.abc import Iterable
 from enum import StrEnum
 
 from pydantic import Field, StrictInt
@@ -33,3 +38,15 @@ class SourceMetadata(DomainModel):
     provider_name: str = Field(min_length=1)
     retrieved_at: UtcDateTime
     freshness_window_seconds: StrictInt = Field(gt=0)
+
+
+def combine_provenance(provenances: Iterable[Provenance]) -> Provenance:
+    """The label for something built from several inputs: the weakest one present."""
+    present = set(provenances)
+    if not present:
+        raise ValueError("there is no provenance to combine")
+    if Provenance.MOCK in present:
+        return Provenance.MOCK
+    if Provenance.CACHED_LIVE in present:
+        return Provenance.CACHED_LIVE
+    return Provenance.LIVE

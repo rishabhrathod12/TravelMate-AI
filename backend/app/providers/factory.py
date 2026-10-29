@@ -10,21 +10,12 @@ the owner's authorisation (plan M13). Failing closed here means a typo or a
 premature setting can never silently serve mock data as if it were live.
 """
 
-from dataclasses import dataclass
-
 from app.config import Settings
-from app.providers.base import HotelProvider, TransportProvider, WeatherProvider
+from app.providers.base import Providers
 from app.providers.errors import ProviderConfigurationError
 from app.providers.mock.hotel import MockHotelProvider
 from app.providers.mock.transport import MockTransportProvider
 from app.providers.mock.weather import MockWeatherProvider
-
-
-@dataclass(frozen=True)
-class Providers:
-    transport: TransportProvider
-    hotel: HotelProvider
-    weather: WeatherProvider
 
 
 def _require_mock(variable: str, mode: str) -> None:

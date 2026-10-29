@@ -145,6 +145,7 @@ Not included in the MVP:
 - A9 (provisional, M2): Trip dates are calendar dates with no time zone attached. A quote or approval counts as expired from the instant its expiry time is reached.
 - A10 (provisional, M3): A weather forecast has, per day, a summary, optional minimum and maximum temperature in °C and an optional chance of rain (0 to 100 %), and reports the requested dates it does not cover. Weather is not an option the user selects.
 - A11 (provisional, M3): Provider interfaces are synchronous and read-only, and a search query is one leg or one stay (a hotel query needs at least one night; rooms are not modelled). The retry backoff delay (a random fraction of 0.25 s doubling per retry) is a choice, because ARCHITECTURE §9 fixes only the timeout (5 s) and the retry count (2). Mock providers cover only Indore and Goa (both directions) and return nothing for any other place.
+- A12 (provisional, M4 and M5): A provider failure becomes an error entry in the tool result and never hides the other categories; an empty result always carries a reason. Options are sorted by their price as quoted, missing values last, and cancellation terms are grouped only by whether they were supplied. The cost estimator makes no decision for the caller: quantities, the contingency rule (percentage, rounding mode, base) and which lines do not apply are all explicit inputs, and anything required but not supplied is listed as missing. A mix of LIVE and CACHED_LIVE is labelled CACHED_LIVE, and "within budget" means the total equals the budget exactly.
 
 ## 11. Open questions
 
@@ -165,4 +166,6 @@ Not included in the MVP:
 | Q13 | What are the rules for hotel stay windows, the weather window and itinerary length for one-way and same-day trips? | Project owner | M3, M4, M6 |
 | Q14 | What are the limits for traveller count and preferences text, and the rules for a budget (positive? currency, see Q5)? | Project owner | M7 (intake), M8 |
 | Q15 | How is a quote's content hash built (algorithm, exact inputs including traveller details)? | Project owner | M10 |
-| Q16 | What is the order of LIVE and CACHED_LIVE when an estimate mixes them ("lowest provenance")? | Project owner | M5 |
+| Q16 | What is the order of LIVE and CACHED_LIVE when an estimate mixes them ("lowest provenance")? Currently a mix is labelled CACHED_LIVE. | Project owner | M5 |
+| Q17 | What does "within budget" mean: exactly equal to the budget, or inside a tolerance? Currently exactly equal. | Project owner | M5, M8 |
+| Q18 | What are the contingency percentage, the lines it applies to, its rounding mode (half up, half even, down or up) and the local transport allowance? The estimator has no defaults for any of them. | Project owner | M7 (wiring) |
