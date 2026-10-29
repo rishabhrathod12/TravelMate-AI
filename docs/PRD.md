@@ -143,6 +143,8 @@ Not included in the MVP:
 - A7 (provisional, M2): An itinerary identifies days by number. Calendar dates are worked out by code, never written by the LLM.
 - A8 (provisional, M2): Run statuses other than `stopped_limit` (ARCHITECTURE §8) are inferred from the human pauses in ARCHITECTURE §4 and §7.
 - A9 (provisional, M2): Trip dates are calendar dates with no time zone attached. A quote or approval counts as expired from the instant its expiry time is reached.
+- A10 (provisional, M3): A weather forecast has, per day, a summary, optional minimum and maximum temperature in °C and an optional chance of rain (0 to 100 %), and reports the requested dates it does not cover. Weather is not an option the user selects.
+- A11 (provisional, M3): Provider interfaces are synchronous and read-only, and a search query is one leg or one stay (a hotel query needs at least one night; rooms are not modelled). The retry backoff delay (a random fraction of 0.25 s doubling per retry) is a choice, because ARCHITECTURE §9 fixes only the timeout (5 s) and the retry count (2). Mock providers cover only Indore and Goa (both directions) and return nothing for any other place.
 
 ## 11. Open questions
 

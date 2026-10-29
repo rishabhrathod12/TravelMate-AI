@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     booking_enabled: bool = False
 
+    # Where each data category comes from (SECURITY §1). "live" is a valid value for
+    # the future, but no live provider exists (Milestone 13), so the application
+    # refuses to start with it (app.providers.factory).
+    provider_mode_transport: Literal["mock", "live"] = "mock"
+    provider_mode_hotel: Literal["mock", "live"] = "mock"
+    provider_mode_weather: Literal["mock", "live"] = "mock"
+
     @model_validator(mode="after")
     def _booking_must_stay_disabled(self) -> "Settings":
         # Booking execution is not implemented before Milestone 14 (ARCHITECTURE §6,
