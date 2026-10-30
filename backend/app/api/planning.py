@@ -25,14 +25,8 @@ from app.domain.money import Money
 from app.domain.provenance import Provenance
 from app.domain.run import RunStatus
 from app.observability.request_id import request_id_of
-from app.services.trips import (
-    ItineraryMissing,
-    ItineraryVersion,
-    RunRecord,
-    TripRecord,
-    TripService,
-    TripStatus,
-)
+from app.services.store import ItineraryVersion, RunRecord, TripRecord, TripStatus
+from app.services.trips import ItineraryMissing, TripService
 from app.workflow.state import ResearchResults, RunError, Selection, TripSummary
 
 router = APIRouter(

@@ -1,35 +1,40 @@
-"""Trips, planning runs and itinerary versions (ARCHITECTURE §5, §7; plan M8).
+"""Trips, planning runs and itinerary versions (ARCHITECTURE §5, §7; plan M8, M9).
 
 A trip belongs to an owner. A planning run is started on a trip and runs in the background; the
 caller polls it. The service owns three things the routes must not decide for themselves:
 - who may see or change what (every method compares the owner);
-- what state a run must be in before it can be answered (a lock makes "check and mark running"
-  one step, so two answers cannot both resume a run);
+- what state a run must be in before it can be answered (the store changes the status only if it
+  still has the expected one, so two answers cannot both resume a run);
 - what a saved itinerary may contain (it is validated, not trusted).
 
 Another person's trip or run, and a missing one, are both "not found": an id alone is not access.
+Everything is kept through a `TripStore`, in memory or in PostgreSQL, and every state change writes
+an audit event (SECURITY §8).
 """
 
 import logging
 import secrets
-import threading
 from collections.abc import Callable, Mapping
 from concurrent.futures import Executor
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import StrEnum
-from typing import Literal
-
-from pydantic import Field, StrictInt
 
 from app.conversation.draft import TripDraft
-from app.domain.base import DomainModel
 from app.domain.cost import CostEstimate
 from app.domain.itinerary import Itinerary
 from app.domain.run import RunStatus
 from app.domain.trip import MAX_ITINERARY_DAYS, MAX_PREFERENCES_CHARS, MAX_TRAVELLERS
-from app.observability.logs import get_logger
+from app.observability.logs import get_logger, request_id_var
+from app.observability.redaction import Redactor
 from app.services.ratelimit import OwnerRateLimit
+from app.services.store import (
+    AuditEvent,
+    InMemoryTripStore,
+    ItineraryVersion,
+    RunRecord,
+    TripRecord,
+    TripStatus,
+    TripStore,
+)
 from app.workflow.runner import PlanningWorkflow, RunNotFound, RunNotWaiting, new_run_id
 from app.workflow.state import RunInput, RunOutcome
 
@@ -38,12 +43,7 @@ log: logging.Logger = get_logger("services")
 MAX_TITLE_CHARS = 120
 MAX_ITEMS_PER_DAY = 20
 MAX_TEXT_CHARS = 500
-
-
-class TripStatus(StrEnum):
-    DRAFT = "draft"
-    PLANNING = "planning"
-    PLANNED = "planned"
+RESTART_REASON = "The server restarted while this run was in progress."
 
 
 class TripNotFound(Exception):
@@ -72,36 +72,6 @@ class ItineraryMissing(Exception):
 
 class InvalidInput(ValueError):
     """The caller's input broke a rule. The message is fixed wording, safe to return."""
-
-
-class ItineraryVersion(DomainModel):
-    version: StrictInt = Field(ge=1)
-    created_by: Literal["agent", "user"]
-    created_at: datetime
-    itinerary: Itinerary
-
-
-@dataclass
-class TripRecord:
-    id: str
-    owner: str
-    title: str
-    draft: TripDraft
-    rooms: int | None
-    created_at: datetime
-    status: TripStatus = TripStatus.DRAFT
-    run_ids: list[str] = field(default_factory=list)
-    itineraries: list[ItineraryVersion] = field(default_factory=list)
-
-
-@dataclass
-class RunRecord:
-    run_id: str
-    trip_id: str
-    owner: str
-    status: RunStatus
-    outcome: RunOutcome | None = None
-    error: str | None = None
 
 
 def _check_draft(draft: TripDraft, rooms: int | None) -> None:
@@ -142,30 +112,69 @@ class TripService:
         executor: Executor,
         currency: str,
         rate_limit: OwnerRateLimit,
+        store: TripStore | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._workflow = workflow
         self._executor = executor
         self._currency = currency
         self._rate_limit = rate_limit
+        self._store: TripStore = store if store is not None else InMemoryTripStore()
         self._clock = clock
-        self._lock = threading.Lock()
-        self._trips: dict[str, TripRecord] = {}
-        self._runs: dict[str, RunRecord] = {}
+        self._redactor = Redactor()
+
+    def recover_after_restart(self) -> int:
+        """Fail runs that were working or waiting when the server stopped.
+
+        Checkpoints are held in memory until a database checkpointer exists, so such a run cannot
+        be resumed. It is marked failed with a fixed message instead of waiting forever.
+        """
+        count = self._store.fail_unfinished_runs(RESTART_REASON)
+        if count:
+            self._audit("system", "run.interrupted", "service", "startup", {"runs": count})
+        return count
+
+    # -- audit ---------------------------------------------------------------------------------
+
+    def _audit(
+        self,
+        actor: str,
+        event_type: str,
+        entity_type: str,
+        entity_id: str,
+        data: Mapping[str, object] | None = None,
+        request_id: str | None = None,
+    ) -> None:
+        masked = self._redactor.value(dict(data or {}))
+        self._store.record_audit(
+            AuditEvent(
+                occurred_at=self._clock(),
+                actor=actor,
+                event_type=event_type,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                request_id=request_id if request_id is not None else request_id_var.get(),
+                data=masked if isinstance(masked, dict) else {},
+            )
+        )
 
     # -- lookups (every one compares the owner) -----------------------------------------------
 
     def _trip(self, owner: str, trip_id: str) -> TripRecord:
-        with self._lock:
-            trip = self._trips.get(trip_id)
-        if trip is None or trip.owner != owner:
+        trip = self._store.get_trip(trip_id)
+        if trip is None:
+            raise TripNotFound("no such trip")
+        if trip.owner != owner:
+            self._audit(owner, "authorization.denied", "trip", trip_id)
             raise TripNotFound("no such trip")
         return trip
 
     def _run(self, owner: str, run_id: str) -> RunRecord:
-        with self._lock:
-            run = self._runs.get(run_id)
-        if run is None or run.owner != owner:
+        run = self._store.get_run(run_id)
+        if run is None:
+            raise RunMissing("no such run")
+        if run.owner != owner:
+            self._audit(owner, "authorization.denied", "run", run_id)
             raise RunMissing("no such run")
         return run
 
@@ -186,8 +195,8 @@ class TripService:
             rooms=rooms,
             created_at=self._clock(),
         )
-        with self._lock:
-            self._trips[trip.id] = trip
+        self._store.add_trip(trip)
+        self._audit(owner, "trip.created", "trip", trip.id)
         log.info("trip created", extra={"trip_id": trip.id})
         return trip
 
@@ -195,29 +204,27 @@ class TripService:
         return self._trip(owner, trip_id)
 
     def latest_run(self, owner: str, trip_id: str) -> RunRecord | None:
-        trip = self._trip(owner, trip_id)
-        with self._lock:
-            return self._runs.get(trip.run_ids[-1]) if trip.run_ids else None
+        self._trip(owner, trip_id)
+        return self._store.latest_run(trip_id)
 
     # -- runs ---------------------------------------------------------------------------------
 
     def start_run(self, owner: str, trip_id: str) -> RunRecord:
         trip = self._trip(owner, trip_id)
         run_input = RunInput(draft=trip.draft, currency=self._currency, rooms=trip.rooms)
-        with self._lock:
-            last = self._runs.get(trip.run_ids[-1]) if trip.run_ids else None
-            if last is not None and last.status is RunStatus.RUNNING:
-                raise RunBusy("this trip already has a run in progress")
+        last = self._store.latest_run(trip.id)
+        if last is not None and last.status is RunStatus.RUNNING:
+            raise RunBusy("this trip already has a run in progress")
         if not self._rate_limit.try_acquire(owner):
             raise TooManyRuns("too many runs started; try again later")
         record = RunRecord(new_run_id(), trip.id, owner, RunStatus.RUNNING)
-        with self._lock:
-            self._runs[record.run_id] = record
-            trip.run_ids.append(record.run_id)
-            trip.status = TripStatus.PLANNING
+        self._store.add_run(record)
+        self._store.set_trip_status(trip.id, TripStatus.PLANNING)
+        request_id = request_id_var.get()
+        self._audit(owner, "run.started", "run", record.run_id, {"trip_id": trip.id})
         log.info("run started", extra={"run_id": record.run_id, "trip_id": trip.id})
-        self._executor.submit(self._do_start, record, run_input)
-        return record
+        self._executor.submit(self._do_start, record, run_input, request_id)
+        return self._store.get_run(record.run_id) or record
 
     def get_run(self, owner: str, run_id: str) -> RunRecord:
         return self._run(owner, run_id)
@@ -227,58 +234,76 @@ class TripService:
     ) -> RunRecord:
         """Answer a run that is waiting. `kind` is the status it must be in to accept this."""
         record = self._run(owner, run_id)
-        with self._lock:  # check and mark running in one step
-            if record.status is not kind:
-                raise RunBusy("the run is not waiting for this answer")
-            record.status = RunStatus.RUNNING
+        # Check and mark running in one atomic step, so two answers cannot both get through.
+        if not self._store.transition_run(run_id, kind, RunStatus.RUNNING):
+            raise RunBusy("the run is not waiting for this answer")
+        request_id = request_id_var.get()
+        self._audit(owner, "run.answered", "run", run_id, {"kind": kind.value})
         log.info("run answered", extra={"run_id": run_id})
-        self._executor.submit(self._do_resume, record, dict(answer))
-        return record
+        self._executor.submit(self._do_resume, record, dict(answer), request_id)
+        return self._store.get_run(run_id) or record
 
     # -- background work -----------------------------------------------------------------------
 
-    def _do_start(self, record: RunRecord, run_input: RunInput) -> None:
+    def _do_start(self, record: RunRecord, run_input: RunInput, request_id: str | None) -> None:
         try:
             outcome = self._workflow.start(record.owner, run_input, run_id=record.run_id)
         except Exception:
-            self._failed(record)
+            self._failed(record, request_id)
             return
-        self._finish(record, outcome)
+        self._finish(record, outcome, request_id)
 
-    def _do_resume(self, record: RunRecord, answer: dict[str, object]) -> None:
+    def _do_resume(
+        self, record: RunRecord, answer: dict[str, object], request_id: str | None
+    ) -> None:
         try:
             outcome = self._workflow.resume(record.run_id, record.owner, answer)
         except (RunNotFound, RunNotWaiting):
-            self._failed(record)
+            self._failed(record, request_id)
             return
         except Exception:
-            self._failed(record)
+            self._failed(record, request_id)
             return
-        self._finish(record, outcome)
+        self._finish(record, outcome, request_id)
 
-    def _failed(self, record: RunRecord) -> None:
+    def _failed(self, record: RunRecord, request_id: str | None) -> None:
         log.exception("run failed", extra={"run_id": record.run_id})
-        with self._lock:
-            record.status = RunStatus.FAILED
-            record.error = "The planning run failed."
+        self._store.save_run_outcome(
+            record.run_id, RunStatus.FAILED, None, "The planning run failed."
+        )
+        self._audit(
+            record.owner, "run.finished", "run", record.run_id, {"status": "failed"}, request_id
+        )
 
-    def _finish(self, record: RunRecord, outcome: RunOutcome) -> None:
-        with self._lock:
-            record.outcome = outcome
-            record.status = outcome.status
-            trip = self._trips[record.trip_id]
-            summary = outcome.summary
-            if summary is not None and summary.itinerary is not None:
-                trip.itineraries.append(
-                    ItineraryVersion(
-                        version=len(trip.itineraries) + 1,
-                        created_by="agent",
-                        created_at=self._clock(),
-                        itinerary=summary.itinerary,
-                    )
-                )
-            if outcome.status is RunStatus.COMPLETED:
-                trip.status = TripStatus.PLANNED
+    def _finish(self, record: RunRecord, outcome: RunOutcome, request_id: str | None) -> None:
+        self._store.save_run_outcome(record.run_id, outcome.status, outcome, None)
+        summary = outcome.summary
+        if summary is not None and summary.itinerary is not None:
+            version = self._store.add_itinerary(
+                record.trip_id, "agent", self._clock(), summary.itinerary
+            )
+            self._audit(
+                record.owner,
+                "itinerary.saved",
+                "trip",
+                record.trip_id,
+                {"version": version.version, "created_by": "agent"},
+                request_id,
+            )
+        if outcome.status is RunStatus.COMPLETED:
+            self._store.set_trip_status(record.trip_id, TripStatus.PLANNED)
+        self._audit(
+            record.owner,
+            "run.finished",
+            "run",
+            record.run_id,
+            {
+                "status": outcome.status.value,
+                "provider_calls": outcome.provider_calls,
+                "llm_calls": outcome.llm_calls,
+            },
+            request_id,
+        )
         log.info(
             "run updated",
             extra={
@@ -292,30 +317,29 @@ class TripService:
     # -- itinerary and cost ---------------------------------------------------------------------
 
     def latest_itinerary(self, owner: str, trip_id: str) -> ItineraryVersion | None:
-        trip = self._trip(owner, trip_id)
-        with self._lock:
-            return trip.itineraries[-1] if trip.itineraries else None
+        self._trip(owner, trip_id)
+        return self._store.latest_itinerary(trip_id)
 
     def save_itinerary_version(
         self, owner: str, trip_id: str, itinerary: Itinerary
     ) -> ItineraryVersion:
-        trip = self._trip(owner, trip_id)
+        self._trip(owner, trip_id)
         known: set[str] = set()
-        latest = self.latest_run(owner, trip_id)
+        latest = self._store.latest_run(trip_id)
         research = latest.outcome.research if latest is not None and latest.outcome else None
         if research is not None:
             for result in (research.transport, research.return_transport, research.hotels):
                 if result is not None:
                     known.update(option.id for option in result.options)
         _check_itinerary(itinerary, frozenset(known))
-        with self._lock:
-            version = ItineraryVersion(
-                version=len(trip.itineraries) + 1,
-                created_by="user",
-                created_at=self._clock(),
-                itinerary=itinerary,
-            )
-            trip.itineraries.append(version)
+        version = self._store.add_itinerary(trip_id, "user", self._clock(), itinerary)
+        self._audit(
+            owner,
+            "itinerary.saved",
+            "trip",
+            trip_id,
+            {"version": version.version, "created_by": "user"},
+        )
         log.info("itinerary saved", extra={"trip_id": trip_id, "version": version.version})
         return version
 

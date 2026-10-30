@@ -111,7 +111,13 @@ def test_only_the_workflow_package_imports_langgraph_or_langchain() -> None:
 
 # The composition root builds it, the service runs it, and the API describes its inputs and
 # outputs. Nothing else may reach it.
-WORKFLOW_USERS = ["api/planning.py", "main.py", "services/trips.py"]
+WORKFLOW_USERS = [
+    "api/planning.py",
+    "main.py",
+    "persistence/sql_store.py",
+    "services/store.py",
+    "services/trips.py",
+]
 
 
 def test_only_the_composition_root_the_service_and_the_api_schemas_import_it() -> None:

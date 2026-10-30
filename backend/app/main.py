@@ -36,9 +36,12 @@ from app.llm.scripted import ScriptedItineraryClient, ScriptedPlanClient
 from app.llm.types import LLMLimits
 from app.observability.logs import configure_logging
 from app.observability.request_id import RequestIdMiddleware
+from app.persistence.engine import build_engine, build_session_factory
+from app.persistence.sql_store import SqlTripStore
 from app.providers.base import Providers
 from app.providers.factory import build_providers
 from app.services.ratelimit import OwnerRateLimit
+from app.services.store import TripStore
 from app.services.trips import TripService
 from app.tools.research import ResearchTools
 from app.voice.sessions import VoiceLimits, VoiceSessionService
@@ -86,8 +89,26 @@ def _plan_service(settings: Settings, live: LLMClient | None) -> PlanService:
     return PlanService(PlanWriter(ScriptedPlanClient(), limits), "SCRIPTED_SAMPLE")
 
 
+def _store(settings: Settings, injected: TripStore | None) -> tuple[TripStore | None, bool]:
+    """The trip store, and whether it is a database.
+
+    A store passed in (the tests) is used as it is. Otherwise a configured `DATABASE_URL` gives the
+    PostgreSQL store, and no URL gives None, which makes the service keep its records in memory.
+    """
+    if injected is not None:
+        return injected, True
+    if settings.database_url is None:
+        return None, False
+    engine = build_engine(settings.database_url)
+    return SqlTripStore(build_session_factory(engine)), True
+
+
 def _trip_service(
-    settings: Settings, providers: Providers, live: LLMClient | None, executor: Executor
+    settings: Settings,
+    providers: Providers,
+    live: LLMClient | None,
+    executor: Executor,
+    store: TripStore | None,
 ) -> TripService:
     """The planning service. The itinerary step uses the real model only when live calls are on;
     otherwise a scripted stand-in answers. The workflow refuses to start if third-party tracing is
@@ -115,12 +136,18 @@ def _trip_service(
         executor,
         currency=str(settings.api_currency),
         rate_limit=OwnerRateLimit(int(settings.api_max_runs_per_hour_per_owner or 0)),
+        store=store,
     )
 
 
-def create_app(settings: Settings | None = None, *, executor: Executor | None = None) -> FastAPI:
-    """Build the application. Pass explicit settings in tests, and an executor to run planning
-    runs inline instead of in background threads."""
+def create_app(
+    settings: Settings | None = None,
+    *,
+    executor: Executor | None = None,
+    store: TripStore | None = None,
+) -> FastAPI:
+    """Build the application. Pass explicit settings in tests, an executor to run planning runs
+    inline instead of in background threads, and a store to use instead of the configured one."""
     resolved_settings = settings if settings is not None else Settings()
     owned_executor: ThreadPoolExecutor | None = None
     if executor is None and resolved_settings.api_enabled:
@@ -163,9 +190,15 @@ def create_app(settings: Settings | None = None, *, executor: Executor | None = 
         app.state.plans = _plan_service(resolved_settings, live)
         app.include_router(chat_router)
     if resolved_settings.api_enabled and chosen_executor is not None:
-        app.state.trip_service = _trip_service(
-            resolved_settings, app.state.providers, live, chosen_executor
+        chosen_store, durable = _store(resolved_settings, store)
+        service = _trip_service(
+            resolved_settings, app.state.providers, live, chosen_executor, chosen_store
         )
+        if durable:
+            # Run checkpoints are kept in memory, so a run that was working or waiting when the
+            # server last stopped cannot be resumed. Say so instead of leaving it waiting forever.
+            service.recover_after_restart()
+        app.state.trip_service = service
         app.include_router(planning_router)
     return app
 

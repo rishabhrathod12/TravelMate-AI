@@ -139,6 +139,13 @@ Money is stored as `amount_minor BIGINT` plus `currency CHAR(3)`. Timestamps are
 | `approvals` | Human approvals. | `id`, `booking_intent_id`, `approver_id`, `quote_content_hash`, `approved_at`, `expires_at`. |
 | `audit_events` | Append-only log. | `id`, `occurred_at`, `actor`, `event_type`, `entity_type`, `entity_id`, `data` (redacted JSONB). |
 
+**Status (M9, 2026-10-30):** all eleven tables exist as SQLAlchemy models (`app/persistence/models.py`) and as one reviewed Alembic revision (`backend/migrations/versions/0001_initial_schema.py`). Differences from the table above, all deliberate:
+- `trips.draft` holds the request as the traveller gave it, which may be incomplete; the validated request is `trip_requests`, one row per run. `trips.owner_id` is not nullable.
+- `agent_runs` also holds `owner_id`, `run_number` (unique within a trip) and the whole `outcome` as JSON, so a run can be read back after a restart; `options` and `cost_estimates` hold queryable copies of the same data.
+- `itineraries.version` is unique within a trip.
+- `audit_events.request_id` is added because SECURITY section 8 requires it.
+- `provider_calls`, `quotes`, `booking_intents` and `approvals` exist, but nothing writes them yet (M10, M12).
+
 Migrations are managed with Alembic. Each schema change is a reviewed revision with a working downgrade or a documented reason why none exists.
 
 ## 6. Human approval and booking lifecycle

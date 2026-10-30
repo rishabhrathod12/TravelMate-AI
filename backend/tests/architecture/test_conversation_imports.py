@@ -94,6 +94,8 @@ ALLOWED_IMPORTERS = {
     "api/chat.py",
     "api/planning.py",
     "main.py",
+    "persistence/sql_store.py",
+    "services/store.py",
     "services/trips.py",
     "workflow/graph.py",
     "workflow/state.py",

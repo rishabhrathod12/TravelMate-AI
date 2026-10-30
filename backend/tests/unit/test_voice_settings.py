@@ -87,7 +87,13 @@ def test_voice_refuses_to_start_in_production() -> None:
 
 
 def test_voice_settings_are_not_checked_while_voice_is_off() -> None:
-    settings = Settings.model_validate({"voice_enabled": False, "app_env": "production"})
+    settings = Settings.model_validate(
+        {
+            "voice_enabled": False,
+            "app_env": "production",
+            "database_url": "postgresql+psycopg://u:p@localhost/db",  # required in production
+        }
+    )
 
     assert settings.voice_enabled is False
 

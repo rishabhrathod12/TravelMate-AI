@@ -176,7 +176,7 @@ What exists now:
 - **Checkpoints.** They are serialized with an explicit allowlist of the project's own data types, with no pickle fallback; a foreign type is never rebuilt as an object. This is the control to carry over to the PostgreSQL checkpointer (M9).
 - **No third-party tracing.** The workflow refuses to start while a LangSmith or LangChain tracing switch is on, because tracing would send trip data and prompts to a third party.
 
-Not done: durable storage (checkpoints and runs are lost on restart), authentication, per-person rate limits, redacted structured logging of runs (M8).
+Not done: durable checkpoints (runs and checkpoints are still in memory; see section 16), authentication, per-person rate limits.
 
 ## 15. Planning API, request ids and logging
 
@@ -194,3 +194,18 @@ What exists now:
 - **Background runs.** A run works on a thread pool and is polled with `GET /runs/{id}`. A run that raises ends as `failed` with a fixed message; the traceback goes to the (masked) log with the request id.
 
 Not done: real authentication and tokens (PRD Q4), per-person limits on answering and on saving itineraries, durable storage (M9), booking intents, approvals and execution (M10). A run's id and status are visible to the principal that started it only.
+
+## 16. Persistence
+
+Status: **built; the PostgreSQL-specific checks run in CI, not on the development machine.** Plan: `docs/IMPLEMENTATION_PLAN.md` M9. Schema: `backend/migrations/versions/0001_initial_schema.py`.
+
+What exists now:
+- **`DATABASE_URL` is a secret.** It is a `SecretStr`, never printed, and the app refuses to start in production without it (closing the open M1 criterion). Only PostgreSQL URLs are accepted. Settings errors no longer echo the rejected input, because a mistyped URL would otherwise print its password to the terminal (a test caught this).
+- **No SQL from strings.** The ORM writes everything, so values are bound parameters; an architecture test forbids `text()` and raw driver SQL in `app/persistence/`. The engine never echoes SQL and hides parameters from error text, because parameters are trip details.
+- **The audit trail is append-only in the database.** Migrations create a group role `travelmate_app` (no login, no superuser, no create rights). It may read, add, change and delete in every table except `audit_events`, where it may only read and add: no `UPDATE`, `DELETE` or `TRUNCATE`. The application connects as a login that belongs to this role. The grants are written out in the migration, and tests check them three ways: in the SQL the migration renders, against the policy, and (in CI, on PostgreSQL) with the role itself, including that a table the policy does not name fails the build until it is classified. Corrections are recorded as new events.
+- **What is audited:** trip creation, run start, answer and finish, itinerary versions (agent and user), runs interrupted by a restart, and denied access to another owner's trip or run. Each event records the time, actor, event type, entity, request id and a redacted payload that holds ids and counts, never trip details. Not yet audited: provider-mode changes, selections as separate events, booking events (M10).
+- **Atomic where it matters.** A run's status changes only if it still has the expected one, in one SQL statement, so two answers cannot both resume a run. Itinerary version numbers are taken under a row lock with a unique-constraint backstop, so two saves cannot get the same number.
+- **A restart does not leave runs waiting forever.** LangGraph checkpoints are still held in memory (a PostgreSQL checkpointer needs another package and approval). So on start, any run that was working or waiting is marked failed with a fixed message and an audit event. Trips, finished runs, itineraries and the audit trail survive.
+- **Roles are server-wide.** A downgrade removes the tables and their grants but leaves the role, because dropping it could break another database on the same server.
+
+Not done: row-level security (access control is in the service layer, SECURITY section 2), encryption at rest and backup rules (deployment concerns), the retention period for audit data (PRD Q4), deletion of a trip's data on request, and a database checkpointer for run state.

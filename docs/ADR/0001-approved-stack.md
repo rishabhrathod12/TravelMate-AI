@@ -76,6 +76,13 @@ TravelMate AI needs a backend for a multi-step planning workflow with human paus
   modules, so a foreign type comes back as plain data, never as an object. This matters most once
   checkpoints live in PostgreSQL (M9).
 
+## M9 additions (2026-10-30)
+
+- `sqlalchemy` (`>=2.1.4,<3`) and `alembic` (`>=1.20,<2`) are in the approved stack above. The PostgreSQL driver was not named there; the owner approved **`psycopg` 3 with binary wheels** (`psycopg[binary]>=3.3.6,<4`) on 2026-10-30. Installed: SQLAlchemy 2.1.4 (released 2026-10-07), Alembic 1.20.0 (2026-09-12), psycopg 3.3.6 (2026-09-18); each was released at least three weeks before installation. They bring `Mako` and `MarkupSafe`. `pip check` reports no problems and `pip-audit` reports no findings for any of them.
+- Only `app/persistence/` imports SQLAlchemy, Alembic or the driver (`migrations/env.py` is the one other Alembic user), and an architecture test enforces that.
+- The driver is synchronous because the workflow and services use threads. No async layer was added.
+- **Not added:** a PostgreSQL checkpointer for LangGraph (`langgraph-checkpoint-postgres`). It is a further package and needs its own approval. Until then run checkpoints are in memory (see SECURITY section 16).
+
 ## Open items
 
 - PostgreSQL start from Docker Compose is deferred and unverified. Docker is not available on the development machine. Verify it when Docker is available and the database is first needed (M9).

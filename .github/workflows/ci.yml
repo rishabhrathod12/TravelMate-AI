@@ -34,6 +34,44 @@ jobs:
           python -m pip install pip-audit
           python -m pip_audit --skip-editable
 
+  # Plan M9: the tests that need a real PostgreSQL server. They run the migrations up and down,
+  # check the constraints, and check that the application's database role cannot UPDATE or DELETE
+  # audit events (SECURITY section 8). REQUIRE_POSTGRES makes a missing database a failure, never
+  # a skip. The password below is for a throwaway container that exists only for this job and is
+  # not a secret; no repository secret is used.
+  postgres:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-throwaway-db-password
+          POSTGRES_DB: travelmate_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d travelmate_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:ci-throwaway-db-password@localhost:5432/travelmate_test
+      REQUIRE_POSTGRES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: python -m pip install -e ".[dev]"
+      - name: PostgreSQL tests (migrations, constraints, permissions, store contract, API)
+        run: python -m pytest -m integration -rs
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

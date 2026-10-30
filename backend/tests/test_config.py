@@ -31,6 +31,7 @@ def test_values_are_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_environment_names_are_case_insensitive(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("app_env", "production")
+    monkeypatch.setenv("database_url", "postgresql+psycopg://u:p@localhost/db")  # required there
 
     assert Settings().app_env == "production"
 

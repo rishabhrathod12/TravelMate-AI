@@ -17,7 +17,12 @@ class Settings(BaseSettings):
     No secrets are defined yet. The health endpoint needs none.
     """
 
-    model_config = SettingsConfigDict(extra="ignore", case_sensitive=False)
+    # `hide_input_in_errors`: a validation error normally prints the rejected input. For these
+    # settings that input can be a connection string with a password or an API key, so an error
+    # at startup would write the secret to the terminal. Errors name the field and the rule only.
+    model_config = SettingsConfigDict(
+        extra="ignore", case_sensitive=False, hide_input_in_errors=True
+    )
 
     app_env: Literal["development", "test", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -34,6 +39,10 @@ class Settings(BaseSettings):
     # them. The key is a SecretStr, so printing the settings never shows it, and it is
     # read only from the environment. A blank value counts as not set.
     openai_api_key: SecretStr | None = None
+    # The PostgreSQL connection string (SECURITY §1). It holds a password, so it is a SecretStr
+    # and never printed. Optional in development, where records stay in memory and are lost on
+    # restart; required when APP_ENV=production. Only PostgreSQL is accepted.
+    database_url: SecretStr | None = None
     llm_model: str | None = None
     # The owner's separate switch for real model calls (ADR 0004, C3). Having a key set never
     # makes a call by itself: nothing reaches OpenAI unless this is true as well, and when it is
@@ -81,6 +90,7 @@ class Settings(BaseSettings):
     conversation_llm_timeout_seconds: float | None = None
 
     @field_validator(
+        "database_url",
         "api_dev_principal",
         "api_currency",
         "api_run_max_steps",
@@ -201,6 +211,16 @@ class Settings(BaseSettings):
                 raise ValueError(
                     f"{name} must be set to a positive whole number when the API is on"
                 )
+        return self
+
+    @model_validator(mode="after")
+    def _database_url_is_postgres_and_required_in_production(self) -> "Settings":
+        url = self.database_url.get_secret_value().strip() if self.database_url else ""
+        if url and not url.startswith(("postgresql://", "postgresql+psycopg://")):
+            raise ValueError("DATABASE_URL must be a PostgreSQL connection string")
+        if self.app_env == "production" and not url:
+            # SECURITY §1: the application refuses to start in production without its secrets.
+            raise ValueError("DATABASE_URL must be set when APP_ENV=production")
         return self
 
     @model_validator(mode="after")

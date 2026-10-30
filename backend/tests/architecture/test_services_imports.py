@@ -100,7 +100,12 @@ def test_only_the_api_routers_and_the_composition_root_import_services() -> None
         and any(under(m, "app.services") for m in app_modules(path))
     )
 
-    assert importers == ["api/planning.py", "api/problems.py", "main.py"]
+    assert importers == [
+        "api/planning.py",
+        "api/problems.py",
+        "main.py",
+        "persistence/sql_store.py",
+    ]
 
 
 def test_the_domain_and_the_workflow_do_not_depend_on_services_or_observability() -> None:

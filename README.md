@@ -75,7 +75,21 @@ docker compose up -d db
 docker compose ps
 ```
 
-The database listens on `127.0.0.1:5432` only. The application does not use it yet (Milestone 9).
+The database listens on `127.0.0.1:5432` only. To use it from the application (Milestone 9):
+
+```bash
+# Your own shell only. The URL holds a password, so it never goes in a committed file.
+export DATABASE_URL='postgresql+psycopg://postgres:<your-local-password>@127.0.0.1:5432/travelmate'
+
+# Create the tables and the application's database role (run as the database owner).
+aitravel/Scripts/python.exe -m alembic -c backend/alembic.ini upgrade head
+# Print the SQL instead of running it (needs no database):  ... upgrade head --sql
+# Undo it:                                                   ... downgrade base
+```
+
+With `DATABASE_URL` set, the planning API keeps trips, runs and audit events in PostgreSQL and a restart no longer loses them. Without it, records stay in memory as before. `DATABASE_URL` is required when `APP_ENV=production`. Run checkpoints are still in memory, so a run that was in progress when the server stopped is marked failed on the next start.
+
+The tests that need a real server run in CI against a PostgreSQL service. To run them here, point `TEST_DATABASE_URL` at an empty database that you do not mind losing (they create and drop its tables) and run `pytest -m integration`.
 
 ## Continuous integration
 
