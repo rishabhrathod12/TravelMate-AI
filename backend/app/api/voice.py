@@ -13,11 +13,12 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
+from app.api.problems import problem_responses
 from app.config import Settings
 from app.voice.errors import SessionExpired, SessionNotFound, VoiceError, VoiceLimitExceeded
 from app.voice.sessions import VoiceSession, VoiceSessionService
 
-router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
+router = APIRouter(prefix="/api/v1/voice", tags=["voice"], responses=problem_responses(422))
 
 NO_PROVIDER_NOTICE = (
     "No voice provider is connected. This session carries no audio and cannot hear or speak."

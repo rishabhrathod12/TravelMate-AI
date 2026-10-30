@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.api.problems import problem_responses
 from app.conversation.draft import TripDraft
 from app.conversation.manager import ConversationManager, TurnStatus
 from app.domain.suggested_plan import PlanSource, SuggestedPlan
@@ -33,7 +34,7 @@ from app.llm.errors import (
 )
 from app.llm.plan_writer import PlanWriter
 
-router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
+router = APIRouter(prefix="/api/v1/chat", tags=["chat"], responses=problem_responses(422))
 
 STAND_IN_NOTICE = (
     "Development stand-in: this reads a few simple patterns in English. It is not a language "

@@ -1,0 +1,3075 @@
+{
+  "components": {
+    "schemas": {
+      "AvailabilityStatus": {
+        "description": "UNKNOWN is the default so that availability is never invented.",
+        "enum": [
+          "AVAILABLE",
+          "UNAVAILABLE",
+          "UNKNOWN"
+        ],
+        "title": "AvailabilityStatus",
+        "type": "string"
+      },
+      "BusDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "BUS",
+            "default": "BUS",
+            "title": "Kind",
+            "type": "string"
+          },
+          "seat_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Type"
+          }
+        },
+        "title": "BusDetails",
+        "type": "object"
+      },
+      "ChangeOut": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "new": {
+            "title": "New",
+            "type": "string"
+          },
+          "old": {
+            "title": "Old",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "old",
+          "new"
+        ],
+        "title": "ChangeOut",
+        "type": "object"
+      },
+      "ClarificationAnswer": {
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/TripDraft"
+          }
+        },
+        "required": [
+          "draft"
+        ],
+        "title": "ClarificationAnswer",
+        "type": "object"
+      },
+      "CostEstimate": {
+        "additionalProperties": false,
+        "properties": {
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "lines": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CostLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "missing_items": {
+            "default": [],
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Missing Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "currency"
+        ],
+        "title": "CostEstimate",
+        "type": "object"
+      },
+      "CostEstimateResponse": {
+        "properties": {
+          "estimate": {
+            "$ref": "#/components/schemas/CostEstimate"
+          },
+          "is_incomplete": {
+            "title": "Is Incomplete",
+            "type": "boolean"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "total": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "required": [
+          "run_id",
+          "estimate",
+          "total",
+          "provenance",
+          "is_incomplete",
+          "request_id"
+        ],
+        "title": "CostEstimateResponse",
+        "type": "object"
+      },
+      "CostLine": {
+        "additionalProperties": false,
+        "description": "One itemised amount. Any sign is allowed: the estimator decides what is valid.",
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "description": {
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CostLineKind"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          }
+        },
+        "required": [
+          "kind",
+          "description",
+          "amount",
+          "provenance"
+        ],
+        "title": "CostLine",
+        "type": "object"
+      },
+      "CostLineKind": {
+        "description": "The line items named in plan M5.",
+        "enum": [
+          "TRANSPORT",
+          "ACCOMMODATION",
+          "LOCAL_TRANSPORT",
+          "CONTINGENCY",
+          "TAXES_AND_FEES"
+        ],
+        "title": "CostLineKind",
+        "type": "string"
+      },
+      "FlightDetails": {
+        "additionalProperties": false,
+        "description": "Facts only a flight has. Every field is optional: a missing fact stays missing.",
+        "properties": {
+          "cabin_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cabin Class"
+          },
+          "kind": {
+            "const": "FLIGHT",
+            "default": "FLIGHT",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "title": "FlightDetails",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "HotelOption": {
+        "additionalProperties": false,
+        "description": "One place to stay.",
+        "properties": {
+          "availability": {
+            "$ref": "#/components/schemas/AvailabilityStatus",
+            "default": "UNKNOWN"
+          },
+          "cancellation_terms": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Terms"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "nightly_rate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceMetadata"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "name",
+          "location"
+        ],
+        "title": "HotelOption",
+        "type": "object"
+      },
+      "HotelSearchResult": {
+        "additionalProperties": false,
+        "properties": {
+          "empty_reason": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty Reason"
+          },
+          "errors": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ToolError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "options": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HotelOption"
+            },
+            "title": "Options",
+            "type": "array"
+          }
+        },
+        "title": "HotelSearchResult",
+        "type": "object"
+      },
+      "Itinerary": {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/ItineraryDay"
+            },
+            "minItems": 1,
+            "title": "Days",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "required": [
+          "days"
+        ],
+        "title": "Itinerary",
+        "type": "object"
+      },
+      "ItineraryDay": {
+        "additionalProperties": false,
+        "properties": {
+          "day_number": {
+            "minimum": 1.0,
+            "title": "Day Number",
+            "type": "integer"
+          },
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ItineraryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "day_number"
+        ],
+        "title": "ItineraryDay",
+        "type": "object"
+      },
+      "ItineraryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "option_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Option Id"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "ItineraryItem",
+        "type": "object"
+      },
+      "ItineraryRequest": {
+        "additionalProperties": false,
+        "description": "A request to write a day-by-day itinerary for one place (ADR 0004).\n\nIt needs only where, when it starts and how many days. There is no origin and no transport:\nthose belong to the optional search view. `days` counts calendar days including the first.",
+        "properties": {
+          "days": {
+            "maximum": 14.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferences"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "travellers": {
+            "anyOf": [
+              {
+                "maximum": 9.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Travellers"
+          }
+        },
+        "required": [
+          "destination",
+          "start_date",
+          "days"
+        ],
+        "title": "ItineraryRequest",
+        "type": "object"
+      },
+      "ItineraryResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "itinerary": {
+            "$ref": "#/components/schemas/Itinerary"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "trip_id",
+          "version",
+          "created_by",
+          "created_at",
+          "itinerary",
+          "request_id"
+        ],
+        "title": "ItineraryResponse",
+        "type": "object"
+      },
+      "ItineraryUpdate": {
+        "properties": {
+          "itinerary": {
+            "$ref": "#/components/schemas/Itinerary"
+          }
+        },
+        "required": [
+          "itinerary"
+        ],
+        "title": "ItineraryUpdate",
+        "type": "object"
+      },
+      "Location": {
+        "additionalProperties": false,
+        "description": "A named place. Codes and time zones arrive with the provider interfaces (M3).",
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "Location",
+        "type": "object"
+      },
+      "ModelInfo": {
+        "properties": {
+          "kind": {
+            "default": "DEV_STAND_IN",
+            "title": "Kind",
+            "type": "string"
+          },
+          "notice": {
+            "default": "Development stand-in: this reads a few simple patterns in English. It is not a language model, and no model is connected.",
+            "title": "Notice",
+            "type": "string"
+          }
+        },
+        "title": "ModelInfo",
+        "type": "object"
+      },
+      "Money": {
+        "additionalProperties": false,
+        "description": "An amount in one currency. Negative amounts are allowed; callers decide where.",
+        "properties": {
+          "amount_minor": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": -9.223372036854776e+18,
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount_minor",
+          "currency"
+        ],
+        "title": "Money",
+        "type": "object"
+      },
+      "PendingDate": {
+        "additionalProperties": false,
+        "description": "A departure date worked out by code from a phrase, waiting for the traveller to say yes.\n\nIt is never used until confirmed (ADR 0004). The phrase is one of a fixed pair, so a draft sent\nback by the browser cannot carry arbitrary text here.",
+        "properties": {
+          "phrase": {
+            "enum": [
+              "this weekend",
+              "next weekend"
+            ],
+            "title": "Phrase",
+            "type": "string"
+          },
+          "value": {
+            "format": "date",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phrase",
+          "value"
+        ],
+        "title": "PendingDate",
+        "type": "object"
+      },
+      "PlanRequestBody": {
+        "properties": {
+          "itinerary_request": {
+            "$ref": "#/components/schemas/ItineraryRequest"
+          }
+        },
+        "required": [
+          "itinerary_request"
+        ],
+        "title": "PlanRequestBody",
+        "type": "object"
+      },
+      "PlanResponse": {
+        "properties": {
+          "notice": {
+            "title": "Notice",
+            "type": "string"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/SuggestedPlan"
+          },
+          "source": {
+            "enum": [
+              "SCRIPTED_SAMPLE",
+              "AI_SUGGESTION"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "notice",
+          "plan"
+        ],
+        "title": "PlanResponse",
+        "type": "object"
+      },
+      "ProblemDetails": {
+        "description": "An error body (RFC 9457), served as `application/problem+json`. See `app.api.problems`.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProblemField"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errors"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "request_id"
+        ],
+        "title": "ProblemDetails",
+        "type": "object"
+      },
+      "ProblemField": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "message"
+        ],
+        "title": "ProblemField",
+        "type": "object"
+      },
+      "Provenance": {
+        "description": "LIVE: fresh provider data. CACHED_LIVE: provider data past its freshness\nwindow. MOCK: deterministic fixture data.",
+        "enum": [
+          "LIVE",
+          "CACHED_LIVE",
+          "MOCK"
+        ],
+        "title": "Provenance",
+        "type": "string"
+      },
+      "RejectionOut": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "reason"
+        ],
+        "title": "RejectionOut",
+        "type": "object"
+      },
+      "ResearchResults": {
+        "additionalProperties": false,
+        "description": "What the research step found, so a caller can show the options and let a person choose.",
+        "properties": {
+          "hotels": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HotelSearchResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "return_transport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportSearchResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportSearchResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weather": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeatherResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ResearchResults",
+        "type": "object"
+      },
+      "RunError": {
+        "additionalProperties": false,
+        "description": "A problem in a step. The message is fixed text, never model or provider text.",
+        "properties": {
+          "fatal": {
+            "default": false,
+            "title": "Fatal",
+            "type": "boolean"
+          },
+          "message": {
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "step": {
+            "minLength": 1,
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "message"
+        ],
+        "title": "RunError",
+        "type": "object"
+      },
+      "RunResponse": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/RunError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "limit_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Reason"
+          },
+          "llm_calls": {
+            "title": "Llm Calls",
+            "type": "integer"
+          },
+          "provider_calls": {
+            "title": "Provider Calls",
+            "type": "integer"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "research": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchResults"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          },
+          "waiting_for": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting For"
+          }
+        },
+        "required": [
+          "run_id",
+          "trip_id",
+          "status",
+          "waiting_for",
+          "research",
+          "summary",
+          "errors",
+          "provider_calls",
+          "llm_calls",
+          "limit_reason",
+          "error",
+          "request_id"
+        ],
+        "title": "RunResponse",
+        "type": "object"
+      },
+      "RunStatus": {
+        "enum": [
+          "pending",
+          "running",
+          "awaiting_clarification",
+          "awaiting_selection",
+          "completed",
+          "failed",
+          "stopped_limit"
+        ],
+        "title": "RunStatus",
+        "type": "string"
+      },
+      "Selection": {
+        "additionalProperties": false,
+        "properties": {
+          "hotel_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hotel Id"
+          },
+          "return_transport_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Transport Id"
+          },
+          "transport_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transport Id"
+          }
+        },
+        "title": "Selection",
+        "type": "object"
+      },
+      "SourceMetadata": {
+        "additionalProperties": false,
+        "description": "Where a provider-derived value came from and how long it stays fresh.",
+        "properties": {
+          "freshness_window_seconds": {
+            "exclusiveMinimum": 0.0,
+            "title": "Freshness Window Seconds",
+            "type": "integer"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          },
+          "provider_name": {
+            "minLength": 1,
+            "title": "Provider Name",
+            "type": "string"
+          },
+          "retrieved_at": {
+            "format": "date-time",
+            "title": "Retrieved At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provenance",
+          "provider_name",
+          "retrieved_at",
+          "freshness_window_seconds"
+        ],
+        "title": "SourceMetadata",
+        "type": "object"
+      },
+      "SuggestedDay": {
+        "additionalProperties": false,
+        "properties": {
+          "day_number": {
+            "maximum": 14.0,
+            "minimum": 1.0,
+            "title": "Day Number",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedItem"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "day_number",
+          "items"
+        ],
+        "title": "SuggestedDay",
+        "type": "object"
+      },
+      "SuggestedItem": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "SuggestedItem",
+        "type": "object"
+      },
+      "SuggestedPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedDay"
+            },
+            "maxItems": 14,
+            "minItems": 1,
+            "title": "Days",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "required": [
+          "days"
+        ],
+        "title": "SuggestedPlan",
+        "type": "object"
+      },
+      "ToolError": {
+        "additionalProperties": false,
+        "description": "One provider failure, kept in the result so the others are still returned.",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ToolErrorKind"
+          },
+          "message": {
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "provider_name": {
+            "minLength": 1,
+            "title": "Provider Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_name",
+          "kind",
+          "message"
+        ],
+        "title": "ToolError",
+        "type": "object"
+      },
+      "ToolErrorKind": {
+        "enum": [
+          "UNAVAILABLE",
+          "RATE_LIMITED",
+          "TIMEOUT",
+          "INVALID_RESPONSE",
+          "PROVIDER_ERROR"
+        ],
+        "title": "ToolErrorKind",
+        "type": "string"
+      },
+      "TrainDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "TRAIN",
+            "default": "TRAIN",
+            "title": "Kind",
+            "type": "string"
+          },
+          "travel_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Travel Class"
+          }
+        },
+        "title": "TrainDetails",
+        "type": "object"
+      },
+      "TransportMode": {
+        "description": "The transport kinds named in PRD FR-02.",
+        "enum": [
+          "FLIGHT",
+          "TRAIN",
+          "BUS",
+          "ROAD"
+        ],
+        "title": "TransportMode",
+        "type": "string"
+      },
+      "TransportOption": {
+        "additionalProperties": false,
+        "description": "One way of getting from one place to another.\n\n`operator_name` and `service_label` identify who runs the service and which one it is,\nas the provider names them. They are text for display. A mock supplies only fictional\nnames. `details` carries facts that exist for one mode only, so a train never has a\ncabin class. It must match `mode`.",
+        "properties": {
+          "arrives_at": {
+            "format": "date-time",
+            "title": "Arrives At",
+            "type": "string"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/AvailabilityStatus",
+            "default": "UNKNOWN"
+          },
+          "cancellation_terms": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Terms"
+          },
+          "departs_at": {
+            "format": "date-time",
+            "title": "Departs At",
+            "type": "string"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "BUS": "#/components/schemas/BusDetails",
+                    "FLIGHT": "#/components/schemas/FlightDetails",
+                    "TRAIN": "#/components/schemas/TrainDetails"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/FlightDetails"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TrainDetails"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BusDetails"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/TransportMode"
+          },
+          "operator_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Name"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "service_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Label"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceMetadata"
+          },
+          "stops": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stops"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "mode",
+          "origin",
+          "destination",
+          "departs_at",
+          "arrives_at"
+        ],
+        "title": "TransportOption",
+        "type": "object"
+      },
+      "TransportSearchResult": {
+        "additionalProperties": false,
+        "properties": {
+          "empty_reason": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty Reason"
+          },
+          "errors": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ToolError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "options": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TransportOption"
+            },
+            "title": "Options",
+            "type": "array"
+          }
+        },
+        "title": "TransportSearchResult",
+        "type": "object"
+      },
+      "Traveller": {
+        "additionalProperties": false,
+        "description": "One traveller. Only the age is kept, and only where pricing needs it (SECURITY §7).",
+        "properties": {
+          "age": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          }
+        },
+        "title": "Traveller",
+        "type": "object"
+      },
+      "TripCreate": {
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/TripDraft"
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rooms"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "draft"
+        ],
+        "title": "TripCreate",
+        "type": "object"
+      },
+      "TripDraft": {
+        "additionalProperties": false,
+        "properties": {
+          "departure_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Departure Date"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
+          "pending_date": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PendingDate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferences"
+          },
+          "return_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Date"
+          },
+          "traveller_count": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Traveller Count"
+          },
+          "trip_days": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Days"
+          },
+          "trip_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "year_assumed": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TripField"
+            },
+            "title": "Year Assumed",
+            "type": "array"
+          }
+        },
+        "title": "TripDraft",
+        "type": "object"
+      },
+      "TripField": {
+        "enum": [
+          "ORIGIN",
+          "DESTINATION",
+          "TRIP_TYPE",
+          "DEPARTURE_DATE",
+          "RETURN_DATE",
+          "TRAVELLERS",
+          "TRIP_DAYS",
+          "PREFERENCES"
+        ],
+        "title": "TripField",
+        "type": "string"
+      },
+      "TripRequest": {
+        "additionalProperties": false,
+        "description": "A validated request to plan a trip.\n\n`trip_type` is required so that a missing return date can never be read as\na one-way trip by accident.",
+        "properties": {
+          "departure_date": {
+            "format": "date",
+            "title": "Departure Date",
+            "type": "string"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferences"
+          },
+          "return_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Date"
+          },
+          "travellers": {
+            "items": {
+              "$ref": "#/components/schemas/Traveller"
+            },
+            "maxItems": 9,
+            "minItems": 1,
+            "title": "Travellers",
+            "type": "array"
+          },
+          "trip_type": {
+            "$ref": "#/components/schemas/TripType"
+          }
+        },
+        "required": [
+          "trip_type",
+          "origin",
+          "destination",
+          "departure_date",
+          "travellers"
+        ],
+        "title": "TripRequest",
+        "type": "object"
+      },
+      "TripResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/TripDraft"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "itinerary_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itinerary Version"
+          },
+          "latest_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Run Id"
+          },
+          "latest_run_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rooms"
+          },
+          "selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Selection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/TripStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "draft",
+          "rooms",
+          "created_at",
+          "latest_run_id",
+          "latest_run_status",
+          "selection",
+          "itinerary_version",
+          "request_id"
+        ],
+        "title": "TripResponse",
+        "type": "object"
+      },
+      "TripStatus": {
+        "enum": [
+          "draft",
+          "planning",
+          "planned"
+        ],
+        "title": "TripStatus",
+        "type": "string"
+      },
+      "TripSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/RunError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostEstimate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hotel_options": {
+            "title": "Hotel Options",
+            "type": "integer"
+          },
+          "itinerary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Itinerary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "itinerary_days": {
+            "title": "Itinerary Days",
+            "type": "integer"
+          },
+          "itinerary_warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Itinerary Warnings",
+            "type": "array"
+          },
+          "nights": {
+            "title": "Nights",
+            "type": "integer"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "provenance_labels": {
+            "items": {
+              "$ref": "#/components/schemas/Provenance"
+            },
+            "title": "Provenance Labels",
+            "type": "array"
+          },
+          "provider_errors": {
+            "items": {
+              "$ref": "#/components/schemas/ToolError"
+            },
+            "title": "Provider Errors",
+            "type": "array"
+          },
+          "request": {
+            "$ref": "#/components/schemas/TripRequest"
+          },
+          "return_transport_options": {
+            "title": "Return Transport Options",
+            "type": "integer"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "transport_options": {
+            "title": "Transport Options",
+            "type": "integer"
+          },
+          "weather": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeatherResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "request",
+          "nights",
+          "itinerary_days",
+          "transport_options",
+          "return_transport_options",
+          "hotel_options",
+          "weather",
+          "selection",
+          "itinerary",
+          "itinerary_warnings",
+          "estimate",
+          "provider_errors",
+          "errors",
+          "notes",
+          "provenance_labels"
+        ],
+        "title": "TripSummary",
+        "type": "object"
+      },
+      "TripType": {
+        "enum": [
+          "ONE_WAY",
+          "ROUND_TRIP"
+        ],
+        "title": "TripType",
+        "type": "string"
+      },
+      "TurnRequest": {
+        "properties": {
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "TurnRequest",
+        "type": "object"
+      },
+      "TurnResponse": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/TripDraft"
+          },
+          "itinerary_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItineraryRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelInfo"
+          },
+          "rejections": {
+            "items": {
+              "$ref": "#/components/schemas/RejectionOut"
+            },
+            "title": "Rejections",
+            "type": "array"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TurnStatus"
+          },
+          "trip_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "reply",
+          "draft"
+        ],
+        "title": "TurnResponse",
+        "type": "object"
+      },
+      "TurnStatus": {
+        "enum": [
+          "NEEDS_INFO",
+          "CONFIRM_DATES",
+          "CONFLICT",
+          "READY_FOR_REVIEW",
+          "NOT_UNDERSTOOD"
+        ],
+        "title": "TurnStatus",
+        "type": "string"
+      },
+      "VoiceSessionResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "idle_timeout_seconds": {
+            "title": "Idle Timeout Seconds",
+            "type": "integer"
+          },
+          "max_seconds": {
+            "title": "Max Seconds",
+            "type": "integer"
+          },
+          "notice": {
+            "default": "No voice provider is connected. This session carries no audio and cannot hear or speak.",
+            "title": "Notice",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "null"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "expires_at",
+          "max_seconds",
+          "idle_timeout_seconds"
+        ],
+        "title": "VoiceSessionResponse",
+        "type": "object"
+      },
+      "WeatherDay": {
+        "additionalProperties": false,
+        "description": "The forecast for one calendar day. Facts the provider lacks stay `None`.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "precipitation_chance_percent": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precipitation Chance Percent"
+          },
+          "summary": {
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "temperature_max_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature Max C"
+          },
+          "temperature_min_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature Min C"
+          }
+        },
+        "required": [
+          "day",
+          "summary"
+        ],
+        "title": "WeatherDay",
+        "type": "object"
+      },
+      "WeatherForecast": {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WeatherDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "requested_end": {
+            "format": "date",
+            "title": "Requested End",
+            "type": "string"
+          },
+          "requested_start": {
+            "format": "date",
+            "title": "Requested Start",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceMetadata"
+          }
+        },
+        "required": [
+          "location",
+          "requested_start",
+          "requested_end",
+          "source"
+        ],
+        "title": "WeatherForecast",
+        "type": "object"
+      },
+      "WeatherResult": {
+        "additionalProperties": false,
+        "description": "`forecast` is kept even when it has no days, so its source and dates are not lost.",
+        "properties": {
+          "empty_reason": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty Reason"
+          },
+          "errors": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ToolError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeatherForecast"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "WeatherResult",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "TravelMate AI",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/chat/plans": {
+      "post": {
+        "operationId": "write_plan_api_v1_chat_plans_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Write Plan",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/turns": {
+      "post": {
+        "operationId": "take_turn_api_v1_chat_turns_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Take Turn",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "operationId": "read_run_api_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many runs. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Read Run",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/clarifications": {
+      "post": {
+        "operationId": "answer_clarification_api_v1_runs__run_id__clarifications_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClarificationAnswer"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many runs. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Answer Clarification",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/cost-estimate": {
+      "get": {
+        "operationId": "read_cost_estimate_api_v1_runs__run_id__cost_estimate_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostEstimateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many runs. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Read Cost Estimate",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/selections": {
+      "post": {
+        "operationId": "choose_options_api_v1_runs__run_id__selections_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Selection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many runs. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Choose Options",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/trips": {
+      "post": {
+        "operationId": "create_trip_api_v1_trips_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many runs. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Create Trip",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/trips/{trip_id}": {
+      "get": {
+        "operationId": "read_trip_api_v1_trips__trip_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many runs. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Read Trip",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/trips/{trip_id}/itinerary": {
+      "get": {
+        "operationId": "read_itinerary_api_v1_trips__trip_id__itinerary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItineraryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many runs. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Read Itinerary",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/trips/{trip_id}/itinerary/versions": {
+      "post": {
+        "operationId": "save_itinerary_api_v1_trips__trip_id__itinerary_versions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItineraryUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItineraryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many runs. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Save Itinerary",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/trips/{trip_id}/runs": {
+      "post": {
+        "operationId": "start_run_api_v1_trips__trip_id__runs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many runs. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Start Run",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/v1/voice/sessions": {
+      "post": {
+        "operationId": "create_session_api_v1_voice_sessions_post",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Create Session",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/voice/sessions/{session_id}": {
+      "delete": {
+        "operationId": "end_session_api_v1_voice_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "End Session",
+        "tags": [
+          "voice"
+        ]
+      },
+      "get": {
+        "operationId": "read_session_api_v1_voice_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Read Session",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/voice/sessions/{session_id}/activity": {
+      "post": {
+        "description": "Tell the server the user did something, so the idle timer restarts.\n\nIt never extends the absolute time limit. Reading a session (GET) is not activity.",
+        "operationId": "record_activity_api_v1_voice_sessions__session_id__activity_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Record Activity",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}

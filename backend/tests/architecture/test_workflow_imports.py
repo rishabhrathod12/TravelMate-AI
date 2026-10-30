@@ -109,7 +109,12 @@ def test_only_the_workflow_package_imports_langgraph_or_langchain() -> None:
     assert importers == []
 
 
-def test_nothing_outside_the_workflow_imports_it_except_the_composition_root() -> None:
+# The composition root builds it, the service runs it, and the API describes its inputs and
+# outputs. Nothing else may reach it.
+WORKFLOW_USERS = ["api/planning.py", "main.py", "services/trips.py"]
+
+
+def test_only_the_composition_root_the_service_and_the_api_schemas_import_it() -> None:
     importers = sorted(
         path.relative_to(APP_DIR).as_posix()
         for path in python_files(APP_DIR)
@@ -117,7 +122,7 @@ def test_nothing_outside_the_workflow_imports_it_except_the_composition_root() -
         and any(under(m, "app.workflow") for m in imported_modules(path.read_text("utf-8")))
     )
 
-    assert importers == []
+    assert importers == WORKFLOW_USERS
 
 
 @pytest.mark.parametrize("package", ["domain", "providers", "tools", "llm"])

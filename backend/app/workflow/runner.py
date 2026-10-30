@@ -25,8 +25,20 @@ from app.tools.research import ResearchTools
 from app.workflow.graph import CLARIFICATION, SELECTION, WorkflowDeps, build_graph
 from app.workflow.limits import RunLimitExceeded, ToolBudget
 from app.workflow.serde import new_checkpointer
-from app.workflow.state import PlanningState, RunError, RunInput, RunLimits, RunOutcome
+from app.workflow.state import (
+    PlanningState,
+    ResearchResults,
+    RunError,
+    RunInput,
+    RunLimits,
+    RunOutcome,
+)
 from app.workflow.tracing import refuse_third_party_tracing
+
+
+def new_run_id() -> str:
+    """A 128-bit random id. An id alone never grants access: the owner is checked too."""
+    return secrets.token_urlsafe(16)
 
 
 class RunNotFound(Exception):
@@ -43,6 +55,19 @@ class _Run:
     budget: ToolBudget
     status: RunStatus
     limit_reason: str | None = None
+
+
+def _research_of(state: PlanningState | None) -> ResearchResults | None:
+    if state is None or not (
+        state.transport or state.return_transport or state.hotels or state.weather
+    ):
+        return None
+    return ResearchResults(
+        transport=state.transport,
+        return_transport=state.return_transport,
+        hotels=state.hotels,
+        weather=state.weather,
+    )
 
 
 class PlanningWorkflow:
@@ -69,10 +94,14 @@ class PlanningWorkflow:
 
     # -- public ----------------------------------------------------------------------------
 
-    def start(self, owner: str, run_input: RunInput) -> RunOutcome:
+    def start(self, owner: str, run_input: RunInput, *, run_id: str | None = None) -> RunOutcome:
+        """Start a run. A caller that must hand out the id before the run has finished (the API)
+        generates it with `new_run_id` and passes it in."""
         if not owner.strip():
             raise ValueError("a run needs an owner")
-        run_id = secrets.token_urlsafe(16)
+        run_id = run_id if run_id is not None else new_run_id()
+        if run_id in self._runs:
+            raise ValueError("a run with this id already exists")
         budget = ToolBudget(self._limits.max_tool_calls)
         with self._lock:
             self._runs[run_id] = _Run(owner, budget, RunStatus.RUNNING)
@@ -156,6 +185,7 @@ class PlanningWorkflow:
             status=run.status,
             waiting_for=waiting_for,
             summary=state.summary if state is not None else None,
+            research=_research_of(state),
             errors=errors,
             provider_calls=run.budget.used,
             llm_calls=state.llm_calls if state is not None else 0,

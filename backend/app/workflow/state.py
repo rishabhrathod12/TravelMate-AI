@@ -101,6 +101,15 @@ class PlanningState(BaseModel):
     llm_calls: int = 0
 
 
+class ResearchResults(DomainModel):
+    """What the research step found, so a caller can show the options and let a person choose."""
+
+    transport: TransportSearchResult | None = None
+    return_transport: TransportSearchResult | None = None
+    hotels: HotelSearchResult | None = None
+    weather: WeatherResult | None = None
+
+
 class RunOutcome(DomainModel):
     """What a caller sees after starting, resuming or reading a run."""
 
@@ -109,6 +118,7 @@ class RunOutcome(DomainModel):
     # Set while the run waits for a person: the kind and what to ask or choose from.
     waiting_for: dict[str, object] | None = None
     summary: TripSummary | None = None
+    research: ResearchResults | None = None
     errors: tuple[RunError, ...] = ()
     provider_calls: int = 0
     llm_calls: int = 0

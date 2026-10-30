@@ -45,6 +45,19 @@ class Settings(BaseSettings):
     conversation_plan_max_output_tokens: int | None = None
     conversation_plan_timeout_seconds: float | None = None
 
+    # The planning API (plan M8): trips, runs, selections, itinerary and cost estimate. Off by
+    # default. Real authentication is PRD Q4 and does not exist, so every call acts for the one
+    # configured development principal (SECURITY §2) and the API refuses to start in production.
+    # Every limit has to be set: there are no hidden defaults for what a run may cost. The display
+    # currency is PRD Q5 (open), so it is set explicitly too.
+    api_enabled: bool = False
+    api_dev_principal: str | None = None
+    api_currency: str | None = None
+    api_run_max_steps: int | None = None
+    api_run_max_tool_calls: int | None = None
+    api_run_max_human_rounds: int | None = None
+    api_max_runs_per_hour_per_owner: int | None = None
+
     # Voice sessions (docs/VOICE_ASSISTANT_PLAN.md, ADR 0002). Off by default. When on, every
     # limit below must be set explicitly: there are no hidden defaults for how long a session
     # may last or how many a person may open. No vendor and no key exist yet, so a session
@@ -68,6 +81,12 @@ class Settings(BaseSettings):
     conversation_llm_timeout_seconds: float | None = None
 
     @field_validator(
+        "api_dev_principal",
+        "api_currency",
+        "api_run_max_steps",
+        "api_run_max_tool_calls",
+        "api_run_max_human_rounds",
+        "api_max_runs_per_hour_per_owner",
         "llm_max_calls_per_hour",
         "conversation_plan_max_output_tokens",
         "conversation_plan_timeout_seconds",
@@ -134,8 +153,10 @@ class Settings(BaseSettings):
     def _live_model_calls_need_every_safeguard(self) -> "Settings":
         if not self.llm_live_enabled:
             return self
-        if not self.conversation_enabled:
-            raise ValueError("LLM_LIVE_ENABLED needs CONVERSATION_ENABLED: only the chat uses it")
+        if not (self.conversation_enabled or self.api_enabled):
+            raise ValueError(
+                "LLM_LIVE_ENABLED needs CONVERSATION_ENABLED or API_ENABLED: nothing else uses it"
+            )
         key = self.openai_api_key.get_secret_value().strip() if self.openai_api_key else ""
         if not key:
             raise ValueError("OPENAI_API_KEY must be set when LLM_LIVE_ENABLED is true")
@@ -150,6 +171,36 @@ class Settings(BaseSettings):
         for name, value in plan_limits.items():
             if value is None or not value > 0:
                 raise ValueError(f"{name} must be set to a positive number when live")
+        return self
+
+    @model_validator(mode="after")
+    def _api_needs_explicit_limits_and_a_non_production_environment(self) -> "Settings":
+        if not self.api_enabled:
+            return self
+        if self.app_env == "production":
+            raise ValueError(
+                "API_ENABLED cannot be true in production: the planning API needs real "
+                "authentication (PRD Q4), which does not exist yet"
+            )
+        if self.api_dev_principal is None or not self.api_dev_principal.strip():
+            raise ValueError("API_DEV_PRINCIPAL must be set when API_ENABLED is true")
+        if (
+            self.api_currency is None
+            or len(self.api_currency) != 3
+            or not self.api_currency.isalpha()
+        ):
+            raise ValueError("API_CURRENCY must be a three-letter currency code when the API is on")
+        limits = {
+            "API_RUN_MAX_STEPS": self.api_run_max_steps,
+            "API_RUN_MAX_TOOL_CALLS": self.api_run_max_tool_calls,
+            "API_RUN_MAX_HUMAN_ROUNDS": self.api_run_max_human_rounds,
+            "API_MAX_RUNS_PER_HOUR_PER_OWNER": self.api_max_runs_per_hour_per_owner,
+        }
+        for name, value in limits.items():
+            if value is None or value < 1:
+                raise ValueError(
+                    f"{name} must be set to a positive whole number when the API is on"
+                )
         return self
 
     @model_validator(mode="after")

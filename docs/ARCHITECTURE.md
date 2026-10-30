@@ -195,6 +195,8 @@ Base path `/api/v1`. JSON only. Every response includes `request_id`. Monetary v
 
 Error format follows RFC 9457 (Problem Details). Validation errors use `422`. Provider failures inside a run are reported in the run's `errors` list with `200`, not as HTTP failures, because the run is partially successful (AC-04).
 
+**Status (M8, 2026-10-30):** every route above except the booking-intent, approval and execute routes is implemented (those are M10). Records are held in memory until M9, and the caller is the one configured development principal until PRD Q4 is resolved.
+
 Long-running planning uses `202` and polling in the MVP. Server-sent events are a later option, not a requirement.
 
 ## 8. Workflow design
