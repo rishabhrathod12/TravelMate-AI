@@ -12,6 +12,9 @@ dependencies = [
     # The OpenAI SDK, approved by the owner on 2026-10-30. Only app/llm/openai_transport.py may
     # import it (ADR 0001). 3.30.0 was released on 2026-10-14; newer releases were left alone.
     "openai>=3.30,<4",
+    # LangGraph, approved by the owner on 2026-10-30 (ADR 0001). Only app/workflow/ may import it.
+    # 1.2.14 was released on 2026-10-06; newer releases were left alone.
+    "langgraph>=1.2.14,<2",
     "pydantic>=2.7,<3",
     "pydantic-settings>=2.3,<3",
     # IANA time-zone data for zoneinfo. Windows has none; Linux CI does (PRD NFR-11).

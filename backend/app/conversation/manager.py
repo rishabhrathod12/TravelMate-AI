@@ -23,6 +23,7 @@ from enum import StrEnum
 from app.conversation.claims import ExtractedDetails, Rejection, RejectionReason, verify
 from app.conversation.dates import RelativeDate, parse_explicit_dates, resolve_weekend_phrase
 from app.conversation.draft import (
+    QUESTIONS,
     Accepted,
     Change,
     PendingDate,
@@ -90,19 +91,6 @@ class TurnResult:
     rejections: tuple[Rejection, ...] = ()
     llm_calls: int = 0
 
-
-_QUESTIONS: dict[TripField, str] = {
-    TripField.ORIGIN: "Where will you be travelling from?",
-    TripField.DESTINATION: "Where would you like to go?",
-    TripField.DEPARTURE_DATE: (
-        "Which date do you want to leave? Please give the day and month, for example 12 December."
-    ),
-    TripField.TRIP_TYPE: "Is this a one-way trip or a round trip?",
-    TripField.RETURN_DATE: (
-        "Which date will you come back? Please give the day and month, for example 15 December."
-    ),
-    TripField.TRAVELLERS: "How many people are travelling?",
-}
 
 _DATE_FIELDS = (TripField.DEPARTURE_DATE, TripField.RETURN_DATE)
 
@@ -330,7 +318,7 @@ class ConversationManager:
         return self._result(
             cleared,
             TurnStatus.NEEDS_INFO,
-            "Okay. " + _QUESTIONS[TripField.DEPARTURE_DATE],
+            "Okay. " + QUESTIONS[TripField.DEPARTURE_DATE],
         )
 
     # -- reply wording -------------------------------------------------------------------
@@ -385,7 +373,7 @@ class ConversationManager:
                 r.reason is RejectionReason.NOT_AN_EXPLICIT_DATE for r in rejections
             ):
                 hint = "I need an exact date, not a phrase like “tomorrow”. "
-            reply = lead + hint + _QUESTIONS[missing[0]]
+            reply = lead + hint + QUESTIONS[missing[0]]
             return self._result(
                 draft,
                 TurnStatus.NEEDS_INFO,

@@ -162,3 +162,18 @@ What exists now:
 - **Traveller cap.** At most 9 travellers per request, the owner's answer to PRD Q14 (2026-10-30), enforced by the trip model, the provider queries and the endpoint, so one request cannot ask for a huge party.
 - **Real model calls (C3).** `POST /api/v1/chat/plans` calls a real model only when `LLM_LIVE_ENABLED=true`. A key alone never does. Live mode needs the chat on, a key (a `SecretStr`, never printed), a model, an hourly call cap that counts every call including retries, and plan token and time limits; the app refuses to start without them, and the chat never starts in production. The model gets the destination and the traveller's notes as delimited data, no dates and no tools, and its answer is rejected (after one repair attempt) if it contains a digit or states a price, availability, opening time, weather or booking status. Errors are Problem Details with no model text, key or SDK message. Every plan is labelled `AI_SUGGESTION` (live) or `SCRIPTED_SAMPLE`, and the label comes from the server's own configuration. The OpenAI SDK is imported in one module only. Not done: authentication and per-person limits (the cap is global), and no real request has ever been sent.
 - **Errors.** Oversized drafts return Problem Details (RFC 9457) without repeating the text. Schema errors still use FastAPI's default 422 body until the API layer (M8) standardises them.
+
+## 14. Planning workflow
+
+Status: **in memory, no endpoint yet.** Plan: `docs/IMPLEMENTATION_PLAN.md` M7. Decisions: ADR 0001 (M7 additions).
+
+What exists now:
+- **No reach to booking.** `app/workflow/` cannot import booking, API, voice, persistence or a network library, and no name in it mentions booking, approval or payment (architecture tests). The model is used in one step, the itinerary, through the `LLMClient` interface with no tools. The research tools are the three read-only ones.
+- **Missing inputs stop at questions.** Until the trip is complete and valid, the run asks and makes no provider call and no model call (PRD AC-09).
+- **Owner checks.** Every run belongs to an owner. Another person's run, a missing one and an ended one are all "not found"; resuming needs the run to be waiting. Run ids are 128-bit random values. Real authentication is PRD Q4, so callers pass the owner they were given.
+- **Bounded.** A run ends as `stopped_limit` when it uses up its steps, tool calls or answers. The limits are supplied by the caller and have no defaults. A tool call over the limit is never made.
+- **Untrusted data stays data.** Provider text and the traveller's notes go to the model only inside the drafter's delimited data block. Errors a run reports use fixed wording, never model or provider text.
+- **Checkpoints.** They are serialized with an explicit allowlist of the project's own data types, with no pickle fallback; a foreign type is never rebuilt as an object. This is the control to carry over to the PostgreSQL checkpointer (M9).
+- **No third-party tracing.** The workflow refuses to start while a LangSmith or LangChain tracing switch is on, because tracing would send trip data and prompts to a third party.
+
+Not done: durable storage (checkpoints and runs are lost on restart), authentication, per-person rate limits, redacted structured logging of runs (M8).

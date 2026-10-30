@@ -56,6 +56,26 @@ TravelMate AI needs a backend for a multi-step planning workflow with human paus
 - Only `app/llm/openai_transport.py` imports it, and an architecture test enforces that. It makes no request unless the owner switches live calls on (`LLM_LIVE_ENABLED`) and supplies a key; every test fakes it.
 - Still pending: the owner's key and the separate approval of the first live call.
 
+## M7 additions (2026-10-30)
+
+- `langgraph` (`>=1.2.14,<2`) is a runtime dependency of the backend, approved by the owner on
+  2026-10-30 by choosing M7. Version 1.2.14 (released 2026-10-06, 24 days before installation, not
+  yanked) is installed; newer releases were deliberately left alone. It brings `langchain-core`,
+  `langgraph-checkpoint`, `langgraph-prebuilt`, `langgraph-sdk` and `langsmith`, plus
+  `xxhash`, `orjson`, `ormsgpack`, `tenacity` and others. `pip check` reports no problems and
+  `pip-audit` reports no findings for any of them (it reports findings only for the virtual
+  environment's own `pip 25.0.1`).
+- Only `app/workflow/` imports LangGraph or LangChain, and an architecture test enforces that.
+- **LangSmith tracing is a data-leak path.** If a tracing switch is on, run inputs and outputs go to
+  LangChain's servers. `PlanningWorkflow` refuses to start while `LANGSMITH_TRACING`,
+  `LANGSMITH_TRACING_V2`, `LANGCHAIN_TRACING` or `LANGCHAIN_TRACING_V2` is on. Nothing in the
+  project turns one on.
+- **Checkpoints are read through an allowlist.** LangGraph rebuilds Python objects when it reads a
+  checkpoint and warns that unregistered types "will be blocked in a future version". The workflow
+  gives its checkpointer a serializer with an explicit allowlist built from the project's own data
+  modules, so a foreign type comes back as plain data, never as an object. This matters most once
+  checkpoints live in PostgreSQL (M9).
+
 ## Open items
 
 - PostgreSQL start from Docker Compose is deferred and unverified. Docker is not available on the development machine. Verify it when Docker is available and the database is first needed (M9).

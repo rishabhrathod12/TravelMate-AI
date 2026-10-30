@@ -88,10 +88,12 @@ def test_conversation_modules_use_no_network_library(path: Path) -> None:
     assert top_level & NETWORK_LIBRARIES == set()
 
 
-ALLOWED_IMPORTERS = {"api/chat.py", "main.py"}
+# The chat router and the composition root, plus the two workflow modules that use the pure draft
+# module (the workflow's own architecture test limits them to `app.conversation.draft`).
+ALLOWED_IMPORTERS = {"api/chat.py", "main.py", "workflow/graph.py", "workflow/state.py"}
 
 
-def test_only_the_chat_router_and_the_app_factory_import_it() -> None:
+def test_only_the_chat_router_the_app_factory_and_the_workflow_draft_users_import_it() -> None:
     offenders = [
         path.relative_to(APP_DIR).as_posix()
         for path in python_files(APP_DIR)

@@ -38,6 +38,20 @@ QUESTION_ORDER: tuple[TripField, ...] = (
 )
 
 
+# What is asked for each missing detail. Shared by the chat and the planning workflow.
+QUESTIONS: dict[TripField, str] = {
+    TripField.ORIGIN: "Where will you be travelling from?",
+    TripField.DESTINATION: "Where would you like to go?",
+    TripField.DEPARTURE_DATE: (
+        "Which date do you want to leave? Please give the day and month, for example 12 December."
+    ),
+    TripField.TRIP_TYPE: "Is this a one-way trip or a round trip?",
+    TripField.RETURN_DATE: (
+        "Which date will you come back? Please give the day and month, for example 15 December."
+    ),
+    TripField.TRAVELLERS: "How many people are travelling?",
+}
+
 ITINERARY_QUESTION_ORDER: tuple[TripField, ...] = (
     TripField.DESTINATION,
     TripField.DEPARTURE_DATE,

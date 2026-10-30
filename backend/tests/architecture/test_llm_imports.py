@@ -129,9 +129,11 @@ def test_nothing_below_the_llm_layer_depends_on_it(package: str) -> None:
     assert offenders == []
 
 
-def test_only_the_approved_vendor_sdk_is_declared_as_a_dependency() -> None:
+def test_only_the_approved_vendor_sdks_are_declared_as_dependencies() -> None:
     pyproject = (APP_DIR.parent / "pyproject.toml").read_text(encoding="utf-8").lower()
 
     assert "openai" in pyproject  # approved by the owner on 2026-10-30
-    for sdk in ("anthropic", "langchain", "langgraph"):
+    assert "langgraph" in pyproject  # approved by the owner on 2026-10-30 (M7)
+    for sdk in ("anthropic", "langchain"):
+        # LangChain's core library arrives only as LangGraph's own dependency, never declared.
         assert sdk not in pyproject, sdk
