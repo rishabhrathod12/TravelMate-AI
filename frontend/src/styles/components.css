@@ -945,3 +945,34 @@ input[aria-invalid="true"] {
   color: var(--color-info-text);
   font-weight: 600;
 }
+
+.trip-chat {
+  margin-bottom: var(--space-6);
+}
+
+.chat-lines {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.chat-line {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.chat-speaker {
+  font-weight: 700;
+}
+
+.chat-error {
+  margin: 0 0 var(--space-3);
+  font-weight: 600;
+}
+
+.chat-ready {
+  margin-top: var(--space-3);
+}

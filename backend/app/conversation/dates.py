@@ -83,15 +83,15 @@ def _with_year(day: int, month: int, year: int | None, today: date) -> ParsedDat
     return None
 
 
-def parse_explicit_dates(text: str, today: date) -> tuple[ParsedDate, ...]:
-    """Every explicit date in `text`, in the order written, without repeats."""
+def explicit_date_mentions(text: str, today: date) -> tuple[tuple[str, ParsedDate], ...]:
+    """Every explicit date in `text` with the words that wrote it, in order, without repeats."""
     lowered = text.casefold()
-    found: list[tuple[int, ParsedDate]] = []
+    found: list[tuple[int, str, ParsedDate]] = []
 
     for match in _ISO.finditer(lowered):
         real = _real(int(match[1]), int(match[2]), int(match[3]))
         if real is not None:
-            found.append((match.start(), ParsedDate(real, year_assumed=False)))
+            found.append((match.start(), match[0], ParsedDate(real, year_assumed=False)))
 
     for match in _NUMERIC_WITH_YEAR.finditer(lowered):
         year = int(match[3])
@@ -99,27 +99,32 @@ def parse_explicit_dates(text: str, today: date) -> tuple[ParsedDate, ...]:
             int(match[1]), int(match[2]), year + 2000 if year < 100 else year, today
         )
         if parsed is not None:
-            found.append((match.start(), parsed))
+            found.append((match.start(), match[0], parsed))
 
     for match in _NUMERIC_NO_YEAR.finditer(lowered):
         parsed = _with_year(int(match[1]), int(match[2]), None, today)
         if parsed is not None:
-            found.append((match.start(), parsed))
+            found.append((match.start(), match[0], parsed))
 
     for match in _DAY_THEN_MONTH.finditer(lowered):
         written_year = int(match[3]) if match[3] else None
         parsed = _with_year(int(match[1]), MONTHS[match[2]], written_year, today)
         if parsed is not None:
-            found.append((match.start(), parsed))
+            found.append((match.start(), match[0], parsed))
 
     for match in _MONTH_THEN_DAY.finditer(lowered):
         written_year = int(match[3]) if match[3] else None
         parsed = _with_year(int(match[2]), MONTHS[match[1]], written_year, today)
         if parsed is not None:
-            found.append((match.start(), parsed))
+            found.append((match.start(), match[0], parsed))
 
-    ordered: list[ParsedDate] = []
-    for _, parsed in sorted(found, key=lambda item: item[0]):
-        if parsed not in ordered:
-            ordered.append(parsed)
+    ordered: list[tuple[str, ParsedDate]] = []
+    for _, words, parsed in sorted(found, key=lambda item: item[0]):
+        if parsed not in [p for _, p in ordered]:
+            ordered.append((words, parsed))
     return tuple(ordered)
+
+
+def parse_explicit_dates(text: str, today: date) -> tuple[ParsedDate, ...]:
+    """Every explicit date in `text`, in the order written, without repeats."""
+    return tuple(parsed for _, parsed in explicit_date_mentions(text, today))

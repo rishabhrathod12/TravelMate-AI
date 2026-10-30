@@ -49,7 +49,19 @@ class Settings(BaseSettings):
     voice_max_active_sessions_per_owner: int | None = None
     voice_max_sessions_per_day_per_owner: int | None = None
 
+    # Typed trip chat (docs/VOICE_ASSISTANT_PLAN.md, V5). Off by default. It uses a development
+    # stand-in for the model (no real model is connected), so it refuses to start in production.
+    # The limits are explicit for the same reason as the voice limits: no hidden defaults, and
+    # PRD Q14 / Q19 (text and model limits) are still open.
+    conversation_enabled: bool = False
+    conversation_max_message_chars: int | None = None
+    conversation_llm_max_output_tokens: int | None = None
+    conversation_llm_timeout_seconds: float | None = None
+
     @field_validator(
+        "conversation_max_message_chars",
+        "conversation_llm_max_output_tokens",
+        "conversation_llm_timeout_seconds",
         "voice_dev_principal",
         "voice_session_max_seconds",
         "voice_session_idle_seconds",
@@ -85,6 +97,25 @@ class Settings(BaseSettings):
                 raise ValueError(f"{name} must be set to a positive whole number when voice is on")
         if (self.voice_session_idle_seconds or 0) > (self.voice_session_max_seconds or 0):
             raise ValueError("VOICE_SESSION_IDLE_SECONDS cannot exceed VOICE_SESSION_MAX_SECONDS")
+        return self
+
+    @model_validator(mode="after")
+    def _conversation_needs_explicit_limits_and_a_non_production_environment(self) -> "Settings":
+        if not self.conversation_enabled:
+            return self
+        if self.app_env == "production":
+            raise ValueError(
+                "CONVERSATION_ENABLED cannot be true in production: only a development "
+                "stand-in for the language model exists"
+            )
+        limits = {
+            "CONVERSATION_MAX_MESSAGE_CHARS": self.conversation_max_message_chars,
+            "CONVERSATION_LLM_MAX_OUTPUT_TOKENS": self.conversation_llm_max_output_tokens,
+            "CONVERSATION_LLM_TIMEOUT_SECONDS": self.conversation_llm_timeout_seconds,
+        }
+        for name, value in limits.items():
+            if value is None or not value > 0:
+                raise ValueError(f"{name} must be set to a positive number when chat is on")
         return self
 
     @model_validator(mode="after")

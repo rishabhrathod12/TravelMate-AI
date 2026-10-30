@@ -2,7 +2,8 @@
 
 It may use the domain, the LLM layer (the interface, never a vendor) and itself. It reaches no
 booking, workflow, providers, voice transport, persistence or network library, so a conversation
-can never trigger a booking or a provider call by import. Nothing else imports it yet.
+can never trigger a booking or a provider call by import. Only the chat router and the app
+factory (the composition root, ARCHITECTURE §3) import it.
 """
 
 import ast
@@ -60,7 +61,14 @@ def python_files(directory: Path) -> list[Path]:
 def test_the_package_exists_and_is_not_empty() -> None:
     names = {p.name for p in python_files(CONVERSATION_DIR)}
 
-    assert {"__init__.py", "dates.py", "claims.py", "draft.py", "manager.py"} <= names
+    assert {
+        "__init__.py",
+        "dates.py",
+        "claims.py",
+        "draft.py",
+        "manager.py",
+        "stand_in.py",
+    } <= names
 
 
 @pytest.mark.parametrize("path", python_files(CONVERSATION_DIR), ids=lambda p: p.name)
@@ -80,11 +88,15 @@ def test_conversation_modules_use_no_network_library(path: Path) -> None:
     assert top_level & NETWORK_LIBRARIES == set()
 
 
-def test_only_the_conversation_package_imports_it() -> None:
+ALLOWED_IMPORTERS = {"api/chat.py", "main.py"}
+
+
+def test_only_the_chat_router_and_the_app_factory_import_it() -> None:
     offenders = [
         path.relative_to(APP_DIR).as_posix()
         for path in python_files(APP_DIR)
         if CONVERSATION_DIR not in path.parents
+        and path.relative_to(APP_DIR).as_posix() not in ALLOWED_IMPORTERS
         and any(
             under(m, "app.conversation") for m in imported_modules(path.read_text(encoding="utf-8"))
         )

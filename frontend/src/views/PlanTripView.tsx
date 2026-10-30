@@ -8,6 +8,7 @@ import { DemoBookingPanel } from "../components/demoBooking/DemoBookingPanel";
 import { HotelCard } from "../components/OptionCards";
 import { TransportBrowser } from "../components/transport/TransportBrowser";
 import { StatusMessage } from "../components/StatusMessage";
+import { TripChat } from "../components/TripChat";
 import { TripForm } from "../components/TripForm";
 import { VoiceMode } from "../components/voice/VoiceMode";
 import type { TripRequest } from "../contracts/types";
@@ -83,6 +84,9 @@ export function PlanTripView() {
       </section>
 
       <VoiceMode adapter={voiceAdapter} onReturnToPlanner={focusPlanner} />
+
+      {/* Development builds only: the chat runs on a labelled stand-in for the model. */}
+      {import.meta.env.DEV && <TripChat onUseRequest={handleSubmit} />}
 
       <div ref={planner} tabIndex={-1} className="planner-anchor">
         <TripForm onSubmit={handleSubmit} />

@@ -148,3 +148,16 @@ Requirements for the milestones still to come (not built):
 - Do not store raw audio. Any retention needs the owner's approval, a retention period and a deletion path (§7). Logs follow §9 and never hold audio or full transcripts.
 - Speech and transcripts are untrusted data (§3). Voice recognition is never authorisation: only the visible approval path in §4 can approve anything, and the voice layer has no approval tool.
 - Usage caps and cost counting apply to every provider call (NFR-09).
+
+## 13. Typed trip chat
+
+Status: **development only.** No language model is connected. Plan: `docs/VOICE_ASSISTANT_PLAN.md` (V5 front end).
+
+What exists now:
+- **Off by default, never in production.** `POST /api/v1/chat/turns` is mounted only when `CONVERSATION_ENABLED=true`. The app refuses to start with it on and `APP_ENV=production`. When on, the message-length, output-token and timeout limits must all be set; there are no hidden defaults (PRD Q14 and Q19 are open).
+- **Stand-in, labelled.** A pattern-matching stand-in (`app/conversation/stand_in.py`) plays the model's part. It is not a language model. Every response carries `model.kind = "DEV_STAND_IN"` and a notice, and the chat shows the notice before the first message. Its output goes through the same claim checks as a model's would (§3).
+- **Stateless.** The server keeps no conversation. The browser sends the draft back each turn; the server bounds its text fields by the message limit and its traveller count, and the domain model validates the final request. Unknown fields are rejected.
+- **No authentication.** There is no per-person server state, so no session or owner exists to check. This is acceptable only because the route is development-only (§2, PRD Q4). Before a real model is connected, add authentication, per-person rate limits and cost counting (NFR-09), because a model call costs money.
+- **No reach.** The conversation package cannot import booking, workflow, providers, voice, persistence or a network library, and only the chat router and the app factory may import it (architecture test). The response has no booking, price or payment field. A request returned by the chat only pre-fills the demo preview; it is not approval of anything.
+- **Traveller cap.** A prototype cap of 50 travellers stops one request from asking for a huge party. The real limit is PRD Q14 and must be decided before a real model is used.
+- **Errors.** Oversized drafts return Problem Details (RFC 9457) without repeating the text. Schema errors still use FastAPI's default 422 body until the API layer (M8) standardises them.
