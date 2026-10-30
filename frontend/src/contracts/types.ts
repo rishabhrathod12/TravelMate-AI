@@ -88,10 +88,17 @@ export interface Fee {
   amount: Money;
 }
 
+/**
+ * What a quoted price covers (the owner's answer to PRD Q12): a transport fare is per traveller, a
+ * hotel price is per room per night. Mirrors `PriceBasis` in `backend/app/domain/quote.py`.
+ */
+export type PriceBasis = "PER_TRAVELLER" | "PER_ROOM_NIGHT";
+
 export interface Quote {
   id: string;
   option_id: string;
   price: Money;
+  price_basis: PriceBasis;
   fees: Fee[];
   availability: AvailabilityStatus;
   cancellation_terms: string | null;

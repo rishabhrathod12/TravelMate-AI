@@ -154,7 +154,7 @@ export function DemoBookingPanel({ transport, quote, request, estimate }: DemoBo
           {estimate.missing_items.length > 0 && (
             <p className="field-hint">
               This is not the trip estimate. The cost estimate above is incomplete and lists what
-              it leaves out. What a price covers is not defined yet (open question Q12).
+              it leaves out. The quoted price is for one traveller.
             </p>
           )}
 

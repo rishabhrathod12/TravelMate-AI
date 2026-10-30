@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   EXAMPLE_FORM,
-  PROTOTYPE_PREVIEW_MAX_TRAVELLERS,
+  MAX_TRAVELLERS,
   validateTripForm,
   type TripFormValues,
 } from "./tripRequest";
@@ -107,14 +107,14 @@ describe("places and travellers", () => {
     expect(expectErrors(values({ travellers: value })).travellers).toMatch(/at least 1/);
   });
 
-  test("the prototype preview limit is announced as prototype-only", () => {
-    const atLimit = String(PROTOTYPE_PREVIEW_MAX_TRAVELLERS);
-    const overLimit = String(PROTOTYPE_PREVIEW_MAX_TRAVELLERS + 1);
+  test("the owner's limit of 9 travellers is enforced and explained", () => {
+    const atLimit = String(MAX_TRAVELLERS);
+    const overLimit = String(MAX_TRAVELLERS + 1);
 
     expect(expectOk(values({ travellers: atLimit })).travellers).toHaveLength(
-      PROTOTYPE_PREVIEW_MAX_TRAVELLERS,
+      MAX_TRAVELLERS,
     );
-    expect(expectErrors(values({ travellers: overLimit })).travellers).toMatch(/open decision/i);
+    expect(expectErrors(values({ travellers: overLimit })).travellers).toMatch(/at most 9 travellers/i);
   });
 });
 

@@ -141,7 +141,7 @@ describe("comparing", () => {
     expect(within(table).queryByRole("row", { name: /Seat type/ })).not.toBeInTheDocument();
   });
 
-  test("marks the lowest price and the shortest journey, and states the basis is undefined", () => {
+  test("marks the lowest price and the shortest journey, and states the basis is per traveller", () => {
     setup();
     fireEvent.click(compareBox("Sample Wings"));
     fireEvent.click(compareBox("Sample Rail Express"));
@@ -150,7 +150,7 @@ describe("comparing", () => {
     expect(within(within(table).getByRole("row", { name: /^Quoted price ₹/ })).getByText("(lowest)")).toBeInTheDocument();
     expect(within(table).getByText("(shortest)")).toBeInTheDocument();
     const comparison = screen.getByRole("region", { name: "Comparison" });
-    expect(within(comparison).getByText(/open question Q12/)).toBeInTheDocument();
+    expect(within(comparison).getByText(/per traveller, as quoted/)).toBeInTheDocument();
     expect(within(comparison).getByText(/not the trip estimate/)).toBeInTheDocument();
   });
 

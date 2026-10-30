@@ -82,8 +82,9 @@ is connected (PRD Q19; the chat runs on a pattern-matching stand-in, SECURITY §
   no activity, price, time or opening hour. A banner and every line say "Scripted sample". The
   label `SCRIPTED_SAMPLE` is distinct from `AI_SUGGESTION`; nothing carries `AI_SUGGESTION` until a
   real model is connected (C3).
-- **Limits.** The chat endpoint now caps travellers at 9 (Q14). The search form's cap of 50 and its
-  missing 500-character preferences limit are not changed yet.
+- **Limits.** The chat endpoint caps travellers at 9 (Q14). The search form's cap of 50 and the
+  missing 500-character preferences limit were fixed the same day (the form stops at 9; the model
+  limits preferences to 500 characters).
 
 ## Amendment: C3-prepare as built (2026-10-30)
 

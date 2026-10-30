@@ -13,6 +13,12 @@ from pydantic import Field, StrictInt, field_validator, model_validator
 
 from app.domain.base import DomainModel
 
+# Limits. Travellers (1 to 9) and preferences (500 characters) are the owner's answer to PRD Q14,
+# 2026-10-30. The itinerary day limit is a provisional prototype guard (PRD A15).
+MAX_ITINERARY_DAYS = 14
+MAX_TRAVELLERS = 9
+MAX_PREFERENCES_CHARS = 500
+
 
 class TripType(StrEnum):
     ONE_WAY = "ONE_WAY"
@@ -43,9 +49,9 @@ class TripRequest(DomainModel):
     destination: Location
     departure_date: date
     return_date: date | None = None
-    travellers: tuple[Traveller, ...] = Field(min_length=1)
+    travellers: tuple[Traveller, ...] = Field(min_length=1, max_length=MAX_TRAVELLERS)
     # Free text from the user: untrusted, and sent to the LLM only as data (SECURITY §3).
-    preferences: str | None = None
+    preferences: str | None = Field(default=None, max_length=MAX_PREFERENCES_CHARS)
 
     @field_validator("preferences")
     @classmethod
@@ -66,13 +72,6 @@ class TripRequest(DomainModel):
     @property
     def is_same_day_return(self) -> bool:
         return self.trip_type is TripType.ROUND_TRIP and self.return_date == self.departure_date
-
-
-# Provisional guards (PRD A14, A15): the day limit is a prototype choice awaiting the owner; the
-# traveller and preferences limits are the owner's answer to Q14.
-MAX_ITINERARY_DAYS = 14
-MAX_TRAVELLERS = 9
-MAX_PREFERENCES_CHARS = 500
 
 
 class ItineraryRequest(DomainModel):

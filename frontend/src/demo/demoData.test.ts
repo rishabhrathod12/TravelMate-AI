@@ -27,6 +27,18 @@ describe("the demo options are honestly labelled", () => {
   const demo = buildDemoOptions(roundTrip);
   const everyOption = [...demo.transport, ...demo.hotels];
 
+  test("every quote says what its price covers: transport per traveller, hotels per room night", () => {
+    for (const option of demo.transport) {
+      const quote = demo.quotes[option.id];
+      if (quote !== undefined) {
+        expect(quote.price_basis).toBe("PER_TRAVELLER");
+      }
+    }
+    for (const hotel of demo.hotels) {
+      expect(demo.quotes[hotel.id]?.price_basis).toBe("PER_ROOM_NIGHT");
+    }
+  });
+
   test("every option and quote is marked MOCK, never LIVE", () => {
     for (const option of everyOption) {
       expect(option.source.provenance).toBe("MOCK");
@@ -123,22 +135,45 @@ describe("the demo cost estimate", () => {
   test("the total is the exact sum of the lines, in whole minor units", () => {
     const estimate = buildDemoCostEstimate(roundTrip, train, resort, demo.quotes);
 
-    // 1,500 transport + 4 nights x 6,000 + 50 and 100 in fees, all in paise.
-    expect(estimateTotal(estimate).amount_minor).toBe(150_000 + 4 * 600_000 + 5_000 + 10_000);
+    // 2 travellers x 1,500 fare, 4 nights x 6,000 x 1 room, 50 and 100 in fees, then 10% of the
+    // transport and accommodation (2,700 rounded up) as contingency; all in paise.
+    const transport = 2 * 150_000;
+    const hotel = 4 * 600_000;
+    const contingency = (transport + hotel) / 10;
+    expect(estimateTotal(estimate).amount_minor).toBe(transport + hotel + 5_000 + 10_000 + contingency);
     expect(estimateTotal(estimate).amount_minor).toBe(
       estimate.lines.reduce((sum, line) => sum + line.amount.amount_minor, 0),
     );
   });
 
-  test("every line is MOCK and the estimate is always incomplete", () => {
+  test("every line is MOCK and the estimate lists what it still cannot include", () => {
     const estimate = buildDemoCostEstimate(roundTrip, train, resort, demo.quotes);
 
     expect(estimate.lines.every((line) => line.provenance === "MOCK")).toBe(true);
-    expect(estimate.missing_items.join(" ")).toMatch(/Local transport/);
-    expect(estimate.missing_items.join(" ")).toMatch(/Contingency/);
+    const missing = estimate.missing_items.join(" ");
+    expect(missing).toMatch(/return leg is not modelled/);
+    expect(missing).toMatch(/Rooms: .* not decided yet/);
   });
 
-  test("a one-way or same-day trip has no accommodation line and explains why", () => {
+  test("the local transport allowance does not apply and is not reported as missing", () => {
+    const estimate = buildDemoCostEstimate(roundTrip, train, resort, demo.quotes);
+
+    expect(estimate.lines.some((line) => line.kind === "LOCAL_TRANSPORT")).toBe(false);
+    expect(estimate.missing_items.join(" ")).not.toMatch(/Local transport/);
+    expect(estimate.lines.find((line) => line.kind === "CONTINGENCY")?.description).toMatch(
+      /no local transport allowance yet/,
+    );
+  });
+
+  test("contingency is 10% of transport and accommodation, not of fees", () => {
+    const estimate = buildDemoCostEstimate(roundTrip, train, resort, demo.quotes);
+    const amount = (kind: string) =>
+      estimate.lines.filter((line) => line.kind === kind).reduce((sum, line) => sum + line.amount.amount_minor, 0);
+
+    expect(amount("CONTINGENCY")).toBe((amount("TRANSPORT") + amount("ACCOMMODATION")) / 10);
+  });
+
+  test("a one-way or same-day trip has no accommodation line, and nothing is missing for it", () => {
     for (const request of [oneWay, sameDay]) {
       const options = buildDemoOptions(request);
       const estimate = buildDemoCostEstimate(
@@ -149,7 +184,10 @@ describe("the demo cost estimate", () => {
       );
 
       expect(estimate.lines.some((line) => line.kind === "ACCOMMODATION")).toBe(false);
-      expect(estimate.missing_items.join(" ")).toMatch(/stay length is not defined/);
+      expect(estimate.missing_items.join(" ")).not.toMatch(/Accommodation|stay length|Rooms/);
+      // The hotel's fee is not charged either, because there is no stay.
+      expect(estimate.lines.some((line) => /resort tax|city tax/i.test(line.description))).toBe(false);
+      expect(estimate.lines.some((line) => line.kind === "CONTINGENCY")).toBe(true);
     }
   });
 
@@ -160,17 +198,22 @@ describe("the demo cost estimate", () => {
     expect(estimate.missing_items.length).toBeGreaterThan(0);
   });
 
-  test("prices are not scaled by the number of travellers", () => {
+  test("the transport fare is scaled by the travellers and the hotel is not", () => {
+    const line = (request: TripRequest, kind: string) => {
+      const options = buildDemoOptions(request);
+      const estimate = buildDemoCostEstimate(
+        request,
+        options.transport[0] ?? null,
+        options.hotels[0] ?? null,
+        options.quotes,
+      );
+      return estimate.lines.find((l) => l.kind === kind)?.amount.amount_minor ?? 0;
+    };
     const one = requestFor({ travellers: "1" });
     const five = requestFor({ travellers: "5" });
-    const totalFor = (request: TripRequest) => {
-      const options = buildDemoOptions(request);
-      return estimateTotal(
-        buildDemoCostEstimate(request, options.transport[0] ?? null, options.hotels[0] ?? null, options.quotes),
-      ).amount_minor;
-    };
 
-    expect(totalFor(five)).toBe(totalFor(one));
+    expect(line(five, "TRANSPORT")).toBe(5 * line(one, "TRANSPORT"));
+    expect(line(five, "ACCOMMODATION")).toBe(line(one, "ACCOMMODATION"));
   });
 });
 

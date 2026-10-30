@@ -8,8 +8,10 @@
  * be shown as real prices, schedules or availability. Nothing here calls a backend: only
  * `GET /health` exists today.
  *
- * Prices are not scaled by traveller count or room count: what a quoted price
- * covers is an open decision (PRD Q12).
+ * Prices follow the owner's rules (PRD Q12, Q13, Q18): a transport fare is per traveller, a hotel
+ * price is per room per night, a one-way or same-day trip has no hotel stay, and contingency is
+ * 10% of transport and accommodation, rounded up. How many rooms a party needs is still open, so
+ * the estimate uses one room and says so.
  */
 
 import type {
@@ -19,13 +21,14 @@ import type {
   Itinerary,
   ItineraryDay,
   Money,
+  PriceBasis,
   Quote,
   SourceMetadata,
   TransportOption,
   TripRequest,
 } from "../contracts/types";
 import { addDays, daysBetween } from "../lib/dates";
-import { multiplyMoney, sumMoney } from "../lib/money";
+import { multiplyMoney, percentageRoundedUp, sumMoney } from "../lib/money";
 import transportFixtures from "./transportFixtures.json";
 
 export const DEMO_NOTICE =
@@ -134,6 +137,7 @@ function demoQuote(
   suffix: string,
   option: { id: string; availability: Quote["availability"]; cancellation_terms: string | null },
   price: Money,
+  priceBasis: PriceBasis,
   feeAmount: number,
   feeLabel: string,
 ): Quote {
@@ -141,6 +145,7 @@ function demoQuote(
     id: `00000000-0000-4000-8000-${suffix.padStart(12, "0")}`,
     option_id: option.id,
     price,
+    price_basis: priceBasis,
     fees: [{ label: feeLabel, amount: inr(feeAmount) }],
     availability: option.availability,
     cancellation_terms: option.cancellation_terms,
@@ -177,8 +182,8 @@ export function buildDemoOptions(request: TripRequest): DemoOptions {
   };
 
   const quotes: Record<string, Quote> = {
-    [resort.id]: demoQuote("b1", resort, inr(600_000), 10_000, "Sample resort tax"),
-    [inn.id]: demoQuote("b2", inn, inr(300_000), 5_000, "Sample city tax"),
+    [resort.id]: demoQuote("b1", resort, inr(600_000), "PER_ROOM_NIGHT", 10_000, "Sample resort tax"),
+    [inn.id]: demoQuote("b2", inn, inr(300_000), "PER_ROOM_NIGHT", 5_000, "Sample city tax"),
   };
   // An unavailable option has nothing to quote.
   transport.forEach((option, index) => {
@@ -188,6 +193,7 @@ export function buildDemoOptions(request: TripRequest): DemoOptions {
         `a${String(index + 1).padStart(2, "0")}`,
         option,
         option.price,
+        "PER_TRAVELLER",
         fee.amount_minor,
         fee.label,
       );
@@ -205,10 +211,19 @@ export function stayNights(request: TripRequest): number {
   return Math.max(0, daysBetween(request.departure_date, request.return_date));
 }
 
+/** The owner's contingency (Q18): 10% of transport and accommodation, rounded up. */
+export const CONTINGENCY_BASIS_POINTS = 1000;
+
+/** Rooms are not decided yet (PRD Q14), so the demo uses one room and says so. */
+const DEMO_ROOMS = 1;
+
 /**
- * A demo estimate. It is not the Milestone 5 estimator: it only adds up the
- * lines it has and always lists what it cannot include, so a total is never
- * silently incomplete.
+ * A demo estimate that follows the owner's rules (Q12, Q13, Q18). It is not the backend estimator
+ * but it applies the same ones: the transport fare is multiplied by the travellers, the hotel
+ * price by nights and rooms, a one-way or same-day trip has no accommodation line (nothing is
+ * missing, there is no stay), fees are added as quoted, and contingency is 10% of transport and
+ * accommodation rounded up. The local transport allowance does not apply until the owner sets an
+ * amount. What it cannot include is always listed, so a total is never silently incomplete.
  */
 export function buildDemoCostEstimate(
   request: TripRequest,
@@ -218,6 +233,8 @@ export function buildDemoCostEstimate(
 ): CostEstimate {
   const lines: CostLine[] = [];
   const missing: string[] = [];
+  const travellers = request.travellers.length;
+  const travellerWord = travellers === 1 ? "traveller" : "travellers";
 
   if (transport === null) {
     missing.push("Transport: no option selected");
@@ -226,47 +243,65 @@ export function buildDemoCostEstimate(
   } else {
     lines.push({
       kind: "TRANSPORT",
-      description:
-        request.trip_type === "ROUND_TRIP"
-          ? "Transport, price as quoted (return leg not modelled in this prototype)"
-          : "Transport, price as quoted",
-      amount: transport.price,
+      description: `Transport: ${travellers} ${travellerWord} at the quoted fare`,
+      amount: multiplyMoney(transport.price, travellers),
       provenance: "MOCK",
     });
+    if (request.trip_type === "ROUND_TRIP") {
+      missing.push("Transport: the return leg is not modelled in this prototype (1 of 2 legs priced)");
+    }
   }
 
   const nights = stayNights(request);
-  if (hotel === null) {
-    missing.push("Accommodation: no hotel selected");
-  } else if (hotel.nightly_rate === null) {
-    missing.push("Accommodation: the hotel has no nightly rate");
-  } else if (nights < 1) {
-    missing.push(
-      "Accommodation: the stay length is not defined for one-way and same-day trips (open question Q13)",
-    );
-  } else {
-    lines.push({
-      kind: "ACCOMMODATION",
-      description: `${hotel.name}: ${nights} night${nights === 1 ? "" : "s"} at the quoted nightly rate (room count not defined)`,
-      amount: multiplyMoney(hotel.nightly_rate, nights),
-      provenance: "MOCK",
-    });
+  if (nights >= 1) {
+    if (hotel === null) {
+      missing.push("Accommodation: no hotel selected");
+    } else if (hotel.nightly_rate === null) {
+      missing.push("Accommodation: the hotel has no room rate");
+    } else {
+      lines.push({
+        kind: "ACCOMMODATION",
+        description: `${hotel.name}: ${nights} night${nights === 1 ? "" : "s"}, ${DEMO_ROOMS} room at the quoted room rate`,
+        amount: multiplyMoney(hotel.nightly_rate, nights * DEMO_ROOMS),
+        provenance: "MOCK",
+      });
+      missing.push("Rooms: how many rooms a party needs is not decided yet, so 1 room is used");
+    }
   }
 
   for (const option of [transport, hotel]) {
     const quote = option === null ? undefined : quotes[option.id];
+    if (option === hotel && nights < 1) {
+      continue;
+    }
     for (const fee of quote?.fees ?? []) {
       lines.push({
         kind: "TAXES_AND_FEES",
-        description: fee.label,
+        description: `${fee.label} (as quoted)`,
         amount: fee.amount,
         provenance: "MOCK",
       });
     }
   }
 
-  missing.push("Local transport allowance: rules not defined yet");
-  missing.push("Contingency: percentage and rounding rules not decided yet");
+  const base = lines.filter((line) => line.kind === "TRANSPORT" || line.kind === "ACCOMMODATION");
+  if (base.length === 0) {
+    missing.push("Contingency: there are no priced lines to apply it to");
+  } else {
+    lines.push({
+      kind: "CONTINGENCY",
+      description:
+        "Contingency at 10.00% of transport and accommodation, rounded up (no local transport allowance yet)",
+      amount: percentageRoundedUp(
+        sumMoney(
+          base.map((line) => line.amount),
+          CURRENCY,
+        ),
+        CONTINGENCY_BASIS_POINTS,
+      ),
+      provenance: "MOCK",
+    });
+  }
 
   return { currency: CURRENCY, lines, missing_items: missing };
 }

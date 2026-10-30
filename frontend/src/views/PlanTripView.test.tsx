@@ -71,12 +71,14 @@ describe("after previewing the example trip", () => {
     expect(screen.getByRole("button", { name: /Select Flight.*Sample Wings/ })).toBeInTheDocument();
   });
 
-  test("prices say that their basis is not defined", () => {
+  test("prices say what they cover: transport per traveller, hotels per room per night", () => {
     render(<PlanTripView />);
 
     previewExampleTrip();
 
-    expect(screen.getAllByText(/open question Q12/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Per traveller, as quoted.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Per room per night, as quoted.").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/open question Q12/)).not.toBeInTheDocument();
   });
 
   test("the sample itinerary is labelled and dated from the departure date", () => {
@@ -109,10 +111,13 @@ describe("selection, cost and approval preview", () => {
 
     const table = screen.getByRole("table", { name: /Demo cost estimate/ });
     const total = within(table).getByRole("row", { name: /Total of the lines shown/ });
-    expect(total).toHaveTextContent("₹25,650.00");
+    // 2 x 1,500 fare + 4 nights x 6,000 + 150 in fees + 10% contingency of 27,000.
+    expect(total).toHaveTextContent("₹29,850.00");
+    expect(within(table).getByText(/Contingency at 10\.00%/)).toBeInTheDocument();
     expect(within(table).getByText("Incomplete")).toBeInTheDocument();
     expect(screen.getByText("Not included in this total")).toBeInTheDocument();
-    expect(screen.getByText(/Contingency: percentage and rounding rules/)).toBeInTheDocument();
+    expect(screen.getByText(/return leg is not modelled/)).toBeInTheDocument();
+    expect(screen.queryByText(/Local transport allowance: rules/)).not.toBeInTheDocument();
   });
 
   test("selecting marks the card as pressed, and selecting again undoes it", () => {
@@ -184,18 +189,19 @@ describe("selection, cost and approval preview", () => {
 });
 
 describe("one-way and same-day trips", () => {
-  test.each([/One-way/, /Same-day return/])("%s explains that the stay length is undefined", (kind) => {
+  test.each([/One-way/, /Same-day return/])("%s has no hotel stay: no hotels, no accommodation", (kind) => {
     render(<PlanTripView />);
     fireEvent.click(screen.getByRole("button", { name: /Use example trip/ }));
     fireEvent.click(screen.getByRole("radio", { name: kind }));
 
     fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
     fireEvent.click(selectButton(TRAIN_ONE));
-    fireEvent.click(selectButton(/Select Sample Beach Resort/));
 
-    expect(screen.getByText("Stay length is not defined for this trip")).toBeInTheDocument();
+    expect(screen.getByText("No hotel stay for this trip")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Select Sample Beach Resort/ })).not.toBeInTheDocument();
     const table = screen.getByRole("table", { name: /Demo cost estimate/ });
     expect(within(table).queryByText(/Sample Beach Resort:/)).not.toBeInTheDocument();
-    expect(screen.getByText(/stay length is not defined for one-way and same-day/)).toBeInTheDocument();
+    expect(within(table).getByText(/Contingency at 10\.00%/)).toBeInTheDocument();
+    expect(screen.queryByText(/stay length is not defined/)).not.toBeInTheDocument();
   });
 });

@@ -17,6 +17,7 @@ def quote_data(**overrides: Any) -> dict[str, Any]:
         "id": QUOTE_ID,
         "option_id": "mock-train-001",
         "price": {"amount_minor": 125_000, "currency": "INR"},
+        "price_basis": "PER_TRAVELLER",
         "valid_until": VALID_UNTIL,
         "source": {
             "provenance": "MOCK",

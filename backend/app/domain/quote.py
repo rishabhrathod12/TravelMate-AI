@@ -3,6 +3,9 @@
 A quote is a snapshot. Hashing it for approvals is Milestone 10, and booking
 execution is Milestone 14; nothing here talks to a provider.
 
+A quote carries its price basis explicitly (`price_basis`, PRD Q12): the price is for one
+traveller, or for one room for one night. Fees are fixed amounts as quoted, not scaled.
+
 Provisional, not yet approved:
 - Fees are held separately from `price` and must use the price's currency
   (currency conversion is out of the MVP, PRD §6).
@@ -13,6 +16,7 @@ is reached, not after it (SECURITY principle 4).
 """
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Self
 from uuid import UUID
 
@@ -23,6 +27,17 @@ from app.domain.money import NonNegativeMoney
 from app.domain.options import AvailabilityStatus
 from app.domain.provenance import SourceMetadata
 from app.domain.timeutil import UtcDateTime, ensure_utc
+
+
+class PriceBasis(StrEnum):
+    """What a quoted price covers (the owner's answer to PRD Q12, 2026-10-30).
+
+    Transport fares are per traveller; hotel prices are per room per night. A quote says which, so
+    nothing has to guess how to scale it. There is deliberately no default.
+    """
+
+    PER_TRAVELLER = "PER_TRAVELLER"
+    PER_ROOM_NIGHT = "PER_ROOM_NIGHT"
 
 
 class Fee(DomainModel):
@@ -36,6 +51,7 @@ class Quote(DomainModel):
     id: UUID
     option_id: str = Field(min_length=1)
     price: NonNegativeMoney
+    price_basis: PriceBasis
     fees: tuple[Fee, ...] = ()
     availability: AvailabilityStatus = AvailabilityStatus.UNKNOWN
     cancellation_terms: str | None = None

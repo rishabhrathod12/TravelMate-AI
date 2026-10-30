@@ -48,6 +48,23 @@ export function multiplyMoney(money: Money, factor: number): Money {
   return { amount_minor: assertSafe(money.amount_minor * factor), currency: money.currency };
 }
 
+/**
+ * `basisPoints` hundredths of a percent of `money`, rounded up to the next minor unit (the owner's
+ * contingency rounding, Q18). Exact: it uses BigInt, so a large amount cannot lose precision.
+ */
+export function percentageRoundedUp(money: Money, basisPoints: number): Money {
+  if (!Number.isInteger(basisPoints) || basisPoints < 0) {
+    throw new RangeError("Basis points must be a non-negative integer");
+  }
+  if (money.amount_minor < 0) {
+    throw new RangeError("Amount must not be negative");
+  }
+  assertSafe(money.amount_minor);
+  const product = BigInt(money.amount_minor) * BigInt(basisPoints);
+  const rounded = (product + 9_999n) / 10_000n;
+  return { amount_minor: assertSafe(Number(rounded)), currency: money.currency };
+}
+
 export function sumMoney(items: readonly Money[], currency: string): Money {
   return items.reduce(addMoney, { amount_minor: 0, currency });
 }

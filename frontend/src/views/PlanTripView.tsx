@@ -192,23 +192,24 @@ export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTrip
 
               <section aria-labelledby="hotel-title">
                 <h2 id="hotel-title">Hotel options (demo)</h2>
-                {stayNights(request) < 1 && (
-                  <StatusMessage kind="info" title="Stay length is not defined for this trip">
-                    One-way and same-day trips have no defined hotel stay yet (open question Q13).
-                    Hotels are shown for reference, without a stay total.
+                {stayNights(request) < 1 ? (
+                  <StatusMessage kind="info" title="No hotel stay for this trip">
+                    A one-way or same-day trip has no hotel stay, so no hotels are shown and none is
+                    added to the estimate.
                   </StatusMessage>
+                ) : (
+                  <div className="card-grid">
+                    {demo.hotels.map((option) => (
+                      <HotelCard
+                        key={option.id}
+                        option={option}
+                        quote={demo.quotes[option.id]}
+                        selected={option.id === hotelId}
+                        onToggle={() => setHotelId(option.id === hotelId ? null : option.id)}
+                      />
+                    ))}
+                  </div>
                 )}
-                <div className="card-grid">
-                  {demo.hotels.map((option) => (
-                    <HotelCard
-                      key={option.id}
-                      option={option}
-                      quote={demo.quotes[option.id]}
-                      selected={option.id === hotelId}
-                      onToggle={() => setHotelId(option.id === hotelId ? null : option.id)}
-                    />
-                  ))}
-                </div>
               </section>
 
               <section aria-labelledby="cost-title">

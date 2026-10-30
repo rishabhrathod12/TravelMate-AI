@@ -1,6 +1,13 @@
 import { describe, expect, test } from "vitest";
 
-import { addMoney, formatMoney, minorUnitDigits, multiplyMoney, sumMoney } from "./money";
+import {
+  addMoney,
+  formatMoney,
+  minorUnitDigits,
+  multiplyMoney,
+  percentageRoundedUp,
+  sumMoney,
+} from "./money";
 
 const inr = (amountMinor: number) => ({ amount_minor: amountMinor, currency: "INR" });
 
@@ -64,5 +71,40 @@ describe("integer arithmetic", () => {
   test("sums a list, and an empty list is zero in the given currency", () => {
     expect(sumMoney([inr(1), inr(20), inr(300)], "INR")).toEqual(inr(321));
     expect(sumMoney([], "INR")).toEqual(inr(0));
+  });
+});
+
+describe("percentageRoundedUp (the owner's contingency rounding)", () => {
+  test("an exact result is not rounded further", () => {
+    expect(percentageRoundedUp(inr(330), 1000)).toEqual(inr(33));
+    expect(percentageRoundedUp(inr(2_700_000), 1000)).toEqual(inr(270_000));
+  });
+
+  test("any fraction of a minor unit rounds up to the next one", () => {
+    expect(percentageRoundedUp(inr(333), 1000)).toEqual(inr(34)); // 33.3
+    expect(percentageRoundedUp(inr(331), 1000)).toEqual(inr(34)); // 33.1
+    expect(percentageRoundedUp(inr(1), 1000)).toEqual(inr(1)); // 0.1
+  });
+
+  test("zero stays zero", () => {
+    expect(percentageRoundedUp(inr(0), 1000)).toEqual(inr(0));
+    expect(percentageRoundedUp(inr(500), 0)).toEqual(inr(0));
+  });
+
+  test("the currency is kept", () => {
+    expect(percentageRoundedUp({ amount_minor: 100, currency: "USD" }, 500).currency).toBe("USD");
+  });
+
+  test("a large amount is exact, with no loss of precision", () => {
+    const big = 2 ** 52 + 1; // odd, near the safe limit
+    // 10% of an odd number ending in 3 is x.3, so the answer is the next integer.
+    expect(percentageRoundedUp(inr(big), 1000).amount_minor).toBe(Math.floor(big / 10) + 1);
+  });
+
+  test("refuses a negative amount, a negative or fractional rate, and an unsafe amount", () => {
+    expect(() => percentageRoundedUp(inr(-1), 1000)).toThrow(RangeError);
+    expect(() => percentageRoundedUp(inr(100), -1)).toThrow(RangeError);
+    expect(() => percentageRoundedUp(inr(100), 0.5)).toThrow(RangeError);
+    expect(() => percentageRoundedUp(inr(2 ** 60), 1000)).toThrow(RangeError);
   });
 });

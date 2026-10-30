@@ -28,11 +28,8 @@ export type ValidationResult =
   | { ok: true; request: TripRequest }
   | { ok: false; errors: FormErrors };
 
-/**
- * Prototype-only guard. The real traveller limit is an open decision (PRD Q14);
- * this only stops the preview from building an enormous list.
- */
-export const PROTOTYPE_PREVIEW_MAX_TRAVELLERS = 50;
+/** The most travellers one request may have: the owner's answer to PRD Q14 (2026-10-30). */
+export const MAX_TRAVELLERS = 9;
 
 export const EMPTY_FORM: TripFormValues = {
   origin: "",
@@ -86,8 +83,8 @@ export function validateTripForm(values: TripFormValues): ValidationResult {
   const travellerCount = /^\d+$/.test(travellerText) ? Number(travellerText) : Number.NaN;
   if (Number.isNaN(travellerCount) || travellerCount < 1) {
     errors.travellers = "Enter a whole number of at least 1.";
-  } else if (travellerCount > PROTOTYPE_PREVIEW_MAX_TRAVELLERS) {
-    errors.travellers = `This prototype previews up to ${PROTOTYPE_PREVIEW_MAX_TRAVELLERS} travellers. The real limit is an open decision (Q14).`;
+  } else if (travellerCount > MAX_TRAVELLERS) {
+    errors.travellers = `A request can have at most ${MAX_TRAVELLERS} travellers.`;
   }
 
   if (Object.keys(errors).length > 0) {

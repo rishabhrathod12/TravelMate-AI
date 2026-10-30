@@ -9,6 +9,11 @@ interface SelectableProps {
   onToggle: () => void;
 }
 
+const BASIS_TEXT: Record<Quote["price_basis"], string> = {
+  PER_TRAVELLER: "Per traveller, as quoted.",
+  PER_ROOM_NIGHT: "Per room per night, as quoted.",
+};
+
 function PriceBlock({
   label,
   price,
@@ -28,7 +33,7 @@ function PriceBlock({
           <MoneyText money={price} />
         </p>
       )}
-      <p className="field-hint">As quoted. What it covers is not defined yet (open question Q12).</p>
+      <p className="field-hint">{quote === undefined ? "As quoted." : BASIS_TEXT[quote.price_basis]}</p>
       {quote !== undefined && quote.fees.length > 0 && (
         <ul className="fee-list">
           {quote.fees.map((fee) => (

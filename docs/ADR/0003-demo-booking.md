@@ -31,8 +31,9 @@ claiming a booking succeeded without one.
 7. It applies to the outbound leg only, because return-leg options are not modelled (PRD Q13).
 8. The simulation is not exposed to the voice assistant or to any LLM tool. A spoken request
    cannot trigger it, and nothing an LLM writes can create one.
-9. Prices shown are "as quoted"; what a price covers (PRD Q12) is not decided here. The total is
-   the quoted price plus sample fees, not the trip estimate.
+9. Prices shown are "as quoted". PRD Q12 has since been answered (2026-10-30): a transport fare is
+   per traveller. The demo booking still shows one traveller's quoted price plus sample fees, labelled
+   as such, and not the trip estimate.
 10. Real booking, payment, cancellation and live providers stay disabled and need their own
     authorisation (M13, M14). The open lifecycle questions (PRD Q7 to Q11, Q15) are untouched.
 

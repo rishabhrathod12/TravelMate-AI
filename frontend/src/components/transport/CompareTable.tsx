@@ -146,9 +146,9 @@ export function CompareTable({ options, quotes, onClear }: CompareTableProps) {
         </table>
       </div>
       <p className="field-hint">
-        Quoted prices are as quoted. What a price covers is not defined yet (open question Q12), and
-        the sample fees exist only in this prototype. Quoted price plus fees is not the trip
-        estimate: select one option to see the cost estimate, which lists what it leaves out.
+        Quoted prices are per traveller, as quoted, and the sample fees exist only in this prototype.
+        One traveller's quoted price plus fees is not the trip estimate: select one option to see
+        the cost estimate, which multiplies by the travellers and lists what it leaves out.
       </p>
       <button type="button" className="button button-quiet button-small" onClick={onClear}>
         Clear comparison
