@@ -84,6 +84,34 @@ is connected (PRD Q19; the chat runs on a pattern-matching stand-in, SECURITY §
 - **Limits.** The chat endpoint now caps travellers at 9 (Q14). The search form's cap of 50 and its
   missing 500-character preferences limit are not changed yet.
 
+## Amendment: C3-prepare as built (2026-10-30)
+
+Built without any key and without any call to OpenAI:
+
+- **Plan writer** (`app/llm/plan_writer.py`): turns an `ItineraryRequest` into a `SuggestedPlan`
+  (new, `app/domain/suggested_plan.py`: days of items with a title and an optional sentence, and no
+  field for a price, time or booking). The destination and notes go to the model in a delimited data
+  block; no dates are sent (code works out calendar dates); the request has no tools. The answer
+  must have exactly the requested days and must contain **no digit and no price, availability,
+  opening-time, weather or booking wording**. A failure gets one repair attempt, then a clear error;
+  the model's own text is never repeated in an error. This is stricter than the M6 drafter, which
+  only warned.
+- **Real transport** (`app/llm/openai_transport.py`): the only file that imports the SDK. SDK
+  retries are off, the key is passed per call and never stored or echoed, and a failure carries a
+  kind and a status only.
+- **Live switch.** `LLM_LIVE_ENABLED` (default false) is separate from having a key. Live mode
+  requires the chat to be on, the key, `LLM_MODEL`, an hourly call cap and plan token and time
+  limits; any missing one stops the app starting. The cap (`app/llm/budget.py`) counts every real
+  call including retries and repairs, and refuses a call before it reaches the SDK.
+- **Endpoint.** `POST /api/v1/chat/plans` returns `source` and a `notice` with the plan.
+  `source` is `SCRIPTED_SAMPLE` unless live calls are on, then `AI_SUGGESTION`. The label comes from
+  how the service was built, never from the model or the request. Without the live switch a
+  scripted stand-in answers with the same placeholder shape as the browser's sample.
+- **Not done:** the browser still builds its own sample locally and does not call `/plans` yet
+  (C3 step 2). The OpenAI request format is checked against the installed SDK's real signature
+  (`max_completion_tokens`, `response_format`, per-call `timeout`) but **no real request has ever
+  been sent**, so the wire behaviour and the quality of real plans are unverified.
+
 ## Plan (each phase stops for the owner's review)
 
 - **C1, relative dates:** the fixed phrase list, code-computed dates, a confirmation step in the

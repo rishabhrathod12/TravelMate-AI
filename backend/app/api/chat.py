@@ -11,6 +11,7 @@ response says so (`model.kind` is `DEV_STAND_IN`). The reply is a question or a 
 here can search, book, approve or pay.
 """
 
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -19,7 +20,18 @@ from pydantic import BaseModel, Field
 
 from app.conversation.draft import TripDraft
 from app.conversation.manager import ConversationManager, TurnStatus
+from app.domain.suggested_plan import PlanSource, SuggestedPlan
 from app.domain.trip import MAX_ITINERARY_DAYS, MAX_TRAVELLERS, ItineraryRequest, TripRequest
+from app.llm.errors import (
+    ItineraryRejected,
+    LLMConfigurationError,
+    LLMError,
+    LLMOutputError,
+    LLMRateLimited,
+    LLMTimeout,
+    LLMUnavailable,
+)
+from app.llm.plan_writer import PlanWriter
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
@@ -127,3 +139,67 @@ def take_turn(
             RejectionOut(field=r.field.value, reason=r.reason.value) for r in result.rejections
         ],
     )
+
+
+# -- plans ---------------------------------------------------------------------------------------
+
+PLAN_NOTICES: dict[PlanSource, str] = {
+    "SCRIPTED_SAMPLE": (
+        "Scripted sample: fixed placeholder text, not written by a language model. "
+        "It names no activity, price or time."
+    ),
+    "AI_SUGGESTION": (
+        "AI suggestion, not verified. A language model suggested these places and activities "
+        "from general knowledge. Check them before you rely on them. They are not prices, "
+        "times or availability, and nothing here is booked."
+    ),
+}
+
+
+@dataclass(frozen=True)
+class PlanService:
+    """The plan writer and what its output may be called. The label comes from how the service
+    was built in `main.py`, never from the model or from the request."""
+
+    writer: PlanWriter
+    source: PlanSource
+
+
+class PlanRequestBody(BaseModel):
+    itinerary_request: ItineraryRequest
+
+
+class PlanResponse(BaseModel):
+    source: PlanSource
+    notice: str
+    plan: SuggestedPlan
+
+
+def get_plan_service(request: Request) -> PlanService:
+    service: PlanService = request.app.state.plans
+    return service
+
+
+Plans = Annotated[PlanService, Depends(get_plan_service)]
+
+
+def _plan_problem(error: LLMError) -> JSONResponse:
+    """A Problem Details body for a failed plan. It never repeats the model's text or any key."""
+    if isinstance(error, LLMRateLimited):
+        return _problem(429, "Plan limit reached", "Too many plans were requested. Try later.")
+    if isinstance(error, LLMTimeout):
+        return _problem(504, "Plan timed out", "The model did not answer in time. Try again.")
+    if isinstance(error, LLMUnavailable | LLMConfigurationError):
+        return _problem(503, "Plan unavailable", "The model service is not available right now.")
+    if isinstance(error, ItineraryRejected | LLMOutputError):
+        return _problem(502, "Plan rejected", "The model's plan could not be used. Try again.")
+    return _problem(502, "Plan failed", "The plan could not be written.")
+
+
+@router.post("/plans", response_model=PlanResponse)
+def write_plan(body: PlanRequestBody, plans: Plans) -> PlanResponse | JSONResponse:
+    try:
+        result = plans.writer.write(body.itinerary_request)
+    except LLMError as error:
+        return _plan_problem(error)
+    return PlanResponse(source=plans.source, notice=PLAN_NOTICES[plans.source], plan=result.plan)

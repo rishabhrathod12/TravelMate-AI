@@ -9,6 +9,9 @@ description = "TravelMate AI backend API"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115,<1",
+    # The OpenAI SDK, approved by the owner on 2026-10-30. Only app/llm/openai_transport.py may
+    # import it (ADR 0001). 3.30.0 was released on 2026-10-14; newer releases were left alone.
+    "openai>=3.30,<4",
     "pydantic>=2.7,<3",
     "pydantic-settings>=2.3,<3",
     # IANA time-zone data for zoneinfo. Windows has none; Linux CI does (PRD NFR-11).

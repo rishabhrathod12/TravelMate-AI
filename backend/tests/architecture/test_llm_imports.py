@@ -2,8 +2,9 @@
 
 - It depends only on the domain and itself, so it can reach neither booking code, the
   providers, the tools, the settings nor the API.
-- It imports no vendor SDK and no network library: the OpenAI adapter takes a
-  transport that is passed in, and no real transport exists yet.
+- It imports no network library, and no vendor SDK except the OpenAI SDK in exactly one module,
+  `openai_transport.py` (ADR 0001, approved 2026-10-30). Everything else takes a transport or a
+  client that is passed in, so only that one file can reach the network.
 - The rest of the application never reaches into it except through its modules, and
   the domain, providers and tools never depend on it.
 """
@@ -15,6 +16,7 @@ import pytest
 
 APP_DIR = Path(__file__).resolve().parents[2] / "app"
 LLM_DIR = APP_DIR / "llm"
+OPENAI_TRANSPORT = "openai_transport.py"
 SDKS_AND_NETWORK = {
     "openai",
     "anthropic",
@@ -59,7 +61,17 @@ def python_files(directory: Path) -> list[Path]:
 def test_the_llm_package_is_present_and_not_empty() -> None:
     names = {p.name for p in python_files(LLM_DIR)}
 
-    assert {"base.py", "drafter.py", "fake.py", "openai_client.py", "types.py"} <= names
+    assert {
+        "base.py",
+        "budget.py",
+        "drafter.py",
+        "fake.py",
+        "openai_client.py",
+        "openai_transport.py",
+        "plan_writer.py",
+        "scripted.py",
+        "types.py",
+    } <= names
 
 
 @pytest.mark.parametrize("path", python_files(LLM_DIR), ids=lambda p: p.name)
@@ -76,8 +88,26 @@ def test_the_llm_package_depends_only_on_the_domain_and_itself(path: Path) -> No
 @pytest.mark.parametrize("path", python_files(LLM_DIR), ids=lambda p: p.name)
 def test_the_llm_package_imports_no_vendor_sdk_and_no_network_library(path: Path) -> None:
     top_level = {m.split(".")[0] for m in imported_modules(path.read_text(encoding="utf-8"))}
+    allowed = {"openai"} if path.name == OPENAI_TRANSPORT else set()
 
-    assert top_level & SDKS_AND_NETWORK == set()
+    assert (top_level & SDKS_AND_NETWORK) - allowed == set()
+
+
+def test_only_the_transport_module_imports_the_openai_sdk() -> None:
+    importers = sorted(
+        path.relative_to(APP_DIR).as_posix()
+        for path in python_files(APP_DIR)
+        if "openai" in {m.split(".")[0] for m in imported_modules(path.read_text(encoding="utf-8"))}
+    )
+
+    assert importers == [f"llm/{OPENAI_TRANSPORT}"]
+
+
+def test_the_transport_module_imports_nothing_from_the_network_family_but_the_sdk() -> None:
+    source = (LLM_DIR / OPENAI_TRANSPORT).read_text(encoding="utf-8")
+    top_level = {m.split(".")[0] for m in imported_modules(source)}
+
+    assert top_level & (SDKS_AND_NETWORK - {"openai"}) == set()
 
 
 def test_no_llm_code_can_reach_booking_or_approval_logic() -> None:
@@ -99,8 +129,9 @@ def test_nothing_below_the_llm_layer_depends_on_it(package: str) -> None:
     assert offenders == []
 
 
-def test_no_vendor_sdk_is_declared_as_a_dependency_yet() -> None:
+def test_only_the_approved_vendor_sdk_is_declared_as_a_dependency() -> None:
     pyproject = (APP_DIR.parent / "pyproject.toml").read_text(encoding="utf-8").lower()
 
-    for sdk in ("openai", "anthropic", "langchain", "langgraph"):
+    assert "openai" in pyproject  # approved by the owner on 2026-10-30
+    for sdk in ("anthropic", "langchain", "langgraph"):
         assert sdk not in pyproject, sdk

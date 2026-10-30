@@ -50,6 +50,12 @@ TravelMate AI needs a backend for a multi-step planning workflow with human paus
 
 - `tzdata` (`>=2026.5`) is a runtime dependency of the backend. Python's `zoneinfo` needs IANA time-zone data, which Windows does not provide (`ZoneInfo("Asia/Kolkata")` failed in `backend/.venv` before the install), while the Linux CI runner has it. It is needed for the destination time-zone helper (PRD NFR-11, plan M2). The package contains data only and is licensed Apache-2.0. Version 2026.5 (released 2026-10-03, over two weeks before installation) is installed; `pip check` and `pip-audit` report no problems. Added during M2; owner review of this addition is pending.
 
+## C3 additions (2026-10-30)
+
+- `openai` (`>=3.30,<4`) is a runtime dependency of the backend, approved by the owner on 2026-10-30. Version 3.30.0 (released 2026-10-14, 16 days before installation, not yanked) is installed; newer releases were deliberately left alone because the SDK ships every few days. It brings `httpx2`, `httpcore2`, `jiter`, `sniffio` and `truststore`. `pip check` reports no problems, and `pip-audit` reports no findings for `openai` or any of these (it reports findings only for the virtual environment's own `pip 25.0.1`, which is installer tooling, not a project dependency).
+- Only `app/llm/openai_transport.py` imports it, and an architecture test enforces that. It makes no request unless the owner switches live calls on (`LLM_LIVE_ENABLED`) and supplies a key; every test fakes it.
+- Still pending: the owner's key and the separate approval of the first live call.
+
 ## Open items
 
 - PostgreSQL start from Docker Compose is deferred and unverified. Docker is not available on the development machine. Verify it when Docker is available and the database is first needed (M9).

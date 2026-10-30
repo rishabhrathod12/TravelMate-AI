@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     # read only from the environment. A blank value counts as not set.
     openai_api_key: SecretStr | None = None
     llm_model: str | None = None
+    # The owner's separate switch for real model calls (ADR 0004, C3). Having a key set never
+    # makes a call by itself: nothing reaches OpenAI unless this is true as well, and when it is
+    # true the key, the model and an hourly cap on calls must all be set. Off by default.
+    llm_live_enabled: bool = False
+    llm_max_calls_per_hour: int | None = None
+    # Writing a whole plan needs far more tokens and time than reading one message, so a live
+    # plan has its own explicit limits. Not needed for the scripted sample.
+    conversation_plan_max_output_tokens: int | None = None
+    conversation_plan_timeout_seconds: float | None = None
 
     # Voice sessions (docs/VOICE_ASSISTANT_PLAN.md, ADR 0002). Off by default. When on, every
     # limit below must be set explicitly: there are no hidden defaults for how long a session
@@ -59,6 +68,9 @@ class Settings(BaseSettings):
     conversation_llm_timeout_seconds: float | None = None
 
     @field_validator(
+        "llm_max_calls_per_hour",
+        "conversation_plan_max_output_tokens",
+        "conversation_plan_timeout_seconds",
         "conversation_max_message_chars",
         "conversation_llm_max_output_tokens",
         "conversation_llm_timeout_seconds",
@@ -116,6 +128,28 @@ class Settings(BaseSettings):
         for name, value in limits.items():
             if value is None or not value > 0:
                 raise ValueError(f"{name} must be set to a positive number when chat is on")
+        return self
+
+    @model_validator(mode="after")
+    def _live_model_calls_need_every_safeguard(self) -> "Settings":
+        if not self.llm_live_enabled:
+            return self
+        if not self.conversation_enabled:
+            raise ValueError("LLM_LIVE_ENABLED needs CONVERSATION_ENABLED: only the chat uses it")
+        key = self.openai_api_key.get_secret_value().strip() if self.openai_api_key else ""
+        if not key:
+            raise ValueError("OPENAI_API_KEY must be set when LLM_LIVE_ENABLED is true")
+        if self.llm_model is None or not self.llm_model.strip():
+            raise ValueError("LLM_MODEL must be set when LLM_LIVE_ENABLED is true")
+        if self.llm_max_calls_per_hour is None or self.llm_max_calls_per_hour < 1:
+            raise ValueError("LLM_MAX_CALLS_PER_HOUR must be a positive whole number when live")
+        plan_limits = {
+            "CONVERSATION_PLAN_MAX_OUTPUT_TOKENS": self.conversation_plan_max_output_tokens,
+            "CONVERSATION_PLAN_TIMEOUT_SECONDS": self.conversation_plan_timeout_seconds,
+        }
+        for name, value in plan_limits.items():
+            if value is None or not value > 0:
+                raise ValueError(f"{name} must be set to a positive number when live")
         return self
 
     @model_validator(mode="after")
