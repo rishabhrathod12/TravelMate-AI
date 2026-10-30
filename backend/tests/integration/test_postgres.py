@@ -144,11 +144,11 @@ class TestMigrations:
             "alembic_version"
         }
 
-    def test_the_database_is_at_the_one_revision(self, postgres_engine: Engine) -> None:
+    def test_the_database_is_at_the_latest_revision(self, postgres_engine: Engine) -> None:
         with postgres_engine.connect() as connection:
             version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
 
-        assert version == "0001"
+        assert version == "0002"  # the head of backend/migrations/versions
 
 
 class TestConstraints:
