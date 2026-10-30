@@ -33,19 +33,21 @@ A short brief for starting a new working session. Update only the lines marked *
 - A trip request has an explicit `trip_type` (`ONE_WAY` or `ROUND_TRIP`). A same-day return is a round trip with the same date.
 - The `budget` field and the `preferences` length cap are deferred. There is no traveller upper limit yet.
 - The frontend prototype was approved, built ahead of the API, with demo data labelled MOCK.
+- Q12 (2026-10-30): transport fares are per traveller; hotel prices are per room per night, with the basis carried on each quote.
+- Q13 (2026-10-30): round trip has nights = return minus departure, a departure-to-return weather window and nights + 1 itinerary days. One-way and same-day trips have no hotel stay or total, a one-day weather window and a one-day itinerary.
+- Q14 (2026-10-30): 1 to 9 travellers, preferences up to 500 characters, budget still deferred. The 50-traveller prototype guard in the form and chat endpoint is now out of line with this and is not yet changed.
+- Q18 (2026-10-30): contingency 10% of transport, hotel and local-transport lines, rounded up; the local transport allowance is not applicable until the owner sets an amount.
+- These four decisions are recorded only. No code implements them yet.
 - (Add each answered question here.)
 
 ## Open decisions (UPDATE as they are answered; defaults are in PRD §10 and §11)
 - Q9: does an expired approval make the intent EXPIRED, or send it back to AWAITING_APPROVAL?
 - Q10: may a booking in flight, or an unclear one, be cancelled or expired, and how are FAILED and NEEDS_REVIEW resolved?
 - Q11: are there two idempotency keys (creation and per booking attempt)?
-- Q12: what does a quoted price cover (per traveller, per party, per night)?
-- Q13: stay, weather and itinerary rules for one-way and same-day trips.
-- Q14: traveller and text limits, budget rules, rooms.
+- Q12, Q13, Q14, Q18: answered 2026-10-30 (see "Decided by the owner"). Still open inside them: the budget rule and rooms per party (Q14), and the local transport allowance amount (Q18).
 - Q15: how a quote's content hash is built.
 - Q16: the label for a mix of LIVE and CACHED_LIVE.
 - Q17: what "within budget" means.
-- Q18: contingency percentage, base and rounding, and the local transport allowance.
 - Q19: the language model, token limit, timeout, prompt-size limit and who supplies the API key.
 - Provisional assumptions A5 to A13 need review.
 - Also: review the `tzdata` dependency, and the two open M1 criteria (Docker and PostgreSQL, secrets guard).
@@ -66,5 +68,6 @@ A short brief for starting a new working session. Update only the lines marked *
 
 ## Next task (UPDATE)
 - Owner reviews M6 (pushed, CI passed).
-- Before M7 (the LangGraph workflow), the owner needs to rule on Q12, Q13, Q14 and Q18, and decide Q19 (model, limits, key) before any live LLM call.
+- Q12, Q13, Q14 and Q18 are answered (2026-10-30) but not yet in code. Before M7 (the LangGraph workflow) the owner must still approve the `langgraph` dependency, and decide Q19 (model, limits, key) before any live LLM call.
+- Code that must follow the answers: the traveller cap (50 to 9) in the trip form and chat endpoint, the 500-character preferences cap, price basis on quotes, stay and weather rules for one-way and same-day trips, and the contingency rule passed to the estimator.
 - Connecting a real LLM needs three separate approvals: the `openai` dependency and a real transport, an owner-supplied key, and the first live call.
