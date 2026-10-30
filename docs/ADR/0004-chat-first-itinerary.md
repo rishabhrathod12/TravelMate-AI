@@ -1,0 +1,70 @@
+# ADR 0004 — Chat-first itinerary planning
+
+Status: **ACCEPTED on 2026-10-30** by the project owner, who chose the options marked "recommended"
+below. Nothing in this ADR is implemented yet.
+
+## Context
+
+The owner wants the product to feel like ChatGPT or Claude: a customer types "plan my 5-day
+itinerary for Goa this weekend" and the assistant writes the whole itinerary. They do not want a
+traditional flight/train search dashboard as the main screen. The PRD (FR-02 to FR-06) and the
+current frontend are built around searching and comparing options first. Three existing rules
+also constrain this: `CLAUDE.md` forbids inventing live travel data, the V5 conversation logic
+never turns relative words ("tomorrow", "this weekend") into dates, and no real language model
+is connected (PRD Q19; the chat runs on a pattern-matching stand-in, SECURITY §13).
+
+## Decision
+
+1. **Chat first.** The conversation becomes the main screen of the app and the way an
+   itinerary is requested and presented. The comparison dashboard (transport and hotel options,
+   cost, demo booking) is kept but moves behind an optional link; nothing built for M3 to M5 or
+   ADR 0003 is removed. This supersedes the "search first" ordering of FR-02 to FR-06 for the main
+   flow; those requirements still apply to the optional view.
+2. **Relative dates are resolved by code and confirmed by the traveller.** For a short fixed list
+   of English phrases (for example "this weekend", "next weekend"), code, never the model,
+   computes the exact dates from today's date and the chat shows them back ("Saturday 7 November
+   to Sunday 8 November, right?"). No trip is planned until the traveller confirms. Anything
+   not on the list is still asked for as an exact day and month. This relaxes, and does not
+   remove, the V5 rule. Which day a weekend starts on is fixed in code and tested.
+3. **Itinerary content is general suggestion, labelled.** The model may suggest areas, places,
+   activities and the shape of each day from its general knowledge. Every such item carries the
+   label `AI_SUGGESTION`, shown to the user as "AI suggestion, not verified". It is a separate
+   label from the provenance labels `LIVE`, `CACHED_LIVE` and `MOCK`, and is never presented as
+   provider data. The itinerary may not state prices, opening hours, availability, travel times,
+   weather or booking outcomes as facts. Those appear only from labelled provider or MOCK data
+   (the M6 drafter already flags text that seems to state a price, time, date or booking claim).
+4. **Stand-in first, real model later.** The chat-first screen and the itinerary flow are built
+   and reviewed on the fake model. The stand-in cannot write a real itinerary, so until a real
+   model is connected the screen shows a clearly labelled scripted sample, not the model's work.
+   Connecting a real model is a separate step that needs, each as its own approval: Q19 (model,
+   token limit, timeout, prompt-size limit), the `openai` dependency and a real transport, an
+   owner-supplied key in the owner's own shell, and the first live call.
+5. **Booking stays off.** The chat cannot book, approve or pay. A spoken or typed "book it" does
+   nothing. `BOOKING_ENABLED` stays false and ADR 0003 still applies.
+
+## Plan (each phase stops for the owner's review)
+
+- **C1, relative dates:** the fixed phrase list, code-computed dates, a confirmation step in the
+  conversation manager, tests that include the day-of-week edge cases (a Saturday or Sunday
+  "today"), and a mutation check like the one used for V5.
+- **C2, chat-first screen:** the chat becomes the main view with the sample itinerary and the
+  `AI_SUGGESTION` label; the dashboard moves behind a link; trip length ("5 days") becomes part
+  of the request, subject to the open limits below.
+- **C3, real model:** blocked on the approvals in item 4.
+
+## Open items this ADR does not decide
+
+- Trip length limits and what "5 days" means for the number of nights (PRD Q13 already says a
+  round trip has nights = return minus departure, and an itinerary of nights + 1 days).
+- Where the traveller starts from when they give only a destination.
+- Whether to keep a conversation history on the server (today the server keeps nothing).
+- Authentication, per-person rate limits and cost counting, required before a real model.
+
+## Consequences
+
+- The product no longer depends on provider search to be useful. It can still be misleading if
+  a plan looks authoritative, so the `AI_SUGGESTION` label and the no-facts rule are the main
+  safeguards, and a reviewer must check them in the real model step.
+- A new label (`AI_SUGGESTION`) is introduced. It must not be added to `Provenance`, which is
+  for provider data; it needs its own type when implemented.
+- The V5 date-safety tests must be extended, not weakened, in C1.

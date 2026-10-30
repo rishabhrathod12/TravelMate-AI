@@ -38,6 +38,7 @@ A short brief for starting a new working session. Update only the lines marked *
 - Q14 (2026-10-30): 1 to 9 travellers, preferences up to 500 characters, budget still deferred. The 50-traveller prototype guard in the form and chat endpoint is now out of line with this and is not yet changed.
 - Q18 (2026-10-30): contingency 10% of transport, hotel and local-transport lines, rounded up; the local transport allowance is not applicable until the owner sets an amount.
 - These four decisions are recorded only. No code implements them yet.
+- Chat-first itinerary planning (2026-10-30, ADR 0004, PRD FR-19, not implemented): the chat becomes the main screen and writes a whole day-by-day itinerary from a message such as "plan my 5-day itinerary for Goa this weekend"; the search/comparison dashboard stays as an optional link. Relative dates ("this weekend") are resolved by code from a fixed list and confirmed by the traveller. Suggestions are labelled `AI_SUGGESTION`; no prices, hours, availability, travel times or weather as facts. Built first on the stand-in with a labelled scripted sample; a real model is a separate approved step (Q19, dependency, key, first live call). Phases C1 (relative dates), C2 (chat-first screen), C3 (real model, blocked).
 - (Add each answered question here.)
 
 ## Open decisions (UPDATE as they are answered; defaults are in PRD §10 and §11)
