@@ -9,7 +9,7 @@ the service container.
 
 from collections.abc import Iterator
 from concurrent.futures import Executor, Future
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -25,6 +25,7 @@ from app.config import Settings
 from app.main import create_app
 from app.persistence import policy
 from app.persistence.models import Base
+from app.persistence.sql_booking_store import SqlBookingStore
 from app.persistence.sql_store import SqlTripStore
 
 pytestmark = pytest.mark.integration
@@ -64,20 +65,39 @@ def add_trip(connection: Connection, trip_id: str = "t1", status: str = "draft")
 def add_quote(connection: Connection, quote_id: str = "q1", amount: int = 100) -> None:
     connection.execute(
         text(
-            "INSERT INTO quotes (id, option_id, amount_minor, currency, price_basis, valid_until, "
-            "created_at) VALUES (:id, 'opt', :amount, 'INR', 'PER_TRAVELLER', :now, :now)"
+            "INSERT INTO quotes (id, trip_id, option_id, amount_minor, currency, price_basis, "
+            "valid_until, content_hash, snapshot, created_at) VALUES (:id, 't1', 'opt', :amount, "
+            "'INR', 'PER_TRAVELLER', :now, :hash, '{}', :now)"
         ),
-        {"id": quote_id, "amount": amount, "now": NOW},
+        {"id": quote_id, "amount": amount, "now": NOW, "hash": "h" * 64},
     )
 
 
 def add_intent(connection: Connection, intent_id: str, key: str) -> None:
     connection.execute(
         text(
-            "INSERT INTO booking_intents (id, trip_id, quote_id, status, idempotency_key, "
-            "created_at) VALUES (:id, 't1', 'q1', 'DRAFT', :key, :now)"
+            "INSERT INTO booking_intents (id, trip_id, owner_id, quote_id, status, "
+            "idempotency_key, request_hash, created_at, updated_at) "
+            "VALUES (:id, 't1', 'alice', 'q1', 'AWAITING_APPROVAL', :key, :hash, :now, :now)"
         ),
-        {"id": intent_id, "key": key, "now": NOW},
+        {"id": intent_id, "key": key, "hash": "r" * 64, "now": NOW},
+    )
+
+
+def add_approval(connection: Connection, approval_id: str = "a1", intent_id: str = "i1") -> None:
+    connection.execute(
+        text(
+            "INSERT INTO approvals (id, booking_intent_id, quote_id, approver_id, "
+            "quote_content_hash, approved_at, expires_at) "
+            "VALUES (:id, :intent, 'q1', 'alice', :hash, :now, :later)"
+        ),
+        {
+            "id": approval_id,
+            "intent": intent_id,
+            "hash": "h" * 64,
+            "now": NOW,
+            "later": NOW + timedelta(minutes=15),
+        },
     )
 
 
@@ -151,6 +171,35 @@ class TestConstraints:
             add_trip(connection, status="bogus")
 
         assert sqlstate(caught.value) == CHECK_VIOLATION
+
+    def test_an_unknown_booking_status_is_refused(self, postgres_engine: Engine) -> None:
+        with postgres_engine.begin() as connection:
+            add_trip(connection)
+            add_quote(connection)
+
+        with pytest.raises(IntegrityError) as caught, postgres_engine.begin() as connection:
+            add_intent(connection, "i1", "key-1")
+            connection.execute(text("UPDATE booking_intents SET status = 'BOOKED_FOR_REAL'"))
+
+        assert sqlstate(caught.value) == CHECK_VIOLATION
+
+    def test_an_approval_must_expire_after_it_was_given(self, postgres_engine: Engine) -> None:
+        with postgres_engine.begin() as connection:
+            add_trip(connection)
+            add_quote(connection)
+            add_intent(connection, "i1", "key-1")
+
+        with pytest.raises(IntegrityError) as caught, postgres_engine.begin() as connection:
+            add_approval(connection)
+            connection.execute(text("UPDATE approvals SET expires_at = approved_at"))
+
+        assert sqlstate(caught.value) == CHECK_VIOLATION
+
+    def test_an_approval_needs_a_real_intent_and_quote(self, postgres_engine: Engine) -> None:
+        with pytest.raises(IntegrityError) as caught, postgres_engine.begin() as connection:
+            add_approval(connection, intent_id="no-such-intent")
+
+        assert sqlstate(caught.value) == FOREIGN_KEY_VIOLATION
 
     def test_a_run_needs_a_real_trip(self, postgres_engine: Engine) -> None:
         with pytest.raises(IntegrityError) as caught, postgres_engine.begin() as connection:
@@ -280,6 +329,31 @@ class TestTheApplicationRole:
 
         self.denied(as_application, "DELETE FROM audit_events")
 
+    def seed_booking(self, connection: Connection) -> None:
+        add_trip(connection)
+        add_quote(connection)
+        add_intent(connection, "i1", "key-1")
+        add_approval(connection)
+
+    @pytest.mark.parametrize("table", ["approvals", "quotes"])
+    def test_it_cannot_edit_or_remove_an_approval_or_a_quote(
+        self, as_application: Connection, table: str
+    ) -> None:
+        self.seed_booking(as_application)
+
+        self.denied(as_application, f"UPDATE {table} SET id = id")
+        self.denied(as_application, f"DELETE FROM {table}")
+        self.denied(as_application, f"TRUNCATE {table}")
+
+    def test_it_can_move_an_intent_along_but_not_delete_it(
+        self, as_application: Connection
+    ) -> None:
+        self.seed_booking(as_application)
+
+        as_application.execute(text("UPDATE booking_intents SET status = 'APPROVED'"))
+
+        self.denied(as_application, "DELETE FROM booking_intents")
+
     def test_it_cannot_truncate_the_audit_table(self, as_application: Connection) -> None:
         self.denied(as_application, "TRUNCATE audit_events")
 
@@ -319,11 +393,7 @@ class TestTheApplicationRole:
             # A table that the policy does not name has not been classified: fail until it is.
             assert sorted(tables) == sorted(policy.ALL_TABLES)
             for table in tables:
-                allowed = (
-                    {"SELECT", "INSERT"}
-                    if table in policy.APPEND_ONLY_TABLES
-                    else {"SELECT", "INSERT", "UPDATE", "DELETE"}
-                )
+                allowed = set(policy.privileges_for(table))
                 for privilege in privileges:
                     has = connection.execute(
                         text("SELECT has_table_privilege(:role, :table, :privilege)"),
@@ -383,7 +453,10 @@ class TestTheAppOnPostgresAsTheRestrictedRole:
     def boot(self, owner: Engine) -> TestClient:
         sessions = sessionmaker(restricted_engine(owner), expire_on_commit=False)
         app = create_app(
-            Settings.model_validate(API), executor=InlineExecutor(), store=SqlTripStore(sessions)
+            Settings.model_validate(API),
+            executor=InlineExecutor(),
+            store=SqlTripStore(sessions),
+            booking_store=SqlBookingStore(sessions),
         )
         return TestClient(app)
 
@@ -469,3 +542,53 @@ class TestTheAppOnPostgresAsTheRestrictedRole:
             total
             == http.get(f"/api/v1/runs/{run_id}/cost-estimate").json()["total"]["amount_minor"]
         )
+
+    def test_a_booking_intent_is_approved_and_execution_is_refused(
+        self, postgres_engine: Engine
+    ) -> None:
+        http = self.boot(postgres_engine)
+        trip_id, run_id = self.plan(http)
+        waiting_option = http.get(f"/api/v1/runs/{run_id}").json()["research"]["transport"][
+            "options"
+        ][0]["id"]
+
+        created = http.post(
+            f"/api/v1/trips/{trip_id}/booking-intents",
+            json={
+                "category": "TRANSPORT",
+                "option_id": waiting_option,
+                "idempotency_key": "pg-key-000001",
+            },
+        )
+        assert created.status_code == 201, created.text
+        intent = created.json()
+        again = http.post(
+            f"/api/v1/trips/{trip_id}/booking-intents",
+            json={
+                "category": "TRANSPORT",
+                "option_id": waiting_option,
+                "idempotency_key": "pg-key-000001",
+            },
+        )
+        approved = http.post(
+            f"/api/v1/booking-intents/{intent['id']}/approvals",
+            json={"quote_content_hash": intent["quote_content_hash"]},
+        )
+        refused = http.post(f"/api/v1/booking-intents/{intent['id']}/execute")
+
+        assert again.status_code == 200 and again.json()["id"] == intent["id"]
+        assert approved.status_code == 201, approved.text
+        assert approved.json()["status"] == "APPROVED"
+        assert refused.status_code == 409 and refused.json()["code"] == "booking_disabled"
+        with postgres_engine.connect() as connection:
+            status = connection.execute(text("SELECT status FROM booking_intents")).scalar()
+            approvals = connection.execute(text("SELECT count(*) FROM approvals")).scalar()
+            stored_key = connection.execute(
+                text("SELECT idempotency_key FROM booking_intents")
+            ).scalar()
+            kinds = {
+                row[0] for row in connection.execute(text("SELECT event_type FROM audit_events"))
+            }
+        assert (status, approvals) == ("APPROVED", 1)
+        assert stored_key != "pg-key-000001"  # only a hash of the caller's key is kept
+        assert {"booking_intent.created", "approval.recorded", "booking.execution_refused"} <= kinds

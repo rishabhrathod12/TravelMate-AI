@@ -1,6 +1,51 @@
 {
   "components": {
     "schemas": {
+      "ApprovalCreate": {
+        "properties": {
+          "quote_content_hash": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Quote Content Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote_content_hash"
+        ],
+        "title": "ApprovalCreate",
+        "type": "object"
+      },
+      "ApprovalView": {
+        "properties": {
+          "approved_at": {
+            "format": "date-time",
+            "title": "Approved At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "quote_content_hash": {
+            "title": "Quote Content Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "approved_at",
+          "expires_at",
+          "quote_content_hash"
+        ],
+        "title": "ApprovalView",
+        "type": "object"
+      },
       "AvailabilityStatus": {
         "description": "UNKNOWN is the default so that availability is never invented.",
         "enum": [
@@ -9,6 +54,24 @@
           "UNKNOWN"
         ],
         "title": "AvailabilityStatus",
+        "type": "string"
+      },
+      "BookingStatus": {
+        "description": "The eleven states in ARCHITECTURE §6.",
+        "enum": [
+          "DRAFT",
+          "QUOTED",
+          "AWAITING_APPROVAL",
+          "APPROVED",
+          "REVALIDATION",
+          "BOOKING",
+          "CONFIRMED",
+          "FAILED",
+          "NEEDS_REVIEW",
+          "CANCELLED",
+          "EXPIRED"
+        ],
+        "title": "BookingStatus",
         "type": "string"
       },
       "BusDetails": {
@@ -184,6 +247,26 @@
         "title": "CostLineKind",
         "type": "string"
       },
+      "Fee": {
+        "additionalProperties": false,
+        "description": "A separately itemised charge, for example a tax or a booking fee.",
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "label": {
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "amount"
+        ],
+        "title": "Fee",
+        "type": "object"
+      },
       "FlightDetails": {
         "additionalProperties": false,
         "description": "Facts only a flight has. Every field is optional: a missing fact stays missing.",
@@ -321,6 +404,125 @@
           }
         },
         "title": "HotelSearchResult",
+        "type": "object"
+      },
+      "IntentCreate": {
+        "properties": {
+          "category": {
+            "enum": [
+              "TRANSPORT",
+              "RETURN_TRANSPORT",
+              "HOTEL"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "option_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Option Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "option_id",
+          "idempotency_key"
+        ],
+        "title": "IntentCreate",
+        "type": "object"
+      },
+      "IntentResponse": {
+        "properties": {
+          "approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "availability": {
+            "$ref": "#/components/schemas/AvailabilityStatus"
+          },
+          "booking_enabled": {
+            "const": false,
+            "default": false,
+            "title": "Booking Enabled",
+            "type": "boolean"
+          },
+          "category": {
+            "enum": [
+              "TRANSPORT",
+              "RETURN_TRANSPORT",
+              "HOTEL"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "notice": {
+            "default": "Booking is switched off. Approving records your agreement to these exact terms for a short time; it does not book anything or take a payment.",
+            "title": "Notice",
+            "type": "string"
+          },
+          "price_basis": {
+            "$ref": "#/components/schemas/PriceBasis"
+          },
+          "quote": {
+            "$ref": "#/components/schemas/Quote"
+          },
+          "quote_content_hash": {
+            "title": "Quote Content Hash",
+            "type": "string"
+          },
+          "quote_valid_until": {
+            "format": "date-time",
+            "title": "Quote Valid Until",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          },
+          "travellers": {
+            "title": "Travellers",
+            "type": "integer"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "trip_id",
+          "status",
+          "category",
+          "quote",
+          "quote_content_hash",
+          "quote_valid_until",
+          "availability",
+          "price_basis",
+          "travellers",
+          "approval",
+          "request_id"
+        ],
+        "title": "IntentResponse",
         "type": "object"
       },
       "Itinerary": {
@@ -633,9 +835,29 @@
         "title": "PlanResponse",
         "type": "object"
       },
+      "PriceBasis": {
+        "description": "What a quoted price covers (the owner's answer to PRD Q12, 2026-10-30).\n\nTransport fares are per traveller; hotel prices are per room per night. A quote says which, so\nnothing has to guess how to scale it. There is deliberately no default.",
+        "enum": [
+          "PER_TRAVELLER",
+          "PER_ROOM_NIGHT"
+        ],
+        "title": "PriceBasis",
+        "type": "string"
+      },
       "ProblemDetails": {
         "description": "An error body (RFC 9457), served as `application/problem+json`. See `app.api.problems`.",
         "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
           "detail": {
             "title": "Detail",
             "type": "string"
@@ -708,6 +930,68 @@
         ],
         "title": "Provenance",
         "type": "string"
+      },
+      "Quote": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "$ref": "#/components/schemas/AvailabilityStatus",
+            "default": "UNKNOWN"
+          },
+          "cancellation_terms": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Terms"
+          },
+          "fees": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Fee"
+            },
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "option_id": {
+            "minLength": 1,
+            "title": "Option Id",
+            "type": "string"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "price_basis": {
+            "$ref": "#/components/schemas/PriceBasis"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceMetadata"
+          },
+          "valid_until": {
+            "format": "date-time",
+            "title": "Valid Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "option_id",
+          "price",
+          "price_basis",
+          "valid_until",
+          "source"
+        ],
+        "title": "Quote",
+        "type": "object"
       },
       "RejectionOut": {
         "properties": {
@@ -2052,6 +2336,253 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/booking-intents/{intent_id}": {
+      "get": {
+        "operationId": "get_intent_api_v1_booking_intents__intent_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "intent_id",
+            "required": true,
+            "schema": {
+              "title": "Intent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A provider could not be reached. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Get Intent",
+        "tags": [
+          "booking"
+        ]
+      }
+    },
+    "/api/v1/booking-intents/{intent_id}/approvals": {
+      "post": {
+        "operationId": "approve_api_v1_booking_intents__intent_id__approvals_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "intent_id",
+            "required": true,
+            "schema": {
+              "title": "Intent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A provider could not be reached. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Approve",
+        "tags": [
+          "booking"
+        ]
+      }
+    },
+    "/api/v1/booking-intents/{intent_id}/execute": {
+      "post": {
+        "description": "Always refused: booking is switched off. Never changes the intent.",
+        "operationId": "execute_api_v1_booking_intents__intent_id__execute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "intent_id",
+            "required": true,
+            "schema": {
+              "title": "Intent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A provider could not be reached. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Execute",
+        "tags": [
+          "booking"
+        ]
+      }
+    },
     "/api/v1/chat/plans": {
       "post": {
         "operationId": "write_plan_api_v1_chat_plans_post",
@@ -2642,6 +3173,98 @@
         "summary": "Read Trip",
         "tags": [
           "planning"
+        ]
+      }
+    },
+    "/api/v1/trips/{trip_id}/booking-intents": {
+      "post": {
+        "operationId": "create_intent_api_v1_trips__trip_id__booking_intents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found, or not yours. Problem Details (application/problem+json)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not in the right state. Problem Details (application/problem+json)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid request. Problem Details (application/problem+json)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unexpected error. Problem Details (application/problem+json)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A provider could not be reached. Problem Details (application/problem+json)."
+          }
+        },
+        "summary": "Create Intent",
+        "tags": [
+          "booking"
         ]
       }
     },

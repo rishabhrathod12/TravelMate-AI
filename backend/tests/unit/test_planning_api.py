@@ -510,15 +510,15 @@ class TestSavedItineraries:
 
 
 class TestNothingBookingRelated:
-    def test_no_route_response_or_field_mentions_booking_or_payment(self) -> None:
+    def test_planning_responses_never_claim_a_booking_or_payment(self) -> None:
         http = client_for()
         run = start(http, make_trip(http))
         http.post(f"/api/v1/runs/{run['run_id']}/selections", json=choice(run))
-        paths = " ".join(http.get("/openapi.json").json()["paths"])
+        paths = " ".join(http.get("/openapi.json").json()["paths"]).lower()
         text = http.get(f"/api/v1/runs/{run['run_id']}").text.lower()
 
-        for word in ("book", "payment", "approval", "intent"):
-            assert word not in paths.lower()
+        for word in ("payment", "charge", "card"):
+            assert word not in paths
         for word in ("booked", "payment", "approved", "confirmed"):
             assert word not in text
 

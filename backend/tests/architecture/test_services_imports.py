@@ -3,8 +3,8 @@
 - `observability/` is a leaf: it imports nothing else from the application, so logging can never
   pull in a service, a route or a secret.
 - `services/` holds the access rules. It uses the domain, the workflow and the pure conversation
-  draft, plus observability. It never reaches the API layer, the app factory, voice, settings or
-  booking (booking arrives with M10, and this test is then changed on purpose).
+  draft, plus observability. It never reaches the API layer, the app factory, voice or settings.
+  Only `booking.py` may use the (disabled) booking executor.
 - Only the API routers and the composition root import `services/`.
 - Neither package uses a network library.
 """
@@ -24,13 +24,17 @@ SERVICES_ALLOWED = (
     "app.observability",
     "app.services",
     "app.workflow",
+    # Booking approvals (M10): the service asks the disabled executor, and re-checks a quote with
+    # the same read-only research tools the workflow uses. Nothing wider.
+    "app.booking.executor",
+    "app.providers.queries",
+    "app.tools.research",
 )
 SERVICES_FORBIDDEN = (
     "app.api",
     "app.main",
     "app.voice",
     "app.config",
-    "app.booking",
     "app.persistence",
 )
 
@@ -101,9 +105,11 @@ def test_only_the_api_routers_and_the_composition_root_import_services() -> None
     )
 
     assert importers == [
+        "api/booking.py",
         "api/planning.py",
         "api/problems.py",
         "main.py",
+        "persistence/sql_booking_store.py",
         "persistence/sql_store.py",
     ]
 

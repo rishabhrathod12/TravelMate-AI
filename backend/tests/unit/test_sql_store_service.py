@@ -16,14 +16,17 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.planning import get_principal
 from app.config import Settings
-from app.main import _store, create_app
+from app.main import _stores, create_app
 from app.persistence.models import (
     AuditEventRow,
     CostEstimateRow,
     OptionRow,
     TripRequestRow,
 )
+from app.persistence.sql_booking_store import SqlBookingStore
 from app.persistence.sql_store import SqlTripStore
+from app.services.booking_store import InMemoryBookingStore
+from app.services.store import InMemoryTripStore
 from app.services.trips import RESTART_REASON
 
 API: dict[str, Any] = {
@@ -295,26 +298,29 @@ class TestTheAuditTrail:
 
 
 class TestChoosingTheStore:
-    def test_no_database_url_means_no_store_and_so_in_memory(self) -> None:
-        store, durable = _store(Settings(), None)
+    def test_no_database_url_means_in_memory_stores(self) -> None:
+        store, booking, durable = _stores(Settings(), None, None)
 
-        assert store is None and durable is False
+        assert isinstance(store, InMemoryTripStore) and durable is False
+        assert isinstance(booking, InMemoryBookingStore)
 
     def test_a_database_url_gives_the_sql_store_without_connecting(self) -> None:
         settings = Settings.model_validate(
             {"database_url": "postgresql://u:p@127.0.0.1:1/db"}  # port 1 refuses connections
         )
 
-        store, durable = _store(settings, None)
+        store, booking, durable = _stores(settings, None, None)
 
         assert isinstance(store, SqlTripStore) and durable is True
+        assert isinstance(booking, SqlBookingStore)
 
     def test_a_store_passed_in_wins(self, sessions: sessionmaker[Session]) -> None:
         mine = SqlTripStore(sessions)
 
-        store, durable = _store(Settings(), mine)
+        store, booking, durable = _stores(Settings(), mine, None)
 
         assert store is mine and durable is True
+        assert isinstance(booking, InMemoryBookingStore)
 
     def test_without_a_database_the_in_memory_default_still_works(self) -> None:
         http = TestClient(create_app(Settings.model_validate(API), executor=InlineExecutor()))

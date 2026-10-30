@@ -33,7 +33,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from app.persistence.policy import RUN_STATUSES, TRIP_STATUSES
+from app.persistence.policy import BOOKING_STATUSES, RUN_STATUSES, TRIP_STATUSES
 
 # JSONB on PostgreSQL, plain JSON elsewhere (the unit tests run on SQLite).
 Json = JSON().with_variant(JSONB(), "postgresql")
@@ -161,21 +161,29 @@ class OptionRow(Base):
 
 
 class QuoteRow(Base):
+    """A quote snapshot: exactly what a person was shown (M10). Never edited or deleted by the
+    application; a changed quote is a new row and the intent points at it."""
+
     __tablename__ = "quotes"
     __table_args__ = (
         CheckConstraint("amount_minor >= 0", name="ck_quotes_amount"),
         CheckConstraint(
             "price_basis IN ('PER_TRAVELLER', 'PER_ROOM_NIGHT')", name="ck_quotes_price_basis"
         ),
+        Index("ix_quotes_trip_id", "trip_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"))
     option_id: Mapped[str] = mapped_column(String(128))
     amount_minor: Mapped[int] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(String(3))
     price_basis: Mapped[str] = mapped_column(String(16))
     valid_until: Mapped[datetime] = mapped_column(Timestamp)
-    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    # The whole snapshot (quote, category, traveller count, dates, run), so the hash can be
+    # recomputed and the terms shown again exactly as they were.
+    snapshot: Mapped[dict[str, object]] = mapped_column(Json)
     created_at: Mapped[datetime] = mapped_column(Timestamp)
 
 
@@ -216,21 +224,38 @@ class BookingIntent(Base):
         # SECURITY §6: a repeated request with the same key must find the first intent, not make a
         # second one. The database enforces it, whatever the code does.
         UniqueConstraint("idempotency_key", name="uq_booking_intents_idempotency_key"),
+        CheckConstraint(_in("status", BOOKING_STATUSES), name="ck_booking_intents_status"),
+        Index("ix_booking_intents_trip_id", "trip_id"),
+        Index("ix_booking_intents_owner_id", "owner_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"))
+    owner_id: Mapped[str] = mapped_column(String(128))
     quote_id: Mapped[str] = mapped_column(ForeignKey("quotes.id"))
     status: Mapped[str] = mapped_column(String(32))
+    # A hash of the owner and the caller's key (see `hashed_idempotency_key`), never the key itself.
     idempotency_key: Mapped[str] = mapped_column(String(128))
+    # A hash of what was asked for, so the same key with a different request is a conflict.
+    request_hash: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(Timestamp)
+    updated_at: Mapped[datetime] = mapped_column(Timestamp)
 
 
 class Approval(Base):
+    """A human's approval of one quote snapshot. Never edited or deleted by the application."""
+
     __tablename__ = "approvals"
+    __table_args__ = (
+        CheckConstraint("expires_at > approved_at", name="ck_approvals_expiry"),
+        Index("ix_approvals_booking_intent_id", "booking_intent_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    booking_intent_id: Mapped[str] = mapped_column(ForeignKey("booking_intents.id"))
+    booking_intent_id: Mapped[str] = mapped_column(
+        ForeignKey("booking_intents.id", ondelete="CASCADE")
+    )
+    quote_id: Mapped[str] = mapped_column(ForeignKey("quotes.id"))
     approver_id: Mapped[str] = mapped_column(String(128))
     quote_content_hash: Mapped[str] = mapped_column(String(64))
     approved_at: Mapped[datetime] = mapped_column(Timestamp)

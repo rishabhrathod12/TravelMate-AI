@@ -58,11 +58,21 @@ def test_runs_that_work_in_the_background_answer_202() -> None:
         assert "202" in paths[path]["post"]["responses"], path
 
 
-def test_there_is_no_booking_route_in_this_milestone() -> None:
+def test_booking_has_intents_and_approvals_but_no_payment_route() -> None:
     paths = document()["paths"]
     assert isinstance(paths, dict)
 
-    assert not [p for p in paths if "book" in p or "approval" in p or "intent" in p]
+    assert "/api/v1/booking-intents/{intent_id}/approvals" in paths
+    assert "/api/v1/booking-intents/{intent_id}/execute" in paths
+    assert not [p for p in paths if "pay" in p or "charge" in p or "card" in p]
+
+
+def test_execute_is_documented_as_always_refused() -> None:
+    paths = document()["paths"]
+    assert isinstance(paths, dict)
+    responses = paths["/api/v1/booking-intents/{intent_id}/execute"]["post"]["responses"]
+
+    assert "409" in responses and "200" not in responses and "201" not in responses
 
 
 def test_the_document_holds_no_secret_or_example_credential() -> None:

@@ -17,12 +17,14 @@ from datetime import UTC, datetime
 from fastapi import FastAPI
 
 from app import __version__
+from app.api.booking import router as booking_router
 from app.api.chat import PlanService
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
 from app.api.planning import router as planning_router
 from app.api.problems import register_problem_handlers
 from app.api.voice import router as voice_router
+from app.booking.executor import build_booking_executor
 from app.config import Settings
 from app.conversation.manager import ConversationManager
 from app.conversation.stand_in import DevStandInClient
@@ -37,11 +39,15 @@ from app.llm.types import LLMLimits
 from app.observability.logs import configure_logging
 from app.observability.request_id import RequestIdMiddleware
 from app.persistence.engine import build_engine, build_session_factory
+from app.persistence.sql_booking_store import SqlBookingStore
 from app.persistence.sql_store import SqlTripStore
 from app.providers.base import Providers
 from app.providers.factory import build_providers
+from app.services.booking import BookingService
+from app.services.booking_store import BookingStore, InMemoryBookingStore
+from app.services.quote_source import ProviderQuoteSource
 from app.services.ratelimit import OwnerRateLimit
-from app.services.store import TripStore
+from app.services.store import InMemoryTripStore, TripStore
 from app.services.trips import TripService
 from app.tools.research import ResearchTools
 from app.voice.sessions import VoiceLimits, VoiceSessionService
@@ -89,18 +95,20 @@ def _plan_service(settings: Settings, live: LLMClient | None) -> PlanService:
     return PlanService(PlanWriter(ScriptedPlanClient(), limits), "SCRIPTED_SAMPLE")
 
 
-def _store(settings: Settings, injected: TripStore | None) -> tuple[TripStore | None, bool]:
-    """The trip store, and whether it is a database.
+def _stores(
+    settings: Settings, injected: TripStore | None, injected_booking: BookingStore | None
+) -> tuple[TripStore, BookingStore, bool]:
+    """The trip store, the booking store, and whether they are durable.
 
-    A store passed in (the tests) is used as it is. Otherwise a configured `DATABASE_URL` gives the
-    PostgreSQL store, and no URL gives None, which makes the service keep its records in memory.
+    Stores passed in (the tests) are used as they are. Otherwise a configured `DATABASE_URL` gives
+    the PostgreSQL stores, and no URL gives in-memory ones that are lost on restart.
     """
     if injected is not None:
-        return injected, True
+        return injected, injected_booking or InMemoryBookingStore(), True
     if settings.database_url is None:
-        return None, False
-    engine = build_engine(settings.database_url)
-    return SqlTripStore(build_session_factory(engine)), True
+        return InMemoryTripStore(), injected_booking or InMemoryBookingStore(), False
+    sessions = build_session_factory(build_engine(settings.database_url))
+    return SqlTripStore(sessions), injected_booking or SqlBookingStore(sessions), True
 
 
 def _trip_service(
@@ -108,7 +116,7 @@ def _trip_service(
     providers: Providers,
     live: LLMClient | None,
     executor: Executor,
-    store: TripStore | None,
+    store: TripStore,
 ) -> TripService:
     """The planning service. The itinerary step uses the real model only when live calls are on;
     otherwise a scripted stand-in answers. The workflow refuses to start if third-party tracing is
@@ -145,6 +153,7 @@ def create_app(
     *,
     executor: Executor | None = None,
     store: TripStore | None = None,
+    booking_store: BookingStore | None = None,
 ) -> FastAPI:
     """Build the application. Pass explicit settings in tests, an executor to run planning runs
     inline instead of in background threads, and a store to use instead of the configured one."""
@@ -190,7 +199,7 @@ def create_app(
         app.state.plans = _plan_service(resolved_settings, live)
         app.include_router(chat_router)
     if resolved_settings.api_enabled and chosen_executor is not None:
-        chosen_store, durable = _store(resolved_settings, store)
+        chosen_store, chosen_booking, durable = _stores(resolved_settings, store, booking_store)
         service = _trip_service(
             resolved_settings, app.state.providers, live, chosen_executor, chosen_store
         )
@@ -200,6 +209,15 @@ def create_app(
             service.recover_after_restart()
         app.state.trip_service = service
         app.include_router(planning_router)
+        # Booking intents and approvals. The executor refuses: `BOOKING_ENABLED` has no effect
+        # beyond making the start fail, because no booking provider exists (plan M10).
+        app.state.booking_service = BookingService(
+            chosen_store,
+            chosen_booking,
+            ProviderQuoteSource(ResearchTools(app.state.providers)),
+            build_booking_executor(booking_enabled=resolved_settings.booking_enabled),
+        )
+        app.include_router(booking_router)
     return app
 
 

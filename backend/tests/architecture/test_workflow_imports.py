@@ -115,6 +115,8 @@ WORKFLOW_USERS = [
     "api/planning.py",
     "main.py",
     "persistence/sql_store.py",
+    "services/booking.py",
+    "services/quote_source.py",
     "services/store.py",
     "services/trips.py",
 ]

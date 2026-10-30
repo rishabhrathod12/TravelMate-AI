@@ -20,6 +20,7 @@ DATABASE_LIBRARIES = {"sqlalchemy", "alembic", "psycopg", "psycopg2", "psycopg_b
 ALLOWED = (
     "app.domain",
     "app.services.store",
+    "app.services.booking_store",
     "app.conversation.draft",
     "app.workflow.state",
     "app.persistence",

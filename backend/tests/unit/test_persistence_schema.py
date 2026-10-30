@@ -27,8 +27,12 @@ class TestTheTables:
             for key in table.foreign_keys:
                 assert key.column.table.name in TABLES
 
-    def test_the_audit_table_is_the_only_append_only_table(self) -> None:
-        assert policy.APPEND_ONLY_TABLES == {"audit_events"}
+    def test_the_evidence_tables_are_append_only_and_intents_cannot_be_deleted(self) -> None:
+        assert policy.APPEND_ONLY_TABLES == {"audit_events", "approvals", "quotes"}
+        assert policy.NO_DELETE_TABLES == {"booking_intents"}
+        assert policy.privileges_for("audit_events") == ("SELECT", "INSERT")
+        assert policy.privileges_for("booking_intents") == ("SELECT", "INSERT", "UPDATE")
+        assert policy.privileges_for("trips") == ("SELECT", "INSERT", "UPDATE", "DELETE")
 
     def test_the_audit_table_records_the_request_id_security_8_requires(self) -> None:
         columns = set(TABLES["audit_events"].columns.keys())
@@ -91,6 +95,11 @@ class TestMoneyAndTime:
 class TestStatusesAgreeWithTheCode:
     def test_the_allowed_run_statuses_are_exactly_the_run_status_enum(self) -> None:
         assert policy.RUN_STATUSES == tuple(status.value for status in RunStatus)
+
+    def test_the_allowed_booking_statuses_are_exactly_the_booking_status_enum(self) -> None:
+        from app.domain.booking_lifecycle import BookingStatus
+
+        assert policy.BOOKING_STATUSES == tuple(status.value for status in BookingStatus)
 
     def test_the_allowed_trip_statuses_are_exactly_the_trip_status_enum(self) -> None:
         assert policy.TRIP_STATUSES == tuple(status.value for status in TripStatus)

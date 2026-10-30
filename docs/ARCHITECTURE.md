@@ -144,7 +144,8 @@ Money is stored as `amount_minor BIGINT` plus `currency CHAR(3)`. Timestamps are
 - `agent_runs` also holds `owner_id`, `run_number` (unique within a trip) and the whole `outcome` as JSON, so a run can be read back after a restart; `options` and `cost_estimates` hold queryable copies of the same data.
 - `itineraries.version` is unique within a trip.
 - `audit_events.request_id` is added because SECURITY section 8 requires it.
-- `provider_calls`, `quotes`, `booking_intents` and `approvals` exist, but nothing writes them yet (M10, M12).
+- `provider_calls` exists, but nothing writes it yet (M12).
+- M10 (revision `0002`) reshaped `quotes`, `booking_intents` and `approvals`, which had never held a row: a quote stores the whole snapshot, its trip and its content hash; an intent stores its owner, a hash of the caller's idempotency key, a hash of what was asked for and `updated_at`; an approval names the quote snapshot it approved. Quotes and approvals are append-only for the application role, and an intent may be updated but not deleted.
 
 Migrations are managed with Alembic. Each schema change is a reviewed revision with a working downgrade or a documented reason why none exists.
 
@@ -202,7 +203,7 @@ Base path `/api/v1`. JSON only. Every response includes `request_id`. Monetary v
 
 Error format follows RFC 9457 (Problem Details). Validation errors use `422`. Provider failures inside a run are reported in the run's `errors` list with `200`, not as HTTP failures, because the run is partially successful (AC-04).
 
-**Status (M8, 2026-10-30):** every route above except the booking-intent, approval and execute routes is implemented (those are M10). Records are held in memory until M9, and the caller is the one configured development principal until PRD Q4 is resolved.
+**Status (M10, 2026-10-30):** every route above is implemented. Planning records are durable when `DATABASE_URL` is set (M9) and the caller is the one configured development principal until PRD Q4 is resolved. Responses for intents carry `booking_enabled: false` and a plain notice, and error bodies for booking carry a stable `code` (`quote_mismatch`, `quote_changed`, `quote_expired`, `revalidation_failed`, `idempotency_conflict`, `booking_disabled`, and so on). `POST .../booking-intents` answers `201` for a new intent and `200` when the same key and request repeat. There is no payment route.
 
 Long-running planning uses `202` and polling in the MVP. Server-sent events are a later option, not a requirement.
 
