@@ -53,8 +53,14 @@ export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTrip
   const [hotelId, setHotelId] = useState<string | null>(null);
   const resultsHeading = useRef<HTMLHeadingElement>(null);
   const planner = useRef<HTMLDivElement>(null);
+  const chatPanel = useRef<HTMLDivElement>(null);
   // `null` in a production build: no real voice back end exists yet (ADR 0002).
   const [voiceAdapter] = useState(() => chooseVoiceAdapter());
+
+  function focusChat() {
+    chatPanel.current?.focus();
+    chatPanel.current?.scrollIntoView?.({ block: "start" });
+  }
 
   function focusPlanner() {
     planner.current?.focus();
@@ -104,8 +110,24 @@ export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTrip
 
       {chatFirst && (
         <>
-          {/* Development builds only: the chat runs on a labelled stand-in for the model. */}
-          <TripChat onUseRequest={useTripRequestFromChat} onUseItinerary={setItineraryRequest} />
+          {/* Development builds only. Chat and voice are equal parts of the assistant: the chat
+              runs on a labelled stand-in for the model, and the voice screen is mock or
+              session-only (it hears and plays nothing yet). */}
+          <div className="assistant-panels">
+            <div ref={chatPanel} tabIndex={-1} className="assistant-chat">
+              <TripChat
+                onUseRequest={useTripRequestFromChat}
+                onUseItinerary={setItineraryRequest}
+              />
+            </div>
+            <div className="assistant-voice">
+              <VoiceMode
+                adapter={voiceAdapter}
+                onReturnToPlanner={focusChat}
+                returnLabel="Back to the chat"
+              />
+            </div>
+          </div>
           {itineraryRequest !== null && <SamplePlan request={itineraryRequest} />}
           <p>
             <button
@@ -125,7 +147,7 @@ export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTrip
 
       {showDashboard && (
         <div id="comparison-view">
-          <VoiceMode adapter={voiceAdapter} onReturnToPlanner={focusPlanner} />
+          {!chatFirst && <VoiceMode adapter={voiceAdapter} onReturnToPlanner={focusPlanner} />}
 
           <div ref={planner} tabIndex={-1} className="planner-anchor">
             <TripForm onSubmit={handleSubmit} />

@@ -15,6 +15,8 @@ interface VoiceModeProps {
   adapter: VoiceAdapter | null;
   /** Lets the user go straight back to the trip form. */
   onReturnToPlanner?: () => void;
+  /** The text of that button. Defaults to the trip form; the chat-first screen says "chat". */
+  returnLabel?: string;
 }
 
 function statusText(state: VoiceSessionState, playsAudio: boolean, hearsUser: boolean): string {
@@ -44,7 +46,11 @@ function statusText(state: VoiceSessionState, playsAudio: boolean, hearsUser: bo
  * The conversational voice interface: one main button, a clear state, and the controls needed to
  * mute, interrupt and end. It only ever shows what the adapter reports.
  */
-export function VoiceMode({ adapter, onReturnToPlanner }: VoiceModeProps) {
+export function VoiceMode({
+  adapter,
+  onReturnToPlanner,
+  returnLabel = "Back to the trip form",
+}: VoiceModeProps) {
   const session = useVoiceSession(adapter);
   const { state } = session;
   const headingId = useId();
@@ -165,7 +171,7 @@ export function VoiceMode({ adapter, onReturnToPlanner }: VoiceModeProps) {
       {onReturnToPlanner !== undefined && (
         <p>
           <button type="button" className="button button-quiet" onClick={onReturnToPlanner}>
-            Back to the trip form
+            {returnLabel}
           </button>
         </p>
       )}

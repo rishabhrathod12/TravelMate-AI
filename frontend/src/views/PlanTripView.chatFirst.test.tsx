@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { PlanTripView } from "./PlanTripView";
@@ -34,9 +34,12 @@ function stubServer(reply: Record<string, unknown>) {
   );
 }
 
+// The voice panel has its own typed-message box and "Send" button, so the chat is addressed by its
+// region.
 async function ask(message: string) {
-  fireEvent.change(screen.getByLabelText(/for example/i), { target: { value: message } });
-  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  const chat = within(screen.getByRole("region", { name: "Describe your trip in a message" }));
+  fireEvent.change(chat.getByLabelText(/for example/i), { target: { value: message } });
+  fireEvent.click(chat.getByRole("button", { name: "Send" }));
   await screen.findByText(/Here is what I have/);
 }
 
@@ -50,6 +53,32 @@ describe("chat first", () => {
     expect(screen.getByRole("heading", { name: "Describe your trip in a message" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Use example trip/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Preview with demo data" })).not.toBeInTheDocument();
+  });
+
+  test("chat and voice are both on the screen at once, without opening the comparison", () => {
+    render(<PlanTripView chatFirst />);
+
+    expect(screen.getByRole("heading", { name: "Describe your trip in a message" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Talk to TravelMate" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Talk to TravelMate" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Use example trip/ })).not.toBeInTheDocument();
+  });
+
+  test("the voice screen shows once, and opening the comparison does not add a second one", () => {
+    render(<PlanTripView chatFirst />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Compare transport and hotels instead" }));
+
+    expect(screen.getAllByRole("heading", { name: "Talk to TravelMate" })).toHaveLength(1);
+  });
+
+  test("the voice screen's way back leads to the chat, not to a trip form", () => {
+    render(<PlanTripView chatFirst />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to the chat" }));
+
+    expect(screen.queryByRole("button", { name: "Back to the trip form" })).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(document.querySelector(".assistant-chat"));
   });
 
   test("the comparison view opens and closes behind a button", () => {

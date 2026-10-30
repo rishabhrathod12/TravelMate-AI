@@ -71,6 +71,11 @@ is connected (PRD Q19; the chat runs on a pattern-matching stand-in, SECURITY §
   nothing built earlier is removed. In a production build the page is the old dashboard, because
   the chat runs on a development stand-in and the backend refuses to serve it in production. The
   chat code is absent from the production bundle (checked).
+- **Chat and voice are equal (owner request, 2026-10-30).** In the chat-first screen the chat and
+  the voice screen ("Talk to TravelMate") sit side by side on wide screens and stacked on narrow
+  ones, both visible without opening the comparison. Voice is still the mock or session-only
+  adapter: it hears and plays nothing until the voice work (Step C) is approved. Its way-back
+  button says "Back to the chat".
 - **Scripted sample only.** The "plan" shown for an itinerary request is fixed placeholder text
   (`frontend/src/demo/sampleItinerary.ts`): it names the destination and the shape of each day, and
   no activity, price, time or opening hour. A banner and every line say "Scripted sample". The

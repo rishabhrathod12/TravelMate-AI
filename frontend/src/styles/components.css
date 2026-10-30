@@ -950,6 +950,31 @@ input[aria-invalid="true"] {
   margin-bottom: var(--space-6);
 }
 
+/* Chat and voice are equal parts of the assistant: side by side on wide screens, stacked on
+   narrow ones. */
+.assistant-panels {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.assistant-chat:focus {
+  outline: none;
+}
+
+.assistant-panels .trip-chat,
+.assistant-panels .voice-mode {
+  margin-block: 0;
+  height: 100%;
+}
+
+@media (min-width: 62rem) {
+  .assistant-panels {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+}
+
 .chat-lines {
   display: grid;
   gap: var(--space-2);
