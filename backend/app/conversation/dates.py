@@ -11,7 +11,8 @@ Month names are English (full or short), the way Hinglish speakers usually say t
 
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
+from typing import Literal
 
 MONTHS: dict[str, int] = {
     "january": 1,
@@ -128,3 +129,42 @@ def explicit_date_mentions(text: str, today: date) -> tuple[tuple[str, ParsedDat
 def parse_explicit_dates(text: str, today: date) -> tuple[ParsedDate, ...]:
     """Every explicit date in `text`, in the order written, without repeats."""
     return tuple(parsed for _, parsed in explicit_date_mentions(text, today))
+
+
+# -- relative phrases (ADR 0004) ---------------------------------------------------------------
+# A very short, fixed list. Code works out the date from today's date; the model never does, and
+# the traveller must confirm the result before it is used. "Weekend" starts on a Saturday here
+# (a fixed choice; some places count Friday). Only the Saturday is returned, because how long the
+# trip lasts decides the last day, not the word "weekend".
+
+SATURDAY = 5
+SUNDAY = 6
+_WEEKEND_PHRASE = re.compile(r"\b(this|next)\s+weekend\b", re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class RelativeDate:
+    phrase: Literal["this weekend", "next weekend"]
+    value: date  # the Saturday it starts on
+
+
+def resolve_weekend_phrase(text: str, today: date) -> RelativeDate | None:
+    """The Saturday meant by "this weekend" or "next weekend", or None if it is not clear.
+
+    - "this weekend": the coming Saturday; today if today is a Saturday. On a Sunday the weekend
+      is nearly over, so nothing is resolved and the traveller is asked for an exact date.
+    - "next weekend": the Saturday after that of "this weekend". On a Sunday that is the Saturday
+      six days away.
+    - Both phrases in one message, or neither, give None.
+    """
+    phrases = {match[1].casefold() for match in _WEEKEND_PHRASE.finditer(text)}
+    if len(phrases) != 1:
+        return None
+    weekday = today.weekday()
+    if phrases == {"this"}:
+        if weekday == SUNDAY:
+            return None
+        return RelativeDate("this weekend", today + timedelta(days=SATURDAY - weekday))
+    if weekday == SUNDAY:
+        return RelativeDate("next weekend", today + timedelta(days=6))
+    return RelativeDate("next weekend", today + timedelta(days=SATURDAY - weekday + 7))

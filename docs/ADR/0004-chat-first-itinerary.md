@@ -42,6 +42,23 @@ is connected (PRD Q19; the chat runs on a pattern-matching stand-in, SECURITY §
 5. **Booking stays off.** The chat cannot book, approve or pay. A spoken or typed "book it" does
    nothing. `BOOKING_ENABLED` stays false and ADR 0003 still applies.
 
+## Amendment: C1 as built (2026-10-30)
+
+- Only two phrases are resolved: "this weekend" and "next weekend". Other relative words
+  ("tomorrow", "next Friday", "kal", "in 3 days") are still not dates and the traveller is asked
+  for a day and month.
+- The phrase resolves to the **Saturday** only, not a Saturday-to-Sunday pair. How long the trip
+  lasts decides the last day, so "5 days this weekend" starts on Saturday. The Sunday is never
+  assumed. This narrows the example in item 2 above.
+- "This weekend" on a Saturday is that day (the reply says "today"). On a Sunday it is not
+  resolved and an exact date is asked for. "Next weekend" is the Saturday after "this weekend"'s;
+  on a Sunday it is the Saturday six days away. A weekend starts on Saturday in this code.
+- The worked-out date waits in the draft (`pending_date`, a fixed phrase and a date) and is used
+  only after a plain yes ("yes", "ok", "haan", ...). A no, or any other message, drops it. A
+  message that mixes a yes with other words is not agreement. An explicit date in the same message
+  wins over the phrase. The model cannot set a date from the phrase (it is refused as before).
+- A new turn status, `CONFIRM_DATES`, tells the screen a date is waiting for an answer.
+
 ## Plan (each phase stops for the owner's review)
 
 - **C1, relative dates:** the fixed phrase list, code-computed dates, a confirmation step in the

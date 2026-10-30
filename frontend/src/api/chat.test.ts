@@ -59,6 +59,17 @@ describe("sendChatTurn", () => {
     expect((JSON.parse(init.body as string) as { draft: unknown }).draft).toBeNull();
   });
 
+  test("a date waiting for a yes is a normal answer, and the draft carries it back", async () => {
+    const waiting = { pending_date: { phrase: "this weekend", value: "2026-11-07" } };
+    answer({ ...GOOD, status: "CONFIRM_DATES", trip_request: null, draft: waiting });
+
+    const turn = await sendChatTurn("Goa this weekend", null);
+
+    expect(turn.status).toBe("CONFIRM_DATES");
+    expect(turn.tripRequest).toBeNull();
+    expect(turn.draft).toEqual(waiting);
+  });
+
   test("an answer of the wrong shape is refused", async () => {
     answer({ ...GOOD, status: "SOMETHING_ELSE" });
 

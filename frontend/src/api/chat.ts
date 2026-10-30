@@ -9,7 +9,7 @@
 import type { TripRequest } from "../contracts/types";
 import { apiBaseUrl } from "./health";
 
-export type TurnStatus = "NEEDS_INFO" | "CONFLICT" | "READY_FOR_REVIEW" | "NOT_UNDERSTOOD";
+export type TurnStatus = "NEEDS_INFO" | "CONFIRM_DATES" | "CONFLICT" | "READY_FOR_REVIEW" | "NOT_UNDERSTOOD";
 
 /** The draft is opaque to the browser: it is only sent back as received. */
 export type ChatDraft = Record<string, unknown>;
@@ -36,7 +36,7 @@ export class ChatApiError extends Error {
   }
 }
 
-const STATUSES: readonly string[] = ["NEEDS_INFO", "CONFLICT", "READY_FOR_REVIEW", "NOT_UNDERSTOOD"];
+const STATUSES: readonly string[] = ["NEEDS_INFO", "CONFIRM_DATES", "CONFLICT", "READY_FOR_REVIEW", "NOT_UNDERSTOOD"];
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

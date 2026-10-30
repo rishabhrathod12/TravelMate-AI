@@ -8,6 +8,7 @@ decided by the domain model, not here.
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import Field, StrictInt, ValidationError
 
@@ -36,7 +37,19 @@ QUESTION_ORDER: tuple[TripField, ...] = (
 )
 
 
+class PendingDate(DomainModel):
+    """A departure date worked out by code from a phrase, waiting for the traveller to say yes.
+
+    It is never used until confirmed (ADR 0004). The phrase is one of a fixed pair, so a draft sent
+    back by the browser cannot carry arbitrary text here.
+    """
+
+    phrase: Literal["this weekend", "next weekend"]
+    value: date
+
+
 class TripDraft(DomainModel):
+    pending_date: PendingDate | None = None
     origin: str | None = None
     destination: str | None = None
     trip_type: TripType | None = None
@@ -175,7 +188,7 @@ def conflicts(draft: TripDraft) -> tuple[str, ...]:
 
 def build_request(draft: TripDraft) -> TripRequest | None:
     """A trip request if the draft is complete and consistent, otherwise None."""
-    if missing_fields(draft) or conflicts(draft):
+    if draft.pending_date is not None or missing_fields(draft) or conflicts(draft):
         return None
     if (
         draft.origin is None

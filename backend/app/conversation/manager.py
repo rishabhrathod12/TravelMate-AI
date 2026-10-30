@@ -13,16 +13,19 @@ follow ARCHITECTURE §9, then the turn ends with a plain apology and the draft u
 
 import json
 import random
+import re
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from enum import StrEnum
 
 from app.conversation.claims import ExtractedDetails, Rejection, RejectionReason, verify
+from app.conversation.dates import RelativeDate, parse_explicit_dates, resolve_weekend_phrase
 from app.conversation.draft import (
     Accepted,
     Change,
+    PendingDate,
     TripDraft,
     TripField,
     build_request,
@@ -67,6 +70,7 @@ SYSTEM_PROMPT = (
 
 class TurnStatus(StrEnum):
     NEEDS_INFO = "NEEDS_INFO"
+    CONFIRM_DATES = "CONFIRM_DATES"
     CONFLICT = "CONFLICT"
     READY_FOR_REVIEW = "READY_FOR_REVIEW"
     NOT_UNDERSTOOD = "NOT_UNDERSTOOD"
@@ -98,6 +102,44 @@ _QUESTIONS: dict[TripField, str] = {
 
 _DATE_FIELDS = (TripField.DEPARTURE_DATE, TripField.RETURN_DATE)
 
+_WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+# The only answers that confirm or refuse a date worked out from a phrase. Anything else is
+# treated as a new message, never as agreement.
+_YES = frozenset(
+    {
+        "yes",
+        "yeah",
+        "yep",
+        "yup",
+        "y",
+        "correct",
+        "right",
+        "that is right",
+        "thats right",
+        "that's right",
+        "ok",
+        "okay",
+        "sure",
+        "haan",
+        "han",
+        "ha",
+        "theek hai",
+        "thik hai",
+        "sahi",
+    }
+)
+_NO = frozenset({"no", "nope", "nah", "n", "wrong", "not right", "nahi", "nahin", "na"})
+_NOT_WORD = re.compile(r"[^\w\s']")
+
+
+def _yes_or_no(text: str) -> bool | None:
+    cleaned = " ".join(_NOT_WORD.sub(" ", text.casefold()).split())
+    if cleaned in _YES:
+        return True
+    if cleaned in _NO:
+        return False
+    return None
+
 
 def _today() -> date:
     return datetime.now(UTC).date()
@@ -121,6 +163,19 @@ def _known(draft: TripDraft) -> dict[str, str]:
     if draft.preferences:
         known["preferences"] = draft.preferences
     return known
+
+
+def _changes_lead(changes: tuple[Change, ...]) -> str:
+    if not changes:
+        return ""
+    return (
+        " ".join(
+            f"Okay, I changed the {c.field.value.lower().replace('_', ' ')} "
+            f"from {c.old} to {c.new}."
+            for c in changes
+        )
+        + " "
+    )
 
 
 def _repair_message(problems: tuple[str, ...]) -> LLMMessage:
@@ -176,10 +231,27 @@ class ConversationManager:
                 "That message was too long for me to read. Could you say it in a shorter way?",
             )
 
+        dropped = False
+        if draft.pending_date is not None:
+            answer = _yes_or_no(text)
+            if answer is True:
+                return self._accept_pending(draft, draft.pending_date)
+            if answer is False:
+                return self._decline_pending(draft)
+            # Anything else is a new message. The worked-out date is not used unless it is
+            # offered again.
+            draft = draft.model_copy(update={"pending_date": None})
+            dropped = True
+
+        today = self._today()
+        proposal = (
+            None if parse_explicit_dates(text, today) else resolve_weekend_phrase(text, today)
+        )
+
         first_call = self._recorder.call_count
         details = self._extract(draft, text)
         calls = self._recorder.call_count - first_call
-        if details is None:
+        if details is None and proposal is None:
             return self._result(
                 draft,
                 TurnStatus.NOT_UNDERSTOOD,
@@ -188,9 +260,72 @@ class ConversationManager:
                 llm_calls=calls,
             )
 
-        accepted, rejections = verify(details, text, self._today())
+        accepted, rejections = (Accepted(), ()) if details is None else verify(details, text, today)
         new_draft, changes = merge(draft, accepted)
-        return self._reply(new_draft, accepted, changes, rejections, calls)
+        if proposal is not None:
+            return self._confirm_dates(new_draft, proposal, changes, rejections, calls, today)
+        result = self._reply(new_draft, accepted, changes, rejections, calls)
+        if dropped and new_draft.departure_date is None:
+            return replace(
+                result,
+                reply="I haven't used the date from your earlier phrase. " + result.reply,
+            )
+        return result
+
+    # -- dates worked out from a phrase ---------------------------------------------------
+
+    def _confirm_dates(
+        self,
+        draft: TripDraft,
+        proposal: RelativeDate,
+        changes: tuple[Change, ...],
+        rejections: tuple[Rejection, ...],
+        calls: int,
+        today: date,
+    ) -> TurnResult:
+        pending = PendingDate(phrase=proposal.phrase, value=proposal.value)
+        waiting = draft.model_copy(update={"pending_date": pending})
+        lead = _changes_lead(changes)
+        when = f"{_WEEKDAYS[proposal.value.weekday()]} {show_date(proposal.value)}"
+        if proposal.value == today:
+            when += " (today)"
+        reply = (
+            f"{lead}I take “{proposal.phrase}” to mean leaving on {when}. Is that right? "
+            "If you meant another day, tell me the exact date."
+        )
+        return self._result(
+            waiting,
+            TurnStatus.CONFIRM_DATES,
+            reply,
+            changes=changes,
+            rejections=rejections,
+            llm_calls=calls,
+        )
+
+    def _accept_pending(self, draft: TripDraft, pending: PendingDate) -> TurnResult:
+        before = None if draft.departure_date is None else show_date(draft.departure_date)
+        updated = draft.model_copy(
+            update={
+                "pending_date": None,
+                "departure_date": pending.value,
+                "year_assumed": tuple(
+                    f for f in draft.year_assumed if f != TripField.DEPARTURE_DATE
+                ),
+            }
+        )
+        after = show_date(pending.value)
+        changes: tuple[Change, ...] = ()
+        if before is not None and before != after:
+            changes = (Change(TripField.DEPARTURE_DATE, before, after),)
+        return self._reply(updated, Accepted(), changes, (), 0)
+
+    def _decline_pending(self, draft: TripDraft) -> TurnResult:
+        cleared = draft.model_copy(update={"pending_date": None})
+        return self._result(
+            cleared,
+            TurnStatus.NEEDS_INFO,
+            "Okay. " + _QUESTIONS[TripField.DEPARTURE_DATE],
+        )
 
     # -- reply wording -------------------------------------------------------------------
 
@@ -202,16 +337,7 @@ class ConversationManager:
         rejections: tuple[Rejection, ...],
         calls: int,
     ) -> TurnResult:
-        lead = ""
-        if changes:
-            lead = (
-                " ".join(
-                    f"Okay, I changed the {c.field.value.lower().replace('_', ' ')} from "
-                    f"{c.old} to {c.new}."
-                    for c in changes
-                )
-                + " "
-            )
+        lead = _changes_lead(changes)
         assumed = [f for f in draft.year_assumed if f in _DATE_FIELDS]
         problems = conflicts(draft)
 
