@@ -130,15 +130,16 @@ export function TripChat({ onUseRequest, onUseItinerary, send = sendChatTurn }: 
       {readyPlan !== null && onUseItinerary !== undefined && (
         <div className="chat-ready">
           <p>
-            These details are ready. Until a language model is connected, this shows a scripted
-            sample plan, not a plan written for you. Nothing is booked.
+            These details are ready. The plan is written by the server and labelled with where it
+            came from: a scripted sample until a language model is switched on. Nothing is
+            booked.
           </p>
           <button
             type="button"
             className="button button-primary"
             onClick={() => onUseItinerary(readyPlan)}
           >
-            Show the sample plan
+            Show the plan
           </button>
         </div>
       )}

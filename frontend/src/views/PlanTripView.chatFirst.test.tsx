@@ -11,8 +11,21 @@ const ITINERARY = {
   preferences: null,
 };
 
-function stubServer(reply: Record<string, unknown>) {
-  const body = {
+const PLAN = {
+  source: "SCRIPTED_SAMPLE",
+  notice: "Scripted sample: fixed placeholder text, not written by a language model.",
+  plan: {
+    days: Array.from({ length: 5 }, (_, index) => ({
+      day_number: index + 1,
+      items: [{ title: `Plan line for day ${index + 1}`, description: null }],
+    })),
+    notes: null,
+  },
+};
+
+/** Answers the chat endpoint with `reply` and the plan endpoint with `plan`, like the server. */
+function stubServer(reply: Record<string, unknown>, plan: unknown = PLAN, planStatus = 200) {
+  const turn = {
     status: "READY_FOR_REVIEW",
     reply: "Here is what I have: a 5-day itinerary for Goa starting 7 November 2026.",
     draft: { destination: "Goa", trip_days: 5 },
@@ -23,15 +36,16 @@ function stubServer(reply: Record<string, unknown>) {
     model: { kind: "DEV_STAND_IN", notice: "Development stand-in: not a language model." },
     ...reply,
   };
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(body), {
-        status: 200,
+  const fetchMock = vi.fn((url: string) =>
+    Promise.resolve(
+      new Response(JSON.stringify(url.endsWith("/plans") ? plan : turn), {
+        status: url.endsWith("/plans") ? planStatus : 200,
         headers: { "Content-Type": "application/json" },
       }),
     ),
   );
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
 }
 
 // The voice panel has its own typed-message box and "Send" button, so the chat is addressed by its
@@ -97,17 +111,41 @@ describe("chat first", () => {
     expect(screen.queryByRole("button", { name: /Use example trip/ })).not.toBeInTheDocument();
   });
 
-  test("an itinerary request shows the scripted sample plan, labelled, and nothing to book", async () => {
-    stubServer({ itinerary_request: ITINERARY });
+  test("an itinerary request fetches the server's plan and shows its label, with nothing to book", async () => {
+    const fetchMock = stubServer({ itinerary_request: ITINERARY });
     render(<PlanTripView chatFirst />);
 
     await ask("plan my 5 days itinerary for Goa this weekend");
     expect(screen.queryByRole("heading", { name: "5-day plan for Goa" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Show the sample plan" }));
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    expect(calls.some(([url]) => url.endsWith("/plans"))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Show the plan" }));
 
+    expect(await screen.findByText("Plan line for day 1")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "5-day plan for Goa" })).toBeInTheDocument();
-    expect(screen.getByText(/not written by a language model/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Scripted sample ·/)).toBeInTheDocument(); // the banner
+    const call = (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) =>
+      url.endsWith("/plans"),
+    );
+    expect(JSON.parse(call?.[1].body as string)).toEqual({
+      itinerary_request: ITINERARY,
+    });
     expect(screen.queryByRole("button", { name: /book|pay|approve/i })).not.toBeInTheDocument();
+  });
+
+  test("when the server cannot write the plan, no plan is shown", async () => {
+    stubServer(
+      { itinerary_request: ITINERARY },
+      { title: "Plan unavailable", detail: "The model service is not available right now." },
+      503,
+    );
+    render(<PlanTripView chatFirst />);
+
+    await ask("plan my 5 days itinerary for Goa this weekend");
+    fireEvent.click(screen.getByRole("button", { name: "Show the plan" }));
+
+    expect(await screen.findByText(/The plan could not be written/)).toBeInTheDocument();
+    expect(screen.queryByText("Plan line for day 1")).not.toBeInTheDocument();
   });
 
   test("a trip request from the chat opens the comparison view with its results", async () => {

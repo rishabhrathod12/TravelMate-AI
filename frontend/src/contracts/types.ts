@@ -157,12 +157,30 @@ export interface ItineraryRequest {
  */
 export type SuggestionLabel = "SCRIPTED_SAMPLE" | "AI_SUGGESTION";
 
-export interface SamplePlanItem {
+/** One line of a plan. It has no field for a price, time, availability or booking. */
+export interface PlanItem {
   title: string;
-  label: SuggestionLabel;
+  description: string | null;
 }
 
-export interface SamplePlanDay {
+export interface PlanDay {
   day_number: number;
-  items: SamplePlanItem[];
+  items: PlanItem[];
+}
+
+export interface SuggestedPlan {
+  days: PlanDay[];
+  notes: string | null;
+}
+
+/**
+ * The server's answer to a plan request. `source` says where the plan came from and is decided by
+ * the server's own configuration, never by the model: `SCRIPTED_SAMPLE` is fixed placeholder text,
+ * `AI_SUGGESTION` is a language model's suggestion, not verified. `notice` is the server's own
+ * sentence about it and is shown as received.
+ */
+export interface PlanResponse {
+  source: SuggestionLabel;
+  notice: string;
+  plan: SuggestedPlan;
 }

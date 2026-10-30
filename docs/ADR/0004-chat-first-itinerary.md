@@ -76,8 +76,9 @@ is connected (PRD Q19; the chat runs on a pattern-matching stand-in, SECURITY §
   ones, both visible without opening the comparison. Voice is still the mock or session-only
   adapter: it hears and plays nothing until the voice work (Step C) is approved. Its way-back
   button says "Back to the chat".
-- **Scripted sample only.** The "plan" shown for an itinerary request is fixed placeholder text
-  (`frontend/src/demo/sampleItinerary.ts`): it names the destination and the shape of each day, and
+- **Scripted sample only (superseded by C3 step 2 below).** The "plan" shown for an itinerary
+  request was fixed placeholder text built in the browser (`frontend/src/demo/sampleItinerary.ts`,
+  since removed): it names the destination and the shape of each day, and
   no activity, price, time or opening hour. A banner and every line say "Scripted sample". The
   label `SCRIPTED_SAMPLE` is distinct from `AI_SUGGESTION`; nothing carries `AI_SUGGESTION` until a
   real model is connected (C3).
@@ -111,6 +112,21 @@ Built without any key and without any call to OpenAI:
   (C3 step 2). The OpenAI request format is checked against the installed SDK's real signature
   (`max_completion_tokens`, `response_format`, per-call `timeout`) but **no real request has ever
   been sent**, so the wire behaviour and the quality of real plans are unverified.
+
+## Amendment: C3 step 2 as built (2026-10-30)
+
+- **The server writes the plan; the browser only shows it.** "Show the plan" calls
+  `POST /api/v1/chat/plans` and renders the answer in `PlanSection`. The browser's own sample
+  builder and its component were removed, so there is no second source of plans.
+- **The label is the server's.** The banner, the server's notice and every line show the `source`
+  the server returned: "Scripted sample" or "AI suggestion, not verified". The browser accepts no
+  other source value, so a plan cannot claim an origin the server did not give it.
+- **No local fallback.** If the server cannot be reached, answers an error, or sends a malformed
+  plan, the page says the plan could not be written and offers "Try again". It never shows a
+  locally made-up plan. A late answer for an earlier request is ignored.
+- **Checked end to end** against the running backend in scripted mode with no key: the weekend was
+  confirmed, an itinerary request was built, and a plan labelled `SCRIPTED_SAMPLE` came back.
+  Still unverified: a real model's plan, and the screen in a real browser.
 
 ## Plan (each phase stops for the owner's review)
 

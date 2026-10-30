@@ -8,7 +8,7 @@ import { DemoBookingPanel } from "../components/demoBooking/DemoBookingPanel";
 import { HotelCard } from "../components/OptionCards";
 import { TransportBrowser } from "../components/transport/TransportBrowser";
 import { StatusMessage } from "../components/StatusMessage";
-import { SamplePlan } from "../components/SamplePlan";
+import { PlanSection } from "../components/PlanSection";
 import { TripChat } from "../components/TripChat";
 import { TripForm } from "../components/TripForm";
 import { VoiceMode } from "../components/voice/VoiceMode";
@@ -128,7 +128,7 @@ export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTrip
               />
             </div>
           </div>
-          {itineraryRequest !== null && <SamplePlan request={itineraryRequest} />}
+          {itineraryRequest !== null && <PlanSection request={itineraryRequest} />}
           <p>
             <button
               type="button"

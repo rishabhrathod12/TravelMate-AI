@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { ChatApiError, sendChatTurn } from "./chat";
+import { ChatApiError, requestPlan, sendChatTurn } from "./chat";
 
 const REQUEST = {
   trip_type: "ONE_WAY",
@@ -113,6 +113,84 @@ describe("sendChatTurn", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network")));
 
     const error = await sendChatTurn("hi", null).catch((caught: unknown) => caught);
+
+    expect((error as ChatApiError).status).toBeNull();
+  });
+});
+
+describe("requestPlan", () => {
+  const ITINERARY = {
+    destination: { name: "Goa" },
+    start_date: "2026-11-07",
+    days: 2,
+    travellers: null,
+    preferences: null,
+  };
+  const PLAN = {
+    source: "SCRIPTED_SAMPLE",
+    notice: "Scripted sample.",
+    plan: {
+      days: [
+        { day_number: 1, items: [{ title: "Arrive", description: null }] },
+        { day_number: 2, items: [{ title: "Leave" }] },
+      ],
+    },
+  };
+
+  test("posts the itinerary request and returns the plan with the server's label", async () => {
+    const fetchMock = answer(PLAN);
+
+    const result = await requestPlan(ITINERARY);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/v1/chat/plans");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ itinerary_request: ITINERARY });
+    expect(result.source).toBe("SCRIPTED_SAMPLE");
+    expect(result.notice).toBe("Scripted sample.");
+    expect(result.plan.days).toHaveLength(2);
+  });
+
+  test("fills in a missing description and notes with null", async () => {
+    answer(PLAN);
+
+    const result = await requestPlan(ITINERARY);
+
+    expect(result.plan.days[1]?.items[0]?.description).toBeNull();
+    expect(result.plan.notes).toBeNull();
+  });
+
+  test("an unknown source is refused, so a plan can never claim an invented origin", async () => {
+    answer({ ...PLAN, source: "LIVE" });
+
+    await expect(requestPlan(ITINERARY)).rejects.toBeInstanceOf(ChatApiError);
+  });
+
+  test.each([
+    ["no days", { ...PLAN, plan: { days: [] } }],
+    ["a day with no items", { ...PLAN, plan: { days: [{ day_number: 1, items: [] }] } }],
+    ["an item with no title", { ...PLAN, plan: { days: [{ day_number: 1, items: [{ title: "" }] }] } }],
+    ["a day number of zero", { ...PLAN, plan: { days: [{ day_number: 0, items: [{ title: "x" }] }] } }],
+    ["no notice", { source: "SCRIPTED_SAMPLE", plan: PLAN.plan }],
+  ])("an answer with %s is refused", async (_name, body) => {
+    answer(body);
+
+    await expect(requestPlan(ITINERARY)).rejects.toBeInstanceOf(ChatApiError);
+  });
+
+  test("a problem answer carries the server's detail and status", async () => {
+    answer({ title: "Plan limit reached", detail: "Too many plans were requested. Try later." }, 429);
+
+    const error = await requestPlan(ITINERARY).catch((caught: unknown) => caught);
+
+    expect((error as ChatApiError).status).toBe(429);
+    expect((error as ChatApiError).detail).toBe("Too many plans were requested. Try later.");
+  });
+
+  test("an unreachable server gives a null status", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network")));
+
+    const error = await requestPlan(ITINERARY).catch((caught: unknown) => caught);
 
     expect((error as ChatApiError).status).toBeNull();
   });
