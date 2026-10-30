@@ -45,7 +45,9 @@ export default function App() {
       <DemoBanner />
       <BackendStatus />
       <main id="main" className="page" tabIndex={-1} ref={mainRef}>
-        {route === "plan" && <PlanTripView />}
+        {/* Chat first only in development: the chat runs on a stand-in, and the backend refuses
+            to serve it in production. */}
+        {route === "plan" && <PlanTripView chatFirst={import.meta.env.DEV} />}
         {route === "trips" && <MyTripsView />}
         {route === "about" && <AboutView />}
       </main>

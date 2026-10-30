@@ -70,6 +70,23 @@ describe("sendChatTurn", () => {
     expect(turn.draft).toEqual(waiting);
   });
 
+  test("an itinerary request is read, and a malformed one is refused", async () => {
+    const itinerary = {
+      destination: { name: "Goa" },
+      start_date: "2026-11-07",
+      days: 5,
+      travellers: null,
+      preferences: null,
+    };
+    answer({ ...GOOD, trip_request: null, itinerary_request: itinerary });
+    const turn = await sendChatTurn("plan 5 days in Goa", null);
+    expect(turn.itineraryRequest?.days).toBe(5);
+    expect(turn.tripRequest).toBeNull();
+
+    answer({ ...GOOD, trip_request: null, itinerary_request: { ...itinerary, days: 0 } });
+    await expect(sendChatTurn("x", null)).rejects.toBeInstanceOf(ChatApiError);
+  });
+
   test("an answer of the wrong shape is refused", async () => {
     answer({ ...GOOD, status: "SOMETHING_ELSE" });
 

@@ -23,7 +23,7 @@ from pydantic import Field, StrictInt
 from app.conversation.dates import parse_explicit_dates
 from app.conversation.draft import Accepted, TripField
 from app.domain.base import DomainModel
-from app.domain.trip import TripType
+from app.domain.trip import MAX_ITINERARY_DAYS, TripType
 
 
 class TextClaim(DomainModel):
@@ -55,10 +55,12 @@ class ExtractedDetails(DomainModel):
     departure_date: DateClaim | None = None
     return_date: DateClaim | None = None
     traveller_count: CountClaim | None = None
+    trip_days: CountClaim | None = None
     preferences: TextClaim | None = None
 
 
 class RejectionReason(StrEnum):
+    OUT_OF_RANGE = "OUT_OF_RANGE"
     QUOTE_NOT_IN_MESSAGE = "QUOTE_NOT_IN_MESSAGE"
     VALUE_NOT_IN_MESSAGE = "VALUE_NOT_IN_MESSAGE"
     NOT_AN_EXPLICIT_DATE = "NOT_AN_EXPLICIT_DATE"
@@ -157,6 +159,15 @@ def verify(
         else:
             rejections.append(Rejection(TripField.TRAVELLERS, RejectionReason.NUMBER_NOT_IN_QUOTE))
 
+    days: int | None = None
+    if details.trip_days is not None and quoted(TripField.TRIP_DAYS, details.trip_days.quote):
+        if details.trip_days.value not in numbers_in(details.trip_days.quote):
+            rejections.append(Rejection(TripField.TRIP_DAYS, RejectionReason.NUMBER_NOT_IN_QUOTE))
+        elif details.trip_days.value > MAX_ITINERARY_DAYS:
+            rejections.append(Rejection(TripField.TRIP_DAYS, RejectionReason.OUT_OF_RANGE))
+        else:
+            days = details.trip_days.value
+
     preferences: str | None = None
     if details.preferences is not None and quoted(TripField.PREFERENCES, details.preferences.quote):
         # The traveller's own words, not the model's wording of them.
@@ -169,6 +180,7 @@ def verify(
         departure_date=day(TripField.DEPARTURE_DATE, details.departure_date),
         return_date=day(TripField.RETURN_DATE, details.return_date),
         traveller_count=count,
+        trip_days=days,
         preferences=preferences,
         year_assumed=frozenset(year_assumed),
     )

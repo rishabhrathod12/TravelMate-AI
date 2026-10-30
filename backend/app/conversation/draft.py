@@ -13,7 +13,7 @@ from typing import Literal
 from pydantic import Field, StrictInt, ValidationError
 
 from app.domain.base import DomainModel
-from app.domain.trip import Location, Traveller, TripRequest, TripType
+from app.domain.trip import ItineraryRequest, Location, Traveller, TripRequest, TripType
 
 
 class TripField(StrEnum):
@@ -23,6 +23,7 @@ class TripField(StrEnum):
     DEPARTURE_DATE = "DEPARTURE_DATE"
     RETURN_DATE = "RETURN_DATE"
     TRAVELLERS = "TRAVELLERS"
+    TRIP_DAYS = "TRIP_DAYS"
     PREFERENCES = "PREFERENCES"
 
 
@@ -34,6 +35,12 @@ QUESTION_ORDER: tuple[TripField, ...] = (
     TripField.TRIP_TYPE,
     TripField.RETURN_DATE,
     TripField.TRAVELLERS,
+)
+
+
+ITINERARY_QUESTION_ORDER: tuple[TripField, ...] = (
+    TripField.DESTINATION,
+    TripField.DEPARTURE_DATE,
 )
 
 
@@ -56,6 +63,9 @@ class TripDraft(DomainModel):
     departure_date: date | None = None
     return_date: date | None = None
     traveller_count: StrictInt | None = Field(default=None, ge=1)
+    # Set when the traveller asked for an N-day itinerary (ADR 0004). That changes what is needed:
+    # only a destination and a start date, not an origin, a trip type or a traveller count.
+    trip_days: StrictInt | None = Field(default=None, ge=1)
     preferences: str | None = None
     # Dates whose year the traveller did not write, so the reply can say which year was assumed.
     year_assumed: tuple[TripField, ...] = ()
@@ -80,6 +90,7 @@ class Accepted:
     departure_date: date | None = None
     return_date: date | None = None
     traveller_count: int | None = None
+    trip_days: int | None = None
     preferences: str | None = None
     year_assumed: frozenset[TripField] = frozenset()
 
@@ -109,6 +120,8 @@ def _shown(field: TripField, draft: TripDraft) -> str | None:
             return None if draft.return_date is None else show_date(draft.return_date)
         case TripField.TRAVELLERS:
             return None if draft.traveller_count is None else str(draft.traveller_count)
+        case TripField.TRIP_DAYS:
+            return None if draft.trip_days is None else str(draft.trip_days)
         case TripField.PREFERENCES:
             return draft.preferences
 
@@ -124,6 +137,7 @@ def merge(draft: TripDraft, accepted: Accepted) -> tuple[TripDraft, tuple[Change
         (TripField.DEPARTURE_DATE, "departure_date", accepted.departure_date),
         (TripField.RETURN_DATE, "return_date", accepted.return_date),
         (TripField.TRAVELLERS, "traveller_count", accepted.traveller_count),
+        (TripField.TRIP_DAYS, "trip_days", accepted.trip_days),
         (TripField.PREFERENCES, "preferences", accepted.preferences),
     )
     changes: list[Change] = []
@@ -152,6 +166,7 @@ def clear_field(draft: TripDraft, field: TripField) -> TripDraft:
         TripField.DEPARTURE_DATE: "departure_date",
         TripField.RETURN_DATE: "return_date",
         TripField.TRAVELLERS: "traveller_count",
+        TripField.TRIP_DAYS: "trip_days",
         TripField.PREFERENCES: "preferences",
     }[field]
     remaining = tuple(f for f in draft.year_assumed if f != field)
@@ -159,9 +174,13 @@ def clear_field(draft: TripDraft, field: TripField) -> TripDraft:
 
 
 def missing_fields(draft: TripDraft) -> tuple[TripField, ...]:
-    """What still has to be asked, in order. A return date is asked only for a round trip."""
+    """What still has to be asked, in order. A return date is asked only for a round trip.
+
+    For an N-day itinerary only the destination and the start date are asked.
+    """
     missing: list[TripField] = []
-    for field in QUESTION_ORDER:
+    order = ITINERARY_QUESTION_ORDER if draft.trip_days is not None else QUESTION_ORDER
+    for field in order:
         if field is TripField.RETURN_DATE:
             if draft.trip_type is TripType.ROUND_TRIP and draft.return_date is None:
                 missing.append(field)
@@ -188,6 +207,8 @@ def conflicts(draft: TripDraft) -> tuple[str, ...]:
 
 def build_request(draft: TripDraft) -> TripRequest | None:
     """A trip request if the draft is complete and consistent, otherwise None."""
+    if draft.trip_days is not None:  # an itinerary, not a trip request: see build_itinerary_request
+        return None
     if draft.pending_date is not None or missing_fields(draft) or conflicts(draft):
         return None
     if (
@@ -212,8 +233,39 @@ def build_request(draft: TripDraft) -> TripRequest | None:
         return None
 
 
+def build_itinerary_request(draft: TripDraft) -> ItineraryRequest | None:
+    """An itinerary request if the draft asks for one and is complete, otherwise None."""
+    if draft.trip_days is None or draft.pending_date is not None or missing_fields(draft):
+        return None
+    if draft.destination is None or draft.departure_date is None:
+        return None
+    try:
+        return ItineraryRequest(
+            destination=Location(name=draft.destination),
+            start_date=draft.departure_date,
+            days=draft.trip_days,
+            travellers=draft.traveller_count,
+            preferences=draft.preferences,
+        )
+    except ValidationError:
+        return None
+
+
 def describe(draft: TripDraft) -> str:
     """The draft in plain words, for the traveller to review."""
+    if draft.trip_days is not None:
+        plan: list[str] = [f"a {draft.trip_days}-day itinerary"]
+        if draft.destination:
+            plan.append(f"for {draft.destination}")
+        if draft.departure_date is not None:
+            plan.append(f"starting {show_date(draft.departure_date)}")
+        if draft.traveller_count is not None:
+            plan.append(
+                f"for {draft.traveller_count} traveller{'s' if draft.traveller_count != 1 else ''}"
+            )
+        if draft.preferences:
+            plan.append(f"preferences: “{draft.preferences}”")
+        return " ".join(plan)
     parts: list[str] = []
     if draft.origin and draft.destination:
         parts.append(f"from {draft.origin} to {draft.destination}")

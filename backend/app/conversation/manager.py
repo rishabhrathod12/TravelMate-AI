@@ -28,6 +28,7 @@ from app.conversation.draft import (
     PendingDate,
     TripDraft,
     TripField,
+    build_itinerary_request,
     build_request,
     conflicts,
     describe,
@@ -36,7 +37,7 @@ from app.conversation.draft import (
     show_date,
     show_trip_type,
 )
-from app.domain.trip import TripRequest
+from app.domain.trip import MAX_ITINERARY_DAYS, ItineraryRequest, TripRequest
 from app.llm.base import LLMClient
 from app.llm.drafter import choose_delimiter
 from app.llm.errors import LLMError, LLMOutputError
@@ -59,6 +60,8 @@ SYSTEM_PROMPT = (
     "YYYY-MM-DD. If they gave no year, use any year; it will be checked. If they used a relative "
     "word such as tomorrow, next Friday, kal or parso, leave the date out.\n"
     "- traveller_count is the total number of people travelling, only if stated.\n"
+    "- trip_days is how many days the traveller wants the itinerary or trip to last, only if "
+    "stated. For example 5 for the words 5 days or five-day.\n"
     "- trip_type is ONE_WAY or ROUND_TRIP, only if stated or plainly meant.\n"
     "- preferences are things the traveller asked for, such as cheap or morning.\n"
     "- already_known lists details given earlier. The traveller may be correcting one. Report "
@@ -82,6 +85,7 @@ class TurnResult:
     status: TurnStatus
     reply: str
     request: TripRequest | None = None
+    itinerary_request: ItineraryRequest | None = None
     changes: tuple[Change, ...] = ()
     rejections: tuple[Rejection, ...] = ()
     llm_calls: int = 0
@@ -160,6 +164,8 @@ def _known(draft: TripDraft) -> dict[str, str]:
         known["return_date"] = show_date(draft.return_date)
     if draft.traveller_count is not None:
         known["traveller_count"] = str(draft.traveller_count)
+    if draft.trip_days is not None:
+        known["trip_days"] = str(draft.trip_days)
     if draft.preferences:
         known["preferences"] = draft.preferences
     return known
@@ -352,6 +358,26 @@ class ConversationManager:
                 llm_calls=calls,
             )
 
+        too_long = any(
+            r.field is TripField.TRIP_DAYS and r.reason is RejectionReason.OUT_OF_RANGE
+            for r in rejections
+        )
+        if too_long and draft.trip_days is None:
+            return self._result(
+                draft,
+                TurnStatus.NEEDS_INFO,
+                f"{lead}I can plan up to {MAX_ITINERARY_DAYS} days at a time. "
+                "How many days would you like?",
+                changes=changes,
+                rejections=rejections,
+                llm_calls=calls,
+            )
+        if too_long:  # A longer stay was asked for; the earlier length stays, and the user is told.
+            lead += (
+                f"I can plan up to {MAX_ITINERARY_DAYS} days at a time, so I kept "
+                f"{draft.trip_days} days. "
+            )
+
         missing = missing_fields(draft)
         if missing:
             hint = ""
@@ -370,11 +396,13 @@ class ConversationManager:
             )
 
         request = build_request(draft)
-        if request is None:  # Complete and consistent but the domain refused it: ask again.
+        itinerary = build_itinerary_request(draft)
+        if request is None and itinerary is None:  # Complete but the domain refused it.
+            wording = "itinerary" if draft.trip_days is not None else "trip"
             return self._result(
                 draft,
                 TurnStatus.NOT_UNDERSTOOD,
-                lead + "Those details don't make a valid trip. Could you check them?",
+                lead + f"Those details don't make a valid {wording}. Could you check them?",
                 changes=changes,
                 rejections=rejections,
                 llm_calls=calls,
@@ -392,6 +420,7 @@ class ConversationManager:
             TurnStatus.READY_FOR_REVIEW,
             reply,
             request=request,
+            itinerary_request=itinerary,
             changes=changes,
             rejections=rejections,
             llm_calls=calls,
@@ -404,11 +433,14 @@ class ConversationManager:
         reply: str,
         *,
         request: TripRequest | None = None,
+        itinerary_request: ItineraryRequest | None = None,
         changes: tuple[Change, ...] = (),
         rejections: tuple[Rejection, ...] = (),
         llm_calls: int = 0,
     ) -> TurnResult:
-        return TurnResult(draft, status, reply, request, changes, rejections, llm_calls)
+        return TurnResult(
+            draft, status, reply, request, itinerary_request, changes, rejections, llm_calls
+        )
 
     # -- calling the model ---------------------------------------------------------------
 

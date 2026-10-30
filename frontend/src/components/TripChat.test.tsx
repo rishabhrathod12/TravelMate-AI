@@ -21,6 +21,7 @@ function turn(overrides: Partial<ChatTurn> = {}): ChatTurn {
     reply: "Which date do you want to leave?",
     draft: { origin: "Indore", destination: "Goa" },
     tripRequest: null,
+    itineraryRequest: null,
     modelKind: "DEV_STAND_IN",
     modelNotice: "Development stand-in: not a language model.",
     ...overrides,

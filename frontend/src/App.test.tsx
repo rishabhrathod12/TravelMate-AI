@@ -27,7 +27,7 @@ describe("the application shell", () => {
   test("opens on the planning page and marks it as the current page", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Plan your trip" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Where to next?" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Plan Trip" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "About" })).not.toHaveAttribute("aria-current");
     expect(document.title).toBe("Plan Trip · TravelMate AI");
@@ -54,7 +54,7 @@ describe("the application shell", () => {
     render(<App />);
 
     expect(await screen.findByText(/Backend: not reachable/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Plan your trip" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Where to next?" })).toBeInTheDocument();
   });
 
   test("the skip link moves focus to the main content without changing the page", () => {
@@ -116,6 +116,6 @@ describe("navigation", () => {
 
     render(<App />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Plan your trip" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Where to next?" })).toBeInTheDocument();
   });
 });

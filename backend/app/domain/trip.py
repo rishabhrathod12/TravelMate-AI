@@ -66,3 +66,30 @@ class TripRequest(DomainModel):
     @property
     def is_same_day_return(self) -> bool:
         return self.trip_type is TripType.ROUND_TRIP and self.return_date == self.departure_date
+
+
+# Provisional guards (PRD A14, A15): the day limit is a prototype choice awaiting the owner; the
+# traveller and preferences limits are the owner's answer to Q14.
+MAX_ITINERARY_DAYS = 14
+MAX_TRAVELLERS = 9
+MAX_PREFERENCES_CHARS = 500
+
+
+class ItineraryRequest(DomainModel):
+    """A request to write a day-by-day itinerary for one place (ADR 0004).
+
+    It needs only where, when it starts and how many days. There is no origin and no transport:
+    those belong to the optional search view. `days` counts calendar days including the first.
+    """
+
+    destination: Location
+    start_date: date
+    days: StrictInt = Field(ge=1, le=MAX_ITINERARY_DAYS)
+    travellers: StrictInt | None = Field(default=None, ge=1, le=MAX_TRAVELLERS)
+    # Free text from the user: untrusted, and shown to the model only as data (SECURITY §3).
+    preferences: str | None = Field(default=None, max_length=MAX_PREFERENCES_CHARS)
+
+    @field_validator("preferences")
+    @classmethod
+    def _blank_preferences_become_none(cls, value: str | None) -> str | None:
+        return value or None

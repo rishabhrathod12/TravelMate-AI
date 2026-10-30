@@ -6,7 +6,7 @@
  * language model is connected; the server answers with a labelled development stand-in.
  */
 
-import type { TripRequest } from "../contracts/types";
+import type { ItineraryRequest, TripRequest } from "../contracts/types";
 import { apiBaseUrl } from "./health";
 
 export type TurnStatus = "NEEDS_INFO" | "CONFIRM_DATES" | "CONFLICT" | "READY_FOR_REVIEW" | "NOT_UNDERSTOOD";
@@ -19,6 +19,7 @@ export interface ChatTurn {
   reply: string;
   draft: ChatDraft;
   tripRequest: TripRequest | null;
+  itineraryRequest: ItineraryRequest | null;
   modelKind: string;
   modelNotice: string;
 }
@@ -58,6 +59,20 @@ function isTripRequest(value: unknown): value is TripRequest {
   );
 }
 
+function isItineraryRequest(value: unknown): value is ItineraryRequest {
+  return (
+    isObject(value) &&
+    isObject(value.destination) &&
+    typeof value.destination.name === "string" &&
+    typeof value.start_date === "string" &&
+    typeof value.days === "number" &&
+    Number.isInteger(value.days) &&
+    value.days >= 1 &&
+    (value.travellers === null || typeof value.travellers === "number") &&
+    (value.preferences === null || typeof value.preferences === "string")
+  );
+}
+
 function readTurn(body: unknown): ChatTurn | null {
   if (
     !isObject(body) ||
@@ -75,11 +90,16 @@ function readTurn(body: unknown): ChatTurn | null {
   if (tripRequest !== null && !isTripRequest(tripRequest)) {
     return null;
   }
+  const itineraryRequest = body.itinerary_request ?? null;
+  if (itineraryRequest !== null && !isItineraryRequest(itineraryRequest)) {
+    return null;
+  }
   return {
     status: body.status as TurnStatus,
     reply: body.reply,
     draft: body.draft,
     tripRequest,
+    itineraryRequest,
     modelKind: body.model.kind,
     modelNotice: body.model.notice,
   };

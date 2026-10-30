@@ -1,11 +1,13 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
 import { ChatApiError, sendChatTurn, type ChatDraft, type ChatTurn } from "../api/chat";
-import type { TripRequest } from "../contracts/types";
+import type { ItineraryRequest, TripRequest } from "../contracts/types";
 
 interface TripChatProps {
   /** Called when the traveller accepts the details the chat collected. */
   onUseRequest: (request: TripRequest) => void;
+  /** Called when the traveller asks to see the plan for the itinerary request. */
+  onUseItinerary?: (request: ItineraryRequest) => void;
   /** Replaceable in tests. */
   send?: typeof sendChatTurn;
 }
@@ -32,10 +34,11 @@ function failureText(error: unknown): string {
 }
 
 /** Typed chat that collects a trip request. It cannot search, book or pay. */
-export function TripChat({ onUseRequest, send = sendChatTurn }: TripChatProps) {
+export function TripChat({ onUseRequest, onUseItinerary, send = sendChatTurn }: TripChatProps) {
   const [lines, setLines] = useState<Line[]>([]);
   const [draft, setDraft] = useState<ChatDraft | null>(null);
   const [ready, setReady] = useState<TripRequest | null>(null);
+  const [readyPlan, setReadyPlan] = useState<ItineraryRequest | null>(null);
   const [notice, setNotice] = useState(INTRO_NOTICE);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -61,6 +64,7 @@ export function TripChat({ onUseRequest, send = sendChatTurn }: TripChatProps) {
       const turn: ChatTurn = await send(message, draft, controller.signal);
       setDraft(turn.draft);
       setReady(turn.status === "READY_FOR_REVIEW" ? turn.tripRequest : null);
+      setReadyPlan(turn.status === "READY_FOR_REVIEW" ? turn.itineraryRequest : null);
       setNotice(turn.modelNotice);
       setLines((before) => [...before, { from: "assistant", text: turn.reply }]);
     } catch (caught) {
@@ -81,6 +85,7 @@ export function TripChat({ onUseRequest, send = sendChatTurn }: TripChatProps) {
     setLines([]);
     setDraft(null);
     setReady(null);
+    setReadyPlan(null);
     setError(null);
     setText("");
     setBusy(false);
@@ -122,6 +127,21 @@ export function TripChat({ onUseRequest, send = sendChatTurn }: TripChatProps) {
           </button>
         </div>
       </form>
+      {readyPlan !== null && onUseItinerary !== undefined && (
+        <div className="chat-ready">
+          <p>
+            These details are ready. Until a language model is connected, this shows a scripted
+            sample plan, not a plan written for you. Nothing is booked.
+          </p>
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={() => onUseItinerary(readyPlan)}
+          >
+            Show the sample plan
+          </button>
+        </div>
+      )}
       {ready !== null && (
         <div className="chat-ready">
           <p>

@@ -59,6 +59,26 @@ is connected (PRD Q19; the chat runs on a pattern-matching stand-in, SECURITY §
   wins over the phrase. The model cannot set a date from the phrase (it is refused as before).
 - A new turn status, `CONFIRM_DATES`, tells the screen a date is waiting for an answer.
 
+## Amendment: C2 as built (2026-10-30)
+
+- **Itinerary request.** A new `ItineraryRequest` (destination, start date, days; optional head
+  count and preferences) is separate from `TripRequest`. Asking for "N days" puts the chat in
+  itinerary mode: only the destination and the start date are asked for (PRD A14). 1 to 14 days
+  (A15, provisional). Day counts are checked against the traveller's own words like every other
+  detail, and a request for more days is refused with an explanation, never silently dropped.
+- **Chat first.** In development builds the Plan page opens on the chat ("Where to next?"). A
+  button opens and closes the transport and hotel comparison (and voice, demo booking), so
+  nothing built earlier is removed. In a production build the page is the old dashboard, because
+  the chat runs on a development stand-in and the backend refuses to serve it in production. The
+  chat code is absent from the production bundle (checked).
+- **Scripted sample only.** The "plan" shown for an itinerary request is fixed placeholder text
+  (`frontend/src/demo/sampleItinerary.ts`): it names the destination and the shape of each day, and
+  no activity, price, time or opening hour. A banner and every line say "Scripted sample". The
+  label `SCRIPTED_SAMPLE` is distinct from `AI_SUGGESTION`; nothing carries `AI_SUGGESTION` until a
+  real model is connected (C3).
+- **Limits.** The chat endpoint now caps travellers at 9 (Q14). The search form's cap of 50 and its
+  missing 500-character preferences limit are not changed yet.
+
 ## Plan (each phase stops for the owner's review)
 
 - **C1, relative dates:** the fixed phrase list, code-computed dates, a confirmation step in the

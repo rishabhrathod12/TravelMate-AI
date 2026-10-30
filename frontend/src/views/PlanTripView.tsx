@@ -8,10 +8,11 @@ import { DemoBookingPanel } from "../components/demoBooking/DemoBookingPanel";
 import { HotelCard } from "../components/OptionCards";
 import { TransportBrowser } from "../components/transport/TransportBrowser";
 import { StatusMessage } from "../components/StatusMessage";
+import { SamplePlan } from "../components/SamplePlan";
 import { TripChat } from "../components/TripChat";
 import { TripForm } from "../components/TripForm";
 import { VoiceMode } from "../components/voice/VoiceMode";
-import type { TripRequest } from "../contracts/types";
+import type { ItineraryRequest, TripRequest } from "../contracts/types";
 import {
   buildDemoCostEstimate,
   buildDemoItinerary,
@@ -34,8 +35,20 @@ function showOption(optionId: string) {
   element?.scrollIntoView?.({ block: "center" });
 }
 
-export function PlanTripView() {
+interface PlanTripViewProps {
+  /**
+   * Chat first (ADR 0004): the conversation is the main screen and the transport and hotel
+   * comparison sits behind a button. Off by default and in production, where no chat exists.
+   */
+  chatFirst?: boolean;
+}
+
+export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTripViewProps) {
+  // `import.meta.env.DEV` is a build-time constant, so a production build drops the chat code.
+  const chatFirst = import.meta.env.DEV ? chatFirstRequested : false;
   const [request, setRequest] = useState<TripRequest | null>(null);
+  const [itineraryRequest, setItineraryRequest] = useState<ItineraryRequest | null>(null);
+  const [showDashboard, setShowDashboard] = useState(!chatFirst);
   const [transportId, setTransportId] = useState<string | null>(null);
   const [hotelId, setHotelId] = useState<string | null>(null);
   const resultsHeading = useRef<HTMLHeadingElement>(null);
@@ -56,6 +69,11 @@ export function PlanTripView() {
     }
   }, [request]);
 
+  function useTripRequestFromChat(next: TripRequest) {
+    setShowDashboard(true);
+    handleSubmit(next);
+  }
+
   function handleSubmit(next: TripRequest) {
     setRequest(next);
     setTransportId(null);
@@ -74,140 +92,163 @@ export function PlanTripView() {
     <>
       <section className="hero" aria-labelledby="plan-title">
         <div className="hero-copy">
-          <h1 id="plan-title">Plan your trip</h1>
+          <h1 id="plan-title">{chatFirst ? "Where to next?" : "Plan your trip"}</h1>
           <p>
-            Describe a trip and preview how options, costs and a day-by-day plan will look. The
-            results below are demo data until real providers are connected.
+            {chatFirst
+              ? "Tell TravelMate what you have in mind, for example “plan my 5 days itinerary for Goa this weekend”. Nothing is booked, and no language model is connected yet."
+              : "Describe a trip and preview how options, costs and a day-by-day plan will look. The results below are demo data until real providers are connected."}
           </p>
         </div>
         <HeroArt />
       </section>
 
-      <VoiceMode adapter={voiceAdapter} onReturnToPlanner={focusPlanner} />
-
-      {/* Development builds only: the chat runs on a labelled stand-in for the model. */}
-      {import.meta.env.DEV && <TripChat onUseRequest={handleSubmit} />}
-
-      <div ref={planner} tabIndex={-1} className="planner-anchor">
-        <TripForm onSubmit={handleSubmit} />
-      </div>
-
-      {request === null || demo === null ? (
-        <StatusMessage kind="empty" title="No preview yet">
-          Fill in the trip details, or use the example trip, then choose “Preview with demo data”.
-        </StatusMessage>
-      ) : (
-        <div className="results">
-          <h2 tabIndex={-1} ref={resultsHeading}>
-            Demo results
-          </h2>
-          <p className="results-summary">
-            {request.origin.name} to {request.destination.name} · {tripLabel(request)} · departs{" "}
-            {formatDay(request.departure_date)}
-            {request.return_date !== null && request.return_date !== request.departure_date
-              ? `, returns ${formatDay(request.return_date)}`
-              : ""}{" "}
-            · {request.travellers.length}{" "}
-            {request.travellers.length === 1 ? "traveller" : "travellers"}
+      {chatFirst && (
+        <>
+          {/* Development builds only: the chat runs on a labelled stand-in for the model. */}
+          <TripChat onUseRequest={useTripRequestFromChat} onUseItinerary={setItineraryRequest} />
+          {itineraryRequest !== null && <SamplePlan request={itineraryRequest} />}
+          <p>
+            <button
+              type="button"
+              className="button"
+              aria-expanded={showDashboard}
+              aria-controls="comparison-view"
+              onClick={() => setShowDashboard((open) => !open)}
+            >
+              {showDashboard
+                ? "Hide the transport and hotel comparison"
+                : "Compare transport and hotels instead"}
+            </button>
           </p>
+        </>
+      )}
 
-          <details className="request-preview">
-            <summary>Request preview (JSON, not sent anywhere)</summary>
-            <pre>{JSON.stringify(request, null, 2)}</pre>
-          </details>
+      {showDashboard && (
+        <div id="comparison-view">
+          <VoiceMode adapter={voiceAdapter} onReturnToPlanner={focusPlanner} />
 
-          <section aria-labelledby="transport-title">
-            <h2 id="transport-title">Transport options (demo)</h2>
-            {request.trip_type === "ROUND_TRIP" && (
-              <p className="field-hint">Outbound options only. Return-leg options are not modelled in this prototype.</p>
-            )}
-            <TransportBrowser
-              options={demo.transport}
-              quotes={demo.quotes}
-              selectedId={transportId}
-              onToggleSelect={(id) => setTransportId(id === transportId ? null : id)}
-            />
-          </section>
+          <div ref={planner} tabIndex={-1} className="planner-anchor">
+            <TripForm onSubmit={handleSubmit} />
+          </div>
 
-          <section aria-labelledby="hotel-title">
-            <h2 id="hotel-title">Hotel options (demo)</h2>
-            {stayNights(request) < 1 && (
-              <StatusMessage kind="info" title="Stay length is not defined for this trip">
-                One-way and same-day trips have no defined hotel stay yet (open question Q13).
-                Hotels are shown for reference, without a stay total.
-              </StatusMessage>
-            )}
-            <div className="card-grid">
-              {demo.hotels.map((option) => (
-                <HotelCard
-                  key={option.id}
-                  option={option}
-                  quote={demo.quotes[option.id]}
-                  selected={option.id === hotelId}
-                  onToggle={() => setHotelId(option.id === hotelId ? null : option.id)}
+          {request === null || demo === null ? (
+            <StatusMessage kind="empty" title="No preview yet">
+              Fill in the trip details, or use the example trip, then choose “Preview with demo data”.
+            </StatusMessage>
+          ) : (
+            <div className="results">
+              <h2 tabIndex={-1} ref={resultsHeading}>
+                Demo results
+              </h2>
+              <p className="results-summary">
+                {request.origin.name} to {request.destination.name} · {tripLabel(request)} · departs{" "}
+                {formatDay(request.departure_date)}
+                {request.return_date !== null && request.return_date !== request.departure_date
+                  ? `, returns ${formatDay(request.return_date)}`
+                  : ""}{" "}
+                · {request.travellers.length}{" "}
+                {request.travellers.length === 1 ? "traveller" : "travellers"}
+              </p>
+
+              <details className="request-preview">
+                <summary>Request preview (JSON, not sent anywhere)</summary>
+                <pre>{JSON.stringify(request, null, 2)}</pre>
+              </details>
+
+              <section aria-labelledby="transport-title">
+                <h2 id="transport-title">Transport options (demo)</h2>
+                {request.trip_type === "ROUND_TRIP" && (
+                  <p className="field-hint">Outbound options only. Return-leg options are not modelled in this prototype.</p>
+                )}
+                <TransportBrowser
+                  options={demo.transport}
+                  quotes={demo.quotes}
+                  selectedId={transportId}
+                  onToggleSelect={(id) => setTransportId(id === transportId ? null : id)}
                 />
-              ))}
+              </section>
+
+              <section aria-labelledby="hotel-title">
+                <h2 id="hotel-title">Hotel options (demo)</h2>
+                {stayNights(request) < 1 && (
+                  <StatusMessage kind="info" title="Stay length is not defined for this trip">
+                    One-way and same-day trips have no defined hotel stay yet (open question Q13).
+                    Hotels are shown for reference, without a stay total.
+                  </StatusMessage>
+                )}
+                <div className="card-grid">
+                  {demo.hotels.map((option) => (
+                    <HotelCard
+                      key={option.id}
+                      option={option}
+                      quote={demo.quotes[option.id]}
+                      selected={option.id === hotelId}
+                      onToggle={() => setHotelId(option.id === hotelId ? null : option.id)}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              <section aria-labelledby="cost-title">
+                <h2 id="cost-title">Cost estimate (demo)</h2>
+                {transport === null && hotel === null && (
+                  <StatusMessage kind="info" title="Nothing selected yet">
+                    Select a transport option and a hotel to add them to the estimate.
+                  </StatusMessage>
+                )}
+                <CostBreakdown
+                  estimate={buildDemoCostEstimate(request, transport, hotel, demo.quotes)}
+                />
+              </section>
+
+              <section aria-labelledby="itinerary-title">
+                <h2 id="itinerary-title">Sample itinerary</h2>
+                <ItineraryView
+                  itinerary={buildDemoItinerary(request, transport, hotel)}
+                  departureDate={request.departure_date}
+                  optionNames={{
+                    ...(transport === null
+                      ? {}
+                      : { [transport.id]: `${transport.mode.toLowerCase()} to ${transport.destination.name}` }),
+                    ...(hotel === null ? {} : { [hotel.id]: hotel.name }),
+                  }}
+                  onShowOption={showOption}
+                />
+              </section>
+
+              <section aria-labelledby="approval-title">
+                <h2 id="approval-title">Booking approval preview</h2>
+                {transport === null && hotel === null ? (
+                  <StatusMessage kind="empty" title="Nothing to preview">
+                    Select an option above to see what an approval screen will look like. Nothing can be
+                    booked.
+                  </StatusMessage>
+                ) : (
+                  <ApprovalPreview
+                    transport={transport}
+                    hotel={hotel}
+                    quotes={demo.quotes}
+                    estimate={buildDemoCostEstimate(request, transport, hotel, demo.quotes)}
+                    onClear={clearSelection}
+                  />
+                )}
+              </section>
+
+              <section aria-labelledby="demo-booking-title">
+                <h2 id="demo-booking-title">Demo booking (simulation)</h2>
+                <p className="field-hint">
+                  Separate from the approval preview above. A simulated booking is not a real booking
+                  and cannot become one.
+                </p>
+                <DemoBookingPanel
+                  transport={transport}
+                  quote={transport === null ? undefined : demo.quotes[transport.id]}
+                  request={request}
+                  estimate={buildDemoCostEstimate(request, transport, hotel, demo.quotes)}
+                />
+              </section>
             </div>
-          </section>
-
-          <section aria-labelledby="cost-title">
-            <h2 id="cost-title">Cost estimate (demo)</h2>
-            {transport === null && hotel === null && (
-              <StatusMessage kind="info" title="Nothing selected yet">
-                Select a transport option and a hotel to add them to the estimate.
-              </StatusMessage>
-            )}
-            <CostBreakdown
-              estimate={buildDemoCostEstimate(request, transport, hotel, demo.quotes)}
-            />
-          </section>
-
-          <section aria-labelledby="itinerary-title">
-            <h2 id="itinerary-title">Sample itinerary</h2>
-            <ItineraryView
-              itinerary={buildDemoItinerary(request, transport, hotel)}
-              departureDate={request.departure_date}
-              optionNames={{
-                ...(transport === null
-                  ? {}
-                  : { [transport.id]: `${transport.mode.toLowerCase()} to ${transport.destination.name}` }),
-                ...(hotel === null ? {} : { [hotel.id]: hotel.name }),
-              }}
-              onShowOption={showOption}
-            />
-          </section>
-
-          <section aria-labelledby="approval-title">
-            <h2 id="approval-title">Booking approval preview</h2>
-            {transport === null && hotel === null ? (
-              <StatusMessage kind="empty" title="Nothing to preview">
-                Select an option above to see what an approval screen will look like. Nothing can be
-                booked.
-              </StatusMessage>
-            ) : (
-              <ApprovalPreview
-                transport={transport}
-                hotel={hotel}
-                quotes={demo.quotes}
-                estimate={buildDemoCostEstimate(request, transport, hotel, demo.quotes)}
-                onClear={clearSelection}
-              />
-            )}
-          </section>
-
-          <section aria-labelledby="demo-booking-title">
-            <h2 id="demo-booking-title">Demo booking (simulation)</h2>
-            <p className="field-hint">
-              Separate from the approval preview above. A simulated booking is not a real booking
-              and cannot become one.
-            </p>
-            <DemoBookingPanel
-              transport={transport}
-              quote={transport === null ? undefined : demo.quotes[transport.id]}
-              request={request}
-              estimate={buildDemoCostEstimate(request, transport, hotel, demo.quotes)}
-            />
-          </section>
+          )}
         </div>
       )}
     </>

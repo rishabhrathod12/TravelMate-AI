@@ -134,3 +134,35 @@ export interface HealthResponse {
   service: string;
   version: string;
 }
+
+/**
+ * A request to write a day-by-day itinerary for one place (ADR 0004). It mirrors
+ * `ItineraryRequest` in `backend/app/domain/trip.py`: there is no origin and no transport.
+ * `days` counts calendar days including the first.
+ */
+export interface ItineraryRequest {
+  destination: Location;
+  start_date: string;
+  days: number;
+  travellers: number | null;
+  preferences: string | null;
+}
+
+/**
+ * Where a line of an itinerary came from. It is not a provenance label: `LIVE`, `CACHED_LIVE`
+ * and `MOCK` describe provider data, and an itinerary line is never provider data.
+ * - `SCRIPTED_SAMPLE`: fixed placeholder text written in code, not by any model.
+ * - `AI_SUGGESTION`: a suggestion from a language model, "AI suggestion, not verified". No model
+ *   is connected yet, so nothing carries this label today.
+ */
+export type SuggestionLabel = "SCRIPTED_SAMPLE" | "AI_SUGGESTION";
+
+export interface SamplePlanItem {
+  title: string;
+  label: SuggestionLabel;
+}
+
+export interface SamplePlanDay {
+  day_number: number;
+  items: SamplePlanItem[];
+}

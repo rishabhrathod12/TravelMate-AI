@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from app.conversation.draft import TripDraft
 from app.conversation.manager import ConversationManager, TurnStatus
-from app.domain.trip import TripRequest
+from app.domain.trip import MAX_ITINERARY_DAYS, MAX_TRAVELLERS, ItineraryRequest, TripRequest
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
@@ -27,8 +27,8 @@ STAND_IN_NOTICE = (
     "Development stand-in: this reads a few simple patterns in English. It is not a language "
     "model, and no model is connected."
 )
-# A guard so one request cannot ask for a huge party. The real limit is PRD Q14 (still open).
-PROTOTYPE_MAX_TRAVELLERS = 50
+# The owner's answer to PRD Q14: at most 9 travellers per request.
+PROTOTYPE_MAX_TRAVELLERS = MAX_TRAVELLERS
 
 
 class TurnRequest(BaseModel):
@@ -57,6 +57,7 @@ class TurnResponse(BaseModel):
     reply: str
     draft: TripDraft
     trip_request: TripRequest | None = None
+    itinerary_request: ItineraryRequest | None = None
     changes: list[ChangeOut] = Field(default_factory=list)
     rejections: list[RejectionOut] = Field(default_factory=list)
     model: ModelInfo = Field(default_factory=ModelInfo)
@@ -89,6 +90,8 @@ def _draft_is_too_big(draft: TripDraft, max_chars: int) -> bool:
     texts = (draft.origin, draft.destination, draft.preferences)
     if any(text is not None and len(text) > max_chars for text in texts):
         return True
+    if draft.trip_days is not None and draft.trip_days > MAX_ITINERARY_DAYS:
+        return True
     return draft.traveller_count is not None and draft.traveller_count > PROTOTYPE_MAX_TRAVELLERS
 
 
@@ -118,6 +121,7 @@ def take_turn(
         reply=result.reply,
         draft=result.draft,
         trip_request=result.request,
+        itinerary_request=result.itinerary_request,
         changes=[ChangeOut(field=c.field.value, old=c.old, new=c.new) for c in result.changes],
         rejections=[
             RejectionOut(field=r.field.value, reason=r.reason.value) for r in result.rejections

@@ -33,10 +33,14 @@ from app.llm.types import LLMRequest, LLMResponse, LLMUsage, StructuredResult
 _PLACE = r"[a-z][a-z .'\-]*?"
 _END_OF_PLACE = (
     r"(?=\s*(?:,|\.|;|!|\?|$)|\s+(?:on|for|with|leaving|leave|returning|return|and|in|one|round|"
-    r"trip|by|at|from|to|\d))"
+    r"trip|by|at|from|to|this|next|over|starting|starts|start|\d))"
 )
 _FROM_TO = re.compile(rf"\bfrom\s+({_PLACE})\s+to\s+({_PLACE}){_END_OF_PLACE}", re.IGNORECASE)
 _PLAIN_TO = re.compile(rf"^\s*({_PLACE})\s+to\s+({_PLACE}){_END_OF_PLACE}", re.IGNORECASE)
+# "for Goa", "in Goa", "visit Goa": only used when no "from X to Y" is present.
+_AFTER_A_WORD = re.compile(
+    rf"\b(?:for|in|visit|visiting)\s+({_PLACE}){_END_OF_PLACE}", re.IGNORECASE
+)
 _ONLY_A_PLACE = re.compile(r"^\s*([a-z][a-z .'\-]{0,60}?)\s*[.!]?\s*$", re.IGNORECASE)
 _ONE_WAY = re.compile(r"\bone[\s\-]?way\b", re.IGNORECASE)
 _ROUND_TRIP = re.compile(r"\b(?:round[\s\-]?trip|return\s+trip)\b", re.IGNORECASE)
@@ -46,6 +50,10 @@ _TRAVELLERS = re.compile(
     re.IGNORECASE,
 )
 _ONLY_A_NUMBER = re.compile(r"^\s*(\d{1,3})\s*[.!]?\s*$")
+_DAYS = re.compile(
+    r"\b(\d{1,2}|" + "|".join(sorted(NUMBER_WORDS, key=len, reverse=True)) + r")[\s\-]*days?\b",
+    re.IGNORECASE,
+)
 _RETURN_WORDS = re.compile(
     r"\b(?:return|returning|come\s+back|coming\s+back|back)\b", re.IGNORECASE
 )
@@ -88,6 +96,20 @@ _NOT_PART_OF_A_PLACE = {
     "tickets",
     "book",
     "get",
+    "the",
+    "a",
+    "an",
+    "my",
+    "our",
+    "this",
+    "next",
+    "weekend",
+    "week",
+    "day",
+    "days",
+    "night",
+    "nights",
+    "itinerary",
 }
 
 
@@ -153,6 +175,7 @@ class DevStandInClient:
             departure_date=departure,
             return_date=returning,
             traveller_count=self._count(message, known),
+            trip_days=self._days(message),
         )
 
     @staticmethod
@@ -167,13 +190,17 @@ class DevStandInClient:
                     return TextClaim(value=origin, quote=origin), TextClaim(
                         value=destination, quote=destination
                     )
+        after = _AFTER_A_WORD.search(message)
+        if after is not None and _is_a_place(_clean(after[1])):
+            return None, TextClaim(value=_clean(after[1]), quote=_clean(after[1]))
         # A bare place is the answer to the question just asked: origin first, then destination.
         only = _ONLY_A_PLACE.match(message)
         if only is not None and _clean(only[1]).casefold() not in _NOT_A_PLACE:
             place = _clean(only[1])
             if _is_a_place(place) and not _ONE_WAY.search(place) and not _ROUND_TRIP.search(place):
                 claim = TextClaim(value=place, quote=place)
-                if "origin" not in known:
+                # While planning an itinerary only the destination is asked for.
+                if "origin" not in known and "trip_days" not in known:
                     return claim, None
                 if "destination" not in known:
                     return None, claim
@@ -205,6 +232,15 @@ class DevStandInClient:
         if wants_return or ("return_date" not in known and known.get("trip_type") != "one-way"):
             return None, only
         return only, None
+
+    @staticmethod
+    def _days(message: str) -> CountClaim | None:
+        match = _DAYS.search(message)
+        if match is None:
+            return None
+        word = match[1].casefold()
+        number = int(word) if word.isdigit() else NUMBER_WORDS[word]
+        return CountClaim(value=number, quote=match[0]) if number >= 1 else None
 
     @staticmethod
     def _count(message: str, known: dict[str, object]) -> CountClaim | None:
