@@ -44,6 +44,8 @@ export function Conversation({
 
   return (
     <div className="conversation">
+      {/* The page's one level-one heading while the conversation replaces the home heading. */}
+      <h1 className="visually-hidden">Conversation with TravelMate</h1>
       <p className="conversation-notice" role="note">
         {notice} Nothing is booked.
       </p>

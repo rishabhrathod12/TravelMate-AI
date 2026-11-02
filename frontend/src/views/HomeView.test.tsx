@@ -60,7 +60,10 @@ describe("the home screen", () => {
     expect(await screen.findByText("Which dates would you like to travel?")).toBeInTheDocument();
     expect(send).toHaveBeenCalledWith("I want to go to Goa this weekend. Plan my trip.", null, expect.any(AbortSignal));
     expect(screen.getByText("I want to go to Goa this weekend. Plan my trip.")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    // The visible home heading is replaced, and the page keeps exactly one level-one heading.
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Conversation with TravelMate" })).toBeInTheDocument();
+    expect(screen.queryByText("Where do you want to go?")).not.toBeInTheDocument();
     expect((screen.getByLabelText("Message TravelMate") as HTMLTextAreaElement).value).toBe("");
   });
 

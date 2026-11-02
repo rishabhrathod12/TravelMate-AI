@@ -34,9 +34,10 @@ export default function App() {
     <div className="app-shell">
       <a
         className="skip-link"
-        href="#/plan"
+        href="#main"
         onClick={(event) => {
-          // A plain "#main" link would change the hash and trigger navigation.
+          // The real target keeps the link recognisable as a skip link to assistive tech and
+          // audits, but following it would change the hash and trigger navigation.
           event.preventDefault();
           mainRef.current?.focus();
         }}

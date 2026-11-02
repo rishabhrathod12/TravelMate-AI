@@ -83,6 +83,10 @@ TravelMate AI needs a backend for a multi-step planning workflow with human paus
 - The driver is synchronous because the workflow and services use threads. No async layer was added.
 - **Not added:** a PostgreSQL checkpointer for LangGraph (`langgraph-checkpoint-postgres`). It is a further package and needs its own approval. Until then run checkpoints are in memory (see SECURITY section 16).
 
+## M11 additions (2026-11-02)
+
+- **`axe-core` 4.14.0 (frontend dev dependency, exact pin, owner-approved).** Used only to audit accessibility (NFR-12): `src/test/axe.ts` runs it in Vitest over the core screens (`src/a11y.test.tsx`), and the same library is run in a real browser by hand for colour contrast, which jsdom cannot measure. It is a dev dependency, so it is not in the production bundle, and it has no dependencies of its own. Licence: MPL-2.0 (file-level copyleft; used unmodified and not redistributed). `npm audit --omit=dev` reports 0 findings. The 11 moderate findings that plain `npm audit` shows for the full tree come from `minimatch` inside the eslint toolchain, are dev-only, and were there before this addition.
+
 ## Open items
 
 - PostgreSQL start from Docker Compose is deferred and unverified. Docker is not available on the development machine. Verify it when Docker is available and the database is first needed (M9).
