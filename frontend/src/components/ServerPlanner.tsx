@@ -15,6 +15,9 @@ import { formatUtcDateTime } from "../lib/dates";
 import { addMoney } from "../lib/money";
 import { AvailabilityBadge, ProvenanceBadge } from "./Badges";
 import { MoneyText } from "./MoneyText";
+import { ServerBooking } from "./ServerBooking";
+import { ServerClarification } from "./ServerClarification";
+import { ServerItinerary } from "./ServerItinerary";
 import { StatusMessage } from "./StatusMessage";
 
 const POLL_MS = 700;
@@ -246,10 +249,7 @@ export function ServerPlanner({ request }: ServerPlannerProps) {
       )}
 
       {run !== null && run.status === "awaiting_clarification" && (
-        <StatusMessage kind="info" title="The server needs more detail">
-          The server asked a question this screen does not handle yet. Go back to the chat or the
-          form and complete the trip details.
-        </StatusMessage>
+        <ServerClarification key={run.runId} run={run} onAnswered={setRun} />
       )}
 
       {run !== null && (run.status === "failed" || run.status === "stopped_limit") && (
@@ -351,6 +351,15 @@ export function ServerPlanner({ request }: ServerPlannerProps) {
           {estimate !== null && estimate.missing_items.length > 0 && (
             <p className="field-hint">Not priced: {estimate.missing_items.join(", ")}.</p>
           )}
+          {run.itinerary !== null && (
+            <ServerItinerary
+              key={run.runId}
+              tripId={run.tripId}
+              initial={run.itinerary}
+              warnings={run.itineraryWarnings}
+            />
+          )}
+          <ServerBooking run={run} />
         </div>
       )}
     </section>

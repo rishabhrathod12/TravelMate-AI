@@ -13,6 +13,7 @@
 import type {
   CostEstimate,
   HotelOption,
+  Itinerary,
   TransportOption,
   TripRequest,
 } from "../contracts/types";
@@ -61,6 +62,13 @@ export interface PlanningRun {
   estimate: CostEstimate | null;
   /** The server's fixed-wording note when a run failed. */
   error: string | null;
+  /** The questions the server asks while the run waits for clarification; empty otherwise. */
+  questions: string[];
+  /** What was chosen, once the run has finished. */
+  selected: Selection | null;
+  /** The itinerary draft the run wrote, if any. It is a draft, not a verified plan. */
+  itinerary: Itinerary | null;
+  itineraryWarnings: string[];
 }
 
 export interface Selection {
@@ -84,7 +92,7 @@ export class PlanningApiError extends Error {
   }
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -161,6 +169,49 @@ function readEstimate(summary: unknown): CostEstimate | null | undefined {
     : undefined;
 }
 
+function readQuestions(waitingFor: unknown): string[] {
+  if (!isObject(waitingFor) || waitingFor.kind !== "CLARIFICATION") {
+    return [];
+  }
+  return stringList(waitingFor.questions) ?? [];
+}
+
+function readSummaryParts(summary: unknown): {
+  selected: Selection | null;
+  itinerary: Itinerary | null;
+  itineraryWarnings: string[];
+} | null {
+  if (summary === null || summary === undefined) {
+    return { selected: null, itinerary: null, itineraryWarnings: [] };
+  }
+  if (!isObject(summary)) {
+    return null;
+  }
+  const picked = summary.selection;
+  let selected: Selection | null = null;
+  if (isObject(picked)) {
+    const text = (value: unknown) => (typeof value === "string" ? value : null);
+    selected = {
+      transportId: text(picked.transport_id),
+      returnTransportId: text(picked.return_transport_id),
+      hotelId: text(picked.hotel_id),
+    };
+  }
+  const draft = summary.itinerary;
+  let itinerary: Itinerary | null = null;
+  if (draft !== null && draft !== undefined) {
+    if (!isObject(draft) || !Array.isArray(draft.days)) {
+      return null;
+    }
+    itinerary = draft as unknown as Itinerary;
+  }
+  const warnings = stringList(summary.itinerary_warnings);
+  if (warnings === null) {
+    return null;
+  }
+  return { selected, itinerary, itineraryWarnings: warnings };
+}
+
 function readRun(body: unknown): PlanningRun | null {
   if (
     !isObject(body) ||
@@ -174,7 +225,13 @@ function readRun(body: unknown): PlanningRun | null {
   const choices = readChoices(body.waiting_for);
   const research = readResearch(body.research);
   const estimate = readEstimate(body.summary);
-  if (choices === undefined || research === undefined || estimate === undefined) {
+  const parts = readSummaryParts(body.summary);
+  if (
+    choices === undefined ||
+    research === undefined ||
+    estimate === undefined ||
+    parts === null
+  ) {
     return null;
   }
   const error = body.error;
@@ -189,6 +246,10 @@ function readRun(body: unknown): PlanningRun | null {
     research,
     estimate,
     error: error ?? null,
+    questions: readQuestions(body.waiting_for),
+    selected: parts.selected,
+    itinerary: parts.itinerary,
+    itineraryWarnings: parts.itineraryWarnings,
   };
 }
 
@@ -208,7 +269,7 @@ async function problem(response: Response): Promise<PlanningApiError> {
   return new PlanningApiError(response.status, null);
 }
 
-async function call(
+export async function call(
   path: string,
   method: "GET" | "POST",
   payload: unknown,
@@ -304,4 +365,64 @@ const WORKING: readonly RunStatus[] = ["pending", "running"];
 /** True while the server is still working, so the caller should read the run again shortly. */
 export function isWorking(run: PlanningRun): boolean {
   return WORKING.includes(run.status);
+}
+
+/** The trip's draft as the server holds it: what the traveller gave, possibly incomplete. */
+export type TripDraft = Record<string, unknown>;
+
+export async function getTripDraft(tripId: string, signal?: AbortSignal): Promise<TripDraft> {
+  const body = await call(`/trips/${encodeURIComponent(tripId)}`, "GET", undefined, signal);
+  if (!isObject(body) || !isObject(body.draft)) {
+    throw new PlanningApiError(200, "The server's answer did not have the expected shape.");
+  }
+  return body.draft;
+}
+
+/** Answers the server's questions by sending the corrected draft. The run then resumes. */
+export async function answerClarification(
+  runId: string,
+  draft: TripDraft,
+  signal?: AbortSignal,
+): Promise<PlanningRun> {
+  return expectRun(
+    await call(`/runs/${encodeURIComponent(runId)}/clarifications`, "POST", { draft }, signal),
+    202,
+  );
+}
+
+export interface SavedItinerary {
+  version: number;
+  createdBy: string;
+  itinerary: Itinerary;
+}
+
+function expectItinerary(body: unknown, status: number): SavedItinerary {
+  if (
+    !isObject(body) ||
+    typeof body.version !== "number" ||
+    typeof body.created_by !== "string" ||
+    !isObject(body.itinerary) ||
+    !Array.isArray(body.itinerary.days)
+  ) {
+    throw new PlanningApiError(status, "The server's answer did not have the expected shape.");
+  }
+  return {
+    version: body.version,
+    createdBy: body.created_by,
+    itinerary: body.itinerary as unknown as Itinerary,
+  };
+}
+
+export async function saveItineraryVersion(
+  tripId: string,
+  itinerary: Itinerary,
+  signal?: AbortSignal,
+): Promise<SavedItinerary> {
+  const body = await call(
+    `/trips/${encodeURIComponent(tripId)}/itinerary/versions`,
+    "POST",
+    { itinerary },
+    signal,
+  );
+  return expectItinerary(body, 201);
 }
