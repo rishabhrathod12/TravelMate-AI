@@ -88,7 +88,7 @@ describe("simulating", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Simulate booking" }));
 
-    const result = screen.getByRole("region", { name: "DEMO — NOT A REAL BOOKING" });
+    const result = screen.getByRole("region", { name: "SIMULATED — NOT A REAL BOOKING" });
     expect(within(result).getByText("SIMULATED-BOOKING-001")).toBeInTheDocument();
     expect(within(result).getByText(/not a PNR, a ticket number or a provider confirmation/)).toBeInTheDocument();
     expect(within(result).getByText(/Nothing was sent to any airline, railway, bus operator or payment service/)).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("simulating", () => {
     fireEvent.click(button);
     fireEvent.click(button);
 
-    expect(screen.getAllByRole("region", { name: "DEMO — NOT A REAL BOOKING" })).toHaveLength(1);
+    expect(screen.getAllByRole("region", { name: "SIMULATED — NOT A REAL BOOKING" })).toHaveLength(1);
     expect(screen.getAllByText(/SIMULATED-BOOKING-/)).toHaveLength(1);
   });
 

@@ -40,7 +40,7 @@ describe("transport and demo booking on the plan page", () => {
     fireEvent.click(within(demo).getByRole("checkbox", { name: /I understand/ }));
     fireEvent.click(within(demo).getByRole("button", { name: "Simulate booking" }));
 
-    const result = within(demo).getByRole("region", { name: "DEMO — NOT A REAL BOOKING" });
+    const result = within(demo).getByRole("region", { name: "SIMULATED — NOT A REAL BOOKING" });
     expect(within(result).getByText("SIMULATED-BOOKING-001")).toBeInTheDocument();
     expect(within(result).getByText(/Sample Wings/)).toBeInTheDocument();
 

@@ -106,7 +106,7 @@ describe("simulating a booking", () => {
     expect(Object.keys(booking)).not.toEqual(
       expect.arrayContaining(["pnr", "ticket_number", "provider_reference", "confirmation"]),
     );
-    expect(DEMO_BOOKING_LABEL).toBe("DEMO — NOT A REAL BOOKING");
+    expect(DEMO_BOOKING_LABEL).toBe("SIMULATED — NOT A REAL BOOKING");
   });
 
   test("the total is the quoted price plus the sample fees, in whole minor units", () => {

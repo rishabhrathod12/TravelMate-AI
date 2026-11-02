@@ -11,7 +11,7 @@
 import type { Fee, Money, Quote, SourceMetadata, TransportMode, TransportOption, TripRequest } from "../contracts/types";
 import { sumMoney } from "../lib/money";
 
-export const DEMO_BOOKING_LABEL = "DEMO — NOT A REAL BOOKING";
+export const DEMO_BOOKING_LABEL = "SIMULATED — NOT A REAL BOOKING";
 
 /** Shown with every demo booking, before and after. */
 export const DEMO_DISCLAIMERS: readonly string[] = [
@@ -53,7 +53,7 @@ export function checkEligibility(
     return { ok: false, reason: "This option has no price, so a booking cannot be simulated." };
   }
   if (quote === undefined || quote.option_id !== option.id) {
-    return { ok: false, reason: "There is no demo quote for this option." };
+    return { ok: false, reason: "There is no sample quote for this option." };
   }
   if (
     quote.price.currency !== option.price.currency ||

@@ -126,7 +126,7 @@ export function DemoBookingPanel({ transport, quote, request, estimate }: DemoBo
         </StatusMessage>
       ) : (
         <>
-          <h3>Review the demo details</h3>
+          <h3>Review the details</h3>
           <dl className="facts">
             <div>
               <dt>Service</dt>
