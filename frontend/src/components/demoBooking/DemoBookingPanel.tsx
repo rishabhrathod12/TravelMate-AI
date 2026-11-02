@@ -46,7 +46,7 @@ function DemoResult({ booking, duplicate }: { booking: DemoBooking; duplicate: b
       </p>
       {duplicate && (
         <p className="demo-duplicate" role="status">
-          This selection was already simulated. No second demo booking was created.
+          This selection was already simulated. No second booking simulation was created.
         </p>
       )}
       <dl className="facts">
@@ -116,12 +116,12 @@ export function DemoBookingPanel({ transport, quote, request, estimate }: DemoBo
 
   return (
     <div className="card demo-booking">
-      <p className="demo-ribbon">DEMO · SIMULATION ONLY</p>
+      <p className="demo-ribbon">SIMULATION ONLY</p>
       <p className="notice-title">This does not book anything.</p>
       <Disclaimers />
 
       {transport === null || !eligibility.ok ? (
-        <StatusMessage kind={transport === null ? "empty" : "info"} title="No demo booking to try">
+        <StatusMessage kind={transport === null ? "empty" : "info"} title="No booking simulation to try">
           {eligibility.ok ? "Select a transport option." : eligibility.reason}
         </StatusMessage>
       ) : (

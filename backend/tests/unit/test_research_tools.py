@@ -443,7 +443,7 @@ class TestCallRecording:
         assert tools.recorder.records == (
             CallRecord(
                 tool=SEARCH_TRANSPORT,
-                provider_name="mock-transport",
+                provider_name="sample-transport",
                 mode=ProviderMode.MOCK,
                 status=CallStatus.OK,
                 latency_ms=250,

@@ -67,7 +67,7 @@ describe("after previewing the example trip", () => {
 
     expect(screen.getByText("Unavailable options cannot be selected.")).toBeInTheDocument();
     // The unavailable flight has no select button; the other two flights do.
-    expect(screen.queryByRole("button", { name: /Select Flight.*Demo Air/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Select Flight.*Sample Air/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Select Flight.*Sample Wings/ })).toBeInTheDocument();
   });
 

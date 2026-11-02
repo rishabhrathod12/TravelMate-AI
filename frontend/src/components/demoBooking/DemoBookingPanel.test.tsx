@@ -20,9 +20,9 @@ const byLabel = (label: string): TransportOption => {
   return found;
 };
 
-const train = byLabel("DEMO-T201");
-const bus = byLabel("DEMO-B302");
-const unknownBus = byLabel("DEMO-B301");
+const train = byLabel("SMP-T201");
+const bus = byLabel("SMP-B302");
+const unknownBus = byLabel("SMP-B301");
 
 function panelFor(transport: TransportOption | null) {
   return (
@@ -43,7 +43,7 @@ describe("what the panel says before anything happens", () => {
   test("is plainly a demo and lists every disclaimer", () => {
     render(panelFor(train));
 
-    expect(screen.getByText("DEMO · SIMULATION ONLY")).toBeInTheDocument();
+    expect(screen.getByText("SIMULATION ONLY")).toBeInTheDocument();
     expect(screen.getByText("This does not book anything.")).toBeInTheDocument();
     for (const text of [
       "No actual transport is reserved.",
@@ -89,7 +89,7 @@ describe("simulating", () => {
     fireEvent.click(screen.getByRole("button", { name: "Simulate booking" }));
 
     const result = screen.getByRole("region", { name: "DEMO — NOT A REAL BOOKING" });
-    expect(within(result).getByText("DEMO-BOOKING-001")).toBeInTheDocument();
+    expect(within(result).getByText("SIMULATED-BOOKING-001")).toBeInTheDocument();
     expect(within(result).getByText(/not a PNR, a ticket number or a provider confirmation/)).toBeInTheDocument();
     expect(within(result).getByText(/Nothing was sent to any airline, railway, bus operator or payment service/)).toBeInTheDocument();
     expect(within(result).getByText(/Sample data/)).toBeInTheDocument();
@@ -108,7 +108,7 @@ describe("simulating", () => {
     fireEvent.click(button);
 
     expect(screen.getAllByRole("region", { name: "DEMO — NOT A REAL BOOKING" })).toHaveLength(1);
-    expect(screen.getAllByText(/DEMO-BOOKING-/)).toHaveLength(1);
+    expect(screen.getAllByText(/SIMULATED-BOOKING-/)).toHaveLength(1);
   });
 
   test("choosing another option starts unticked; a later option gets the next number", () => {
@@ -122,7 +122,7 @@ describe("simulating", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /I understand/ }));
     fireEvent.click(screen.getByRole("button", { name: "Simulate booking" }));
 
-    expect(screen.getByText("DEMO-BOOKING-002")).toBeInTheDocument();
+    expect(screen.getByText("SIMULATED-BOOKING-002")).toBeInTheDocument();
   });
 
   test("coming back to an option that was already simulated says nothing new was created", () => {
@@ -134,8 +134,8 @@ describe("simulating", () => {
     rerender(panelFor(bus));
     rerender(panelFor(train));
 
-    expect(screen.getByText("DEMO-BOOKING-001")).toBeInTheDocument();
-    expect(screen.getByText(/already simulated\. No second demo booking was created/)).toBeInTheDocument();
+    expect(screen.getByText("SIMULATED-BOOKING-001")).toBeInTheDocument();
+    expect(screen.getByText(/already simulated\. No second booking simulation was created/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Simulate booking" })).not.toBeInTheDocument();
   });
 });

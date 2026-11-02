@@ -18,7 +18,9 @@ function adapterNote(adapter: VoiceAdapter | null): string | null {
     return null;
   }
   if (adapter.isMock) {
-    return "Scripted voice (development build): no microphone, no sound, scripted replies.";
+    // No sentence on the home screen: the owner asked for it to go. The voice panel still says
+    // what the scripted voice is once a session is open.
+    return null;
   }
   if (!adapter.hearsUser) {
     return "Voice session only (development build): TravelMate can't hear or speak yet.";

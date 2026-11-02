@@ -233,7 +233,7 @@ class TestWhatTheModelIsShown:
         data = json.loads("\n".join(user.splitlines()[2:-1]))
 
         assert [w["day_number"] for w in data["weather"]] == [1, 2]
-        assert all("(mock)" in w["summary"] for w in data["weather"])
+        assert all("(sample)" in w["summary"] for w in data["weather"])
 
     def test_the_request_has_no_tools(self, example_context: DraftingContext) -> None:
         client = FakeLLMClient([answer()])

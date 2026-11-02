@@ -41,10 +41,18 @@ describe("the application shell", () => {
     expect(document.title).toBe("Plan Trip · TravelMate AI");
   });
 
-  test("the sample-data notice is always visible and says nothing is booked", () => {
+  test("the home screen has no page notice (PRD A27)", () => {
     render(<App />);
 
-    const notice = screen.getByRole("note", { name: "Sample data notice" });
+    expect(screen.queryByRole("note", { name: "Sample data notice" })).not.toBeInTheDocument();
+  });
+
+  test("the sample-data notice on the other pages says nothing is booked", async () => {
+    render(<App />);
+
+    openMenu();
+    fireEvent.click(screen.getByRole("link", { name: "About" }));
+    const notice = await screen.findByRole("note", { name: "Sample data notice" });
     expect(notice).toHaveTextContent(/sample data/i);
     expect(notice).not.toHaveTextContent(/demo|prototype|mock/i);
     expect(notice).toHaveTextContent(/nothing is booked/i);
@@ -131,15 +139,19 @@ describe("navigation", () => {
     expect(screen.getByText(/Nothing in this app can book or pay/)).toBeInTheDocument();
   });
 
-  test("the sample-data notice stays on every page", async () => {
+  test("the sample-data notice stays on every page except the home screen", async () => {
     render(<App />);
 
-    for (const name of ["My Trips", "About", "Plan Trip"]) {
+    for (const name of ["My Trips", "About", "Trip Form"]) {
       openMenu();
       fireEvent.click(screen.getByRole("link", { name }));
-      await waitFor(() => expect(window.location.hash).not.toBe(""));
-      expect(screen.getByRole("note", { name: "Sample data notice" })).toBeInTheDocument();
+      expect(await screen.findByRole("note", { name: "Sample data notice" })).toBeInTheDocument();
     }
+    openMenu();
+    fireEvent.click(screen.getByRole("link", { name: "Plan Trip" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("note", { name: "Sample data notice" })).not.toBeInTheDocument(),
+    );
   });
 
   test("moves focus to the page content after navigating", async () => {

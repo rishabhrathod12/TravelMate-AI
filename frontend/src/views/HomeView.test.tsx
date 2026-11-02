@@ -39,10 +39,14 @@ describe("the home screen", () => {
     expect(screen.queryByRole("button", { name: /example trip|preview/i })).not.toBeInTheDocument();
   });
 
-  test("a mock voice adapter is labelled as a mock on the button", () => {
+  test("the home screen carries no explanatory sentences under the voice button or the message box", () => {
     render(<HomeView adapter={createMockVoiceAdapter()} chatAvailable />);
 
-    expect(screen.getByRole("note")).toHaveTextContent(/Scripted voice/);
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Scripted voice/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no microphone, no sound/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Development stand-in/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/not a language model/)).not.toBeInTheDocument();
   });
 
   test("Enter sends, Shift+Enter does not, and the conversation appears only then", async () => {

@@ -12,7 +12,7 @@ START = date(2026, 12, 1)
 def day_data(**overrides: Any) -> dict[str, Any]:
     data: dict[str, Any] = {
         "day": START,
-        "summary": "Sunny (mock)",
+        "summary": "Sunny",
         "temperature_min_c": 24.0,
         "temperature_max_c": 31.0,
         "precipitation_chance_percent": 10,
@@ -46,7 +46,7 @@ class TestWeatherDay:
         assert weather.temperature_max_c == 31.0
 
     def test_facts_the_provider_lacks_stay_missing(self) -> None:
-        weather = WeatherDay.model_validate({"day": START, "summary": "Cloudy (mock)"})
+        weather = WeatherDay.model_validate({"day": START, "summary": "Cloudy"})
 
         assert weather.temperature_min_c is None
         assert weather.temperature_max_c is None

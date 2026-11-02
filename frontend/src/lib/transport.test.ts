@@ -29,10 +29,10 @@ const byLabel = (label: string): TransportOption => {
 
 describe("sortTransport", () => {
   test("by price puts the cheapest first and a missing price last, never as zero", () => {
-    const noPrice: TransportOption = { ...byLabel("DEMO-T201"), id: "x-no-price", price: null };
+    const noPrice: TransportOption = { ...byLabel("SMP-T201"), id: "x-no-price", price: null };
     const sorted = sortTransport([...demo.transport, noPrice], "price");
 
-    expect(sorted[0]?.service_label).toBe("DEMO-T202");
+    expect(sorted[0]?.service_label).toBe("SMP-T202");
     expect(sorted.at(-1)?.id).toBe("x-no-price");
   });
 
@@ -54,8 +54,8 @@ describe("sortTransport", () => {
   });
 
   test("equal values keep a stable order by id", () => {
-    const a: TransportOption = { ...byLabel("DEMO-T201"), id: "a" };
-    const b: TransportOption = { ...byLabel("DEMO-T201"), id: "b" };
+    const a: TransportOption = { ...byLabel("SMP-T201"), id: "a" };
+    const b: TransportOption = { ...byLabel("SMP-T201"), id: "b" };
 
     expect(sortTransport([b, a], "price").map((o) => o.id)).toEqual(["a", "b"]);
   });
@@ -80,7 +80,7 @@ describe("transportFacts shows only what fits the mode", () => {
   const labels = (option: TransportOption) => transportFacts(option).map((fact) => fact.label);
 
   test("a flight shows stops and cabin class, not train class or seat type", () => {
-    expect(labels(byLabel("DEMO-F102"))).toEqual([
+    expect(labels(byLabel("SMP-F102"))).toEqual([
       "Operator",
       "Service",
       "Departs",
@@ -93,20 +93,20 @@ describe("transportFacts shows only what fits the mode", () => {
   });
 
   test("a train shows stops and class", () => {
-    expect(labels(byLabel("DEMO-T201"))).toContain("Class");
-    expect(labels(byLabel("DEMO-T201"))).not.toContain("Cabin class");
-    expect(labels(byLabel("DEMO-T201"))).toContain("Stops");
+    expect(labels(byLabel("SMP-T201"))).toContain("Class");
+    expect(labels(byLabel("SMP-T201"))).not.toContain("Cabin class");
+    expect(labels(byLabel("SMP-T201"))).toContain("Stops");
   });
 
   test("a bus shows seat type, and shows stops only when they are known", () => {
-    expect(labels(byLabel("DEMO-B301"))).not.toContain("Stops");
-    expect(labels(byLabel("DEMO-B302"))).toContain("Stops");
-    expect(labels(byLabel("DEMO-B302"))).toContain("Seat type");
-    expect(labels(byLabel("DEMO-B302"))).not.toContain("Class");
+    expect(labels(byLabel("SMP-B301"))).not.toContain("Stops");
+    expect(labels(byLabel("SMP-B302"))).toContain("Stops");
+    expect(labels(byLabel("SMP-B302"))).toContain("Seat type");
+    expect(labels(byLabel("SMP-B302"))).not.toContain("Class");
   });
 
   test("a missing fact reads Not supplied instead of a blank or a zero", () => {
-    const facts = Object.fromEntries(transportFacts(byLabel("DEMO-F103")).map((f) => [f.label, f.value]));
+    const facts = Object.fromEntries(transportFacts(byLabel("SMP-F103")).map((f) => [f.label, f.value]));
 
     expect(facts["Cabin class"]).toBe("Not supplied");
     expect(facts["Cancellation"]).toBe("Not supplied");
@@ -114,35 +114,35 @@ describe("transportFacts shows only what fits the mode", () => {
   });
 
   test("zero stops is shown as 0, not as missing", () => {
-    const facts = Object.fromEntries(transportFacts(byLabel("DEMO-F102")).map((f) => [f.label, f.value]));
+    const facts = Object.fromEntries(transportFacts(byLabel("SMP-F102")).map((f) => [f.label, f.value]));
 
     expect(facts["Stops"]).toBe("0");
   });
 
   test("the mode-specific fact is named per mode", () => {
-    expect(modeSpecificFact(byLabel("DEMO-F101"))?.label).toBe("Cabin class");
-    expect(modeSpecificFact(byLabel("DEMO-T201"))?.label).toBe("Class");
-    expect(modeSpecificFact(byLabel("DEMO-B302"))?.label).toBe("Seat type");
-    expect(modeSpecificFact(byLabel("DEMO-R401"))).toEqual({ label: "Vehicle", value: "Sedan (demo)" });
-    expect(modeSpecificFact({ ...byLabel("DEMO-R401"), details: null })).toEqual({ label: "Vehicle", value: null });
+    expect(modeSpecificFact(byLabel("SMP-F101"))?.label).toBe("Cabin class");
+    expect(modeSpecificFact(byLabel("SMP-T201"))?.label).toBe("Class");
+    expect(modeSpecificFact(byLabel("SMP-B302"))?.label).toBe("Seat type");
+    expect(modeSpecificFact(byLabel("SMP-R401"))).toEqual({ label: "Vehicle", value: "Sedan" });
+    expect(modeSpecificFact({ ...byLabel("SMP-R401"), details: null })).toEqual({ label: "Vehicle", value: null });
   });
 });
 
 describe("quotedTotal", () => {
   test("is the price plus the fees, in whole minor units", () => {
-    const train = byLabel("DEMO-T201");
+    const train = byLabel("SMP-T201");
 
     expect(quotedTotal(train, demo.quotes[train.id])?.amount_minor).toBe(150_000 + 5_000);
   });
 
   test("with no quote it is just the price", () => {
-    const train = byLabel("DEMO-T201");
+    const train = byLabel("SMP-T201");
 
     expect(quotedTotal(train, undefined)?.amount_minor).toBe(150_000);
   });
 
   test("is null when there is no price, and when the currencies differ", () => {
-    const train = byLabel("DEMO-T201");
+    const train = byLabel("SMP-T201");
     const quote = demo.quotes[train.id];
     if (quote === undefined) {
       throw new Error("expected a quote");
@@ -168,20 +168,20 @@ describe("private taxis", () => {
   });
 
   test("seats come from the vehicle details, and only taxis have them", () => {
-    expect(seatsOf(byLabel("DEMO-R401"))).toBe(4);
-    expect(seatsOf(byLabel("DEMO-R403"))).toBe(12);
-    expect(seatsOf(byLabel("DEMO-F101"))).toBeNull();
+    expect(seatsOf(byLabel("SMP-R401"))).toBe(4);
+    expect(seatsOf(byLabel("SMP-R403"))).toBe(12);
+    expect(seatsOf(byLabel("SMP-F101"))).toBeNull();
   });
 
   test("a taxi card says the price covers one vehicle and shows its seats", () => {
-    const facts = Object.fromEntries(transportFacts(byLabel("DEMO-R402")).map((f) => [f.label, f.value]));
+    const facts = Object.fromEntries(transportFacts(byLabel("SMP-R402")).map((f) => [f.label, f.value]));
     expect(facts["Seats"]).toBe("6");
     expect(facts["Price covers"]).toBe("One vehicle, not each traveller");
-    expect(transportFacts(byLabel("DEMO-F101")).map((f) => f.label)).not.toContain("Price covers");
+    expect(transportFacts(byLabel("SMP-F101")).map((f) => f.label)).not.toContain("Price covers");
   });
 
   test("the demo estimate counts vehicles, not travellers, for a taxi", () => {
-    const taxi = byLabel("DEMO-R401");
+    const taxi = byLabel("SMP-R401");
     expect(demo.quotes[taxi.id]?.price_basis).toBe("PER_VEHICLE");
   });
 });

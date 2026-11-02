@@ -35,10 +35,10 @@ export function checkEligibility(
   quote: Quote | undefined,
 ): Eligibility {
   if (option === null) {
-    return { ok: false, reason: "Select a flight, train or bus to try a demo booking." };
+    return { ok: false, reason: "Select a flight, train or bus to try a booking simulation." };
   }
   if (!DEMO_BOOKABLE_MODES.includes(option.mode)) {
-    return { ok: false, reason: "Demo booking is available for flights, trains and buses only." };
+    return { ok: false, reason: "The booking simulation is available for flights, trains and buses only." };
   }
   if (option.availability === "UNAVAILABLE") {
     return { ok: false, reason: "This option is shown as unavailable, so it cannot be simulated." };
@@ -46,11 +46,11 @@ export function checkEligibility(
   if (option.availability === "UNKNOWN") {
     return {
       ok: false,
-      reason: "Availability is unknown for this option, so a demo booking cannot be simulated.",
+      reason: "Availability is unknown for this option, so a booking cannot be simulated.",
     };
   }
   if (option.price === null) {
-    return { ok: false, reason: "This option has no price, so a demo booking cannot be simulated." };
+    return { ok: false, reason: "This option has no price, so a booking cannot be simulated." };
   }
   if (quote === undefined || quote.option_id !== option.id) {
     return { ok: false, reason: "There is no demo quote for this option." };
@@ -86,7 +86,7 @@ export interface DemoBooking {
 }
 
 export function formatDemoReference(sequence: number): string {
-  return `DEMO-BOOKING-${String(sequence).padStart(3, "0")}`;
+  return `SIMULATED-BOOKING-${String(sequence).padStart(3, "0")}`;
 }
 
 export class DemoBookingNotAllowedError extends Error {

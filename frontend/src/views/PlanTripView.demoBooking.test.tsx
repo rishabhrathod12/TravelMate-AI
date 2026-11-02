@@ -26,7 +26,7 @@ describe("transport and demo booking on the plan page", () => {
     previewExampleTrip();
 
     const demo = screen.getByRole("region", { name: "Booking simulation" });
-    expect(within(demo).getByText("DEMO · SIMULATION ONLY")).toBeInTheDocument();
+    expect(within(demo).getByText("SIMULATION ONLY")).toBeInTheDocument();
     expect(within(demo).getByText(/Select a flight, train or bus/)).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Booking approval preview" })).toBeInTheDocument();
   });
@@ -41,21 +41,21 @@ describe("transport and demo booking on the plan page", () => {
     fireEvent.click(within(demo).getByRole("button", { name: "Simulate booking" }));
 
     const result = within(demo).getByRole("region", { name: "DEMO — NOT A REAL BOOKING" });
-    expect(within(result).getByText("DEMO-BOOKING-001")).toBeInTheDocument();
+    expect(within(result).getByText("SIMULATED-BOOKING-001")).toBeInTheDocument();
     expect(within(result).getByText(/Sample Wings/)).toBeInTheDocument();
 
     // The simulation did not touch the real path: still preview-only and disabled.
     const approval = screen.getByRole("region", { name: "Booking approval preview" });
     expect(within(approval).getByText("Preview only. Nothing is booked.")).toBeInTheDocument();
     expect(within(approval).getByRole("button", { name: /Approve \(not available\)/ })).toBeDisabled();
-    expect(within(approval).queryByText(/DEMO-BOOKING/)).not.toBeInTheDocument();
+    expect(within(approval).queryByText(/SIMULATED-BOOKING/)).not.toBeInTheDocument();
   });
 
   test("an option with unknown availability can be selected but not simulated", () => {
     render(<PlanTripView />);
     previewExampleTrip();
 
-    select(/Select Bus.*Demo Coaches/);
+    select(/Select Bus.*Sample Coaches/);
 
     const demo = screen.getByRole("region", { name: "Booking simulation" });
     expect(within(demo).getByText(/Availability is unknown/)).toBeInTheDocument();

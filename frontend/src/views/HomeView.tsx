@@ -161,11 +161,7 @@ export function HomeView({
         busy={chat.busy}
         example={engaged ? undefined : EXAMPLE}
         footnote={
-          chatAvailable && import.meta.env.DEV
-            ? engaged
-              ? undefined
-              : "Development stand-in, not a language model. Nothing is booked."
-            : "Chat isn't available yet in this version."
+          chatAvailable && import.meta.env.DEV ? undefined : "Chat isn't available yet in this version."
         }
         actions={
           engaged ? (

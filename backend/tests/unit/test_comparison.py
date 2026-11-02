@@ -149,16 +149,16 @@ class TestSortTransport:
         ordered = sort_transport(MockTransportProvider().search(query))
 
         assert [option.service_label for option in ordered] == [
-            "DEMO-T202",
-            "DEMO-B302",
-            "DEMO-B301",
-            "DEMO-T201",
-            "DEMO-F103",
-            "DEMO-F102",
-            "DEMO-F101",
-            "DEMO-R401",
-            "DEMO-R402",
-            "DEMO-R403",
+            "SMP-T202",
+            "SMP-B302",
+            "SMP-B301",
+            "SMP-T201",
+            "SMP-F103",
+            "SMP-F102",
+            "SMP-F101",
+            "SMP-R401",
+            "SMP-R402",
+            "SMP-R403",
         ]
 
 

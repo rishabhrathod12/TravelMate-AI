@@ -61,7 +61,9 @@ export default function App() {
         {route === "about" && <AboutView />}
       </main>
       <footer className="app-footer">
-        <DemoBanner />
+        {/* The home screen has no page notice (owner's request, PRD A27). Sample values there
+            still carry their own "Sample data" badge. Every other page keeps the notice. */}
+        {route !== "plan" && <DemoBanner />}
         <BackendStatus />
       </footer>
     </div>

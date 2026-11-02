@@ -17,7 +17,7 @@ class MockHotelProvider:
     come back for any valid stay.
     """
 
-    name: str = "mock-hotel"
+    name: str = "sample-hotel"
     mode: ProviderMode = ProviderMode.MOCK
 
     def search(self, query: HotelQuery) -> tuple[HotelOption, ...]:
@@ -41,7 +41,7 @@ class MockHotelProvider:
                 source=source,
                 availability=AvailabilityStatus.UNKNOWN,
                 cancellation_terms=None,
-                name="Demo City Inn",
+                name="Sample City Inn",
                 location=goa,
                 nightly_rate=Money(amount_minor=300_000, currency="INR"),
             ),

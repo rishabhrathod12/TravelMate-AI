@@ -74,7 +74,7 @@ class TestTransportContract:
 
     def test_it_is_a_mock_with_a_name(self) -> None:
         assert self.provider.mode is ProviderMode.MOCK
-        assert self.provider.name == "mock-transport"
+        assert self.provider.name == "sample-transport"
 
     def test_it_returns_a_tuple_of_transport_options(self) -> None:
         options = self.provider.search(transport_query())
@@ -166,7 +166,7 @@ class TestHotelContract:
 
     def test_it_is_a_mock_with_a_name(self) -> None:
         assert self.provider.mode is ProviderMode.MOCK
-        assert self.provider.name == "mock-hotel"
+        assert self.provider.name == "sample-hotel"
 
     def test_it_returns_a_tuple_of_hotel_options(self) -> None:
         options = self.provider.search(hotel_query())
@@ -212,7 +212,7 @@ class TestWeatherContract:
 
     def test_it_is_a_mock_with_a_name(self) -> None:
         assert self.provider.mode is ProviderMode.MOCK
-        assert self.provider.name == "mock-weather"
+        assert self.provider.name == "sample-weather"
 
     def test_it_returns_a_labelled_forecast_for_the_requested_dates(self) -> None:
         forecast = self.provider.get_forecast(weather_query())
@@ -258,7 +258,7 @@ class TestWeatherContract:
 
     def test_every_summary_says_it_is_mock_so_it_cannot_pass_for_a_forecast(self) -> None:
         for forecast_day in self.provider.get_forecast(weather_query()).days:
-            assert "(mock)" in forecast_day.summary
+            assert "(sample)" in forecast_day.summary
 
     def test_a_single_day_request_works(self) -> None:
         forecast = self.provider.get_forecast(weather_query(days=1))
@@ -281,4 +281,4 @@ def test_no_mock_provider_claims_to_be_live(
     provider: TransportProvider | HotelProvider | WeatherProvider,
 ) -> None:
     assert provider.mode is not ProviderMode.LIVE
-    assert provider.name.startswith("mock-")
+    assert provider.name.startswith("sample-")

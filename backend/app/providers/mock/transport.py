@@ -45,7 +45,7 @@ class MockTransportProvider:
     """Fictional flights, trains, buses and private taxis for Indore to Goa and back. Nothing for
     other routes."""
 
-    name: str = "mock-transport"
+    name: str = "sample-transport"
     mode: ProviderMode = ProviderMode.MOCK
 
     def search(self, query: TransportQuery) -> tuple[TransportOption, ...]:

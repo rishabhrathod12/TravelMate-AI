@@ -127,8 +127,8 @@ class TestFictionalFixtures:
 
     def test_names_and_labels_are_visibly_fictional(self) -> None:
         for service in MOCK_SERVICES:
-            assert service.service_label.startswith("DEMO-")
-            assert service.operator_name.split()[0] in {"Demo", "Sample", "Example"}
+            assert service.service_label.startswith("SMP-")
+            assert service.operator_name.split()[0] in {"Sample", "Example"}
 
     def test_service_labels_and_ids_are_unique(self) -> None:
         options = mock_options()
@@ -143,7 +143,7 @@ class TestFictionalFixtures:
     def test_overnight_services_arrive_the_next_day(self) -> None:
         overnight = [o for o in mock_options() if o.arrives_at.date() > o.departs_at.date()]
 
-        assert {o.service_label for o in overnight} == {"DEMO-T202", "DEMO-B302", "DEMO-R403"}
+        assert {o.service_label for o in overnight} == {"SMP-T202", "SMP-B302", "SMP-R403"}
         assert all(o.arrives_at.date() == date(2026, 12, 2) for o in overnight)
 
     def test_the_unavailable_and_unknown_cases_are_present(self) -> None:
@@ -179,9 +179,9 @@ class TestGrouping:
             TransportMode.ROAD,
         ]
         assert [o.service_label for o in groups[TransportMode.FLIGHT]] == [
-            "DEMO-F101",
-            "DEMO-F102",
-            "DEMO-F103",
+            "SMP-F101",
+            "SMP-F102",
+            "SMP-F103",
         ]
 
     def test_a_mode_with_no_options_does_not_appear(self) -> None:
@@ -194,9 +194,9 @@ class TestGrouping:
         flights = group_transport_by_mode(mock_options())[TransportMode.FLIGHT]
 
         assert [o.service_label for o in sort_transport(flights)] == [
-            "DEMO-F103",
-            "DEMO-F102",
-            "DEMO-F101",
+            "SMP-F103",
+            "SMP-F102",
+            "SMP-F101",
         ]
 
 
@@ -213,5 +213,5 @@ class TestFrontendExport:
         text = export_transport_fixtures()
 
         assert text.count('"service_label"') == len(MOCK_SERVICES)
-        assert "fictional demo data labelled MOCK" in text
+        assert "fictional sample data labelled MOCK" in text
         assert text.endswith("\n")

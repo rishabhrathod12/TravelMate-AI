@@ -95,7 +95,7 @@ class TestBuildProviders:
 
         for provider in (providers.transport, providers.hotel, providers.weather):
             assert provider.mode is ProviderMode.MOCK
-            assert provider.name.startswith("mock-")
+            assert provider.name.startswith("sample-")
 
     def test_the_mocks_satisfy_the_interfaces(self) -> None:
         assert _as_transport(MockTransportProvider()).mode is ProviderMode.MOCK

@@ -11,16 +11,16 @@ MOCK_FORECAST_HORIZON_DAYS = 7
 
 # (summary, maximum °C, minimum °C, chance of rain %). Sample values, not a forecast.
 _PATTERN = (
-    ("Sunny (mock)", 31.0, 24.0, 5),
-    ("Partly cloudy (mock)", 30.0, 24.0, 20),
-    ("Light showers (mock)", 28.0, 23.0, 60),
+    ("Sunny (sample)", 31.0, 24.0, 5),
+    ("Partly cloudy (sample)", 30.0, 24.0, 20),
+    ("Light showers (sample)", 28.0, 23.0, 60),
 )
 
 
 class MockWeatherProvider:
     """Sample weather for Goa, up to a short horizon. No days for other places."""
 
-    name: str = "mock-weather"
+    name: str = "sample-weather"
     mode: ProviderMode = ProviderMode.MOCK
 
     def get_forecast(self, query: WeatherQuery) -> WeatherForecast:

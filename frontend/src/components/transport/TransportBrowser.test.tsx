@@ -41,7 +41,7 @@ describe("the three categories", () => {
     setup();
 
     const flights = screen.getByRole("region", { name: "Flights (3)" });
-    expect(within(flights).getByRole("heading", { name: /Demo Air/ })).toBeInTheDocument();
+    expect(within(flights).getByRole("heading", { name: /Sample Air/ })).toBeInTheDocument();
     expect(within(flights).queryByText(/Sample Rail Express/)).not.toBeInTheDocument();
     const buses = screen.getByRole("region", { name: "Buses (2)" });
     expect(within(buses).getByRole("heading", { name: /Example Travels/ })).toBeInTheDocument();
@@ -86,9 +86,9 @@ describe("sorting", () => {
 
     fireEvent.change(screen.getByLabelText("Sort each group by"), { target: { value: "duration" } });
 
-    // Demo Air and Sample Wings both take 1h 45m, so they tie and keep their id order.
+    // Sample Air and Sample Wings both take 1h 45m, so they tie and keep their id order.
     expect(flightOrder().map((title) => title.split(" · ")[1])).toEqual([
-      "Demo Air",
+      "Sample Air",
       "Sample Wings",
       "Example Airways",
     ]);
@@ -102,7 +102,7 @@ describe("selecting", () => {
     fireEvent.click(screen.getByRole("button", { name: /Select Train.*Example Intercity/ }));
 
     expect(onToggle).toHaveBeenCalledWith("demo-train-2");
-    expect(screen.queryByRole("button", { name: /Select Flight.*Demo Air/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Select Flight.*Sample Air/ })).not.toBeInTheDocument();
   });
 });
 
@@ -124,7 +124,7 @@ describe("comparing", () => {
     fireEvent.click(compareBox("Sample Rail Express"));
     fireEvent.click(compareBox("Example Travels"));
 
-    expect(compareBox("Demo Coaches")).toBeDisabled();
+    expect(compareBox("Sample Coaches")).toBeDisabled();
     expect(compareBox("Sample Wings")).toBeEnabled();
   });
 
@@ -136,7 +136,7 @@ describe("comparing", () => {
     const table = screen.getByRole("table");
     const cabin = within(table).getByRole("row", { name: /Cabin class/ });
     expect(within(cabin).getAllByRole("cell").map((c) => c.textContent)).toEqual([
-      "Economy (demo)",
+      "Economy",
       "Not applicable",
     ]);
     expect(within(table).queryByRole("row", { name: /Seat type/ })).not.toBeInTheDocument();
@@ -158,7 +158,7 @@ describe("comparing", () => {
   test("shows availability, cancellation, source and freshness for each option", () => {
     setup();
     fireEvent.click(compareBox("Example Airways"));
-    fireEvent.click(compareBox("Demo Coaches"));
+    fireEvent.click(compareBox("Sample Coaches"));
 
     const table = screen.getByRole("table");
     expect(within(table).getAllByText(/Availability unknown/).length).toBe(2);
@@ -169,7 +169,7 @@ describe("comparing", () => {
 
   test("a bus with no stop count shows Not applicable, never zero", () => {
     setup();
-    fireEvent.click(compareBox("Demo Coaches"));
+    fireEvent.click(compareBox("Sample Coaches"));
     fireEvent.click(compareBox("Example Travels"));
 
     const stops = within(screen.getByRole("table")).getByRole("row", { name: /^Stops/ });

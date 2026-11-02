@@ -31,10 +31,10 @@ const option = (label: string): TransportOption => {
 };
 const quoteOf = (value: TransportOption): Quote | undefined => demo.quotes[value.id];
 
-const train = option("DEMO-T201"); // AVAILABLE, priced, quoted
-const bus = option("DEMO-B302"); // AVAILABLE, priced, quoted
-const unknownBus = option("DEMO-B301"); // UNKNOWN availability
-const soldOutFlight = option("DEMO-F101"); // UNAVAILABLE
+const train = option("SMP-T201"); // AVAILABLE, priced, quoted
+const bus = option("SMP-B302"); // AVAILABLE, priced, quoted
+const unknownBus = option("SMP-B301"); // UNKNOWN availability
+const soldOutFlight = option("SMP-F101"); // UNAVAILABLE
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -80,11 +80,11 @@ describe("who can be demo-booked", () => {
 
 describe("the demo reference", () => {
   test("is a counter that starts at 001 and cannot be mistaken for a real reference", () => {
-    expect(formatDemoReference(1)).toBe("DEMO-BOOKING-001");
-    expect(formatDemoReference(12)).toBe("DEMO-BOOKING-012");
+    expect(formatDemoReference(1)).toBe("SIMULATED-BOOKING-001");
+    expect(formatDemoReference(12)).toBe("SIMULATED-BOOKING-012");
     for (const value of [1, 2, 999]) {
       const reference = formatDemoReference(value);
-      expect(reference).toMatch(/^DEMO-BOOKING-\d{3}$/);
+      expect(reference).toMatch(/^SIMULATED-BOOKING-\d{3}$/);
       // Not a six-character airline-style code and not a ten-digit rail-style number.
       expect(reference).not.toMatch(/^[A-Z0-9]{6}$/);
       expect(reference).not.toMatch(/^\d{10}$/);
@@ -101,7 +101,7 @@ describe("simulating a booking", () => {
     expect(duplicate).toBe(false);
     expect(booking.kind).toBe("DEMO_SIMULATION");
     expect(booking.is_real).toBe(false);
-    expect(booking.reference).toBe("DEMO-BOOKING-001");
+    expect(booking.reference).toBe("SIMULATED-BOOKING-001");
     expect(booking.source.provenance).toBe("MOCK");
     expect(Object.keys(booking)).not.toEqual(
       expect.arrayContaining(["pnr", "ticket_number", "provider_reference", "confirmation"]),
@@ -126,7 +126,7 @@ describe("simulating a booking", () => {
     expect(again.booking).toBe(first.booking);
     expect(registry.all()).toHaveLength(1);
     // The counter did not move: the next new booking is 002, not 003.
-    expect(registry.submit(bus, quoteOf(bus), request).booking.reference).toBe("DEMO-BOOKING-002");
+    expect(registry.submit(bus, quoteOf(bus), request).booking.reference).toBe("SIMULATED-BOOKING-002");
   });
 
   test("a different option, or the same option for a different trip, is a new simulation", () => {
@@ -140,9 +140,9 @@ describe("simulating a booking", () => {
     expect(sameOptionOtherTrip.duplicate).toBe(false);
     expect(otherOption.duplicate).toBe(false);
     expect(registry.all().map((b) => b.reference)).toEqual([
-      "DEMO-BOOKING-001",
-      "DEMO-BOOKING-002",
-      "DEMO-BOOKING-003",
+      "SIMULATED-BOOKING-001",
+      "SIMULATED-BOOKING-002",
+      "SIMULATED-BOOKING-003",
     ]);
   });
 
@@ -156,7 +156,7 @@ describe("simulating a booking", () => {
       DemoBookingNotAllowedError,
     );
     expect(registry.all()).toEqual([]);
-    expect(registry.submit(train, quoteOf(train), request).booking.reference).toBe("DEMO-BOOKING-001");
+    expect(registry.submit(train, quoteOf(train), request).booking.reference).toBe("SIMULATED-BOOKING-001");
   });
 
   test("can be found again for the same selection", () => {

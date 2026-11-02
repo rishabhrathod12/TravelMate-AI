@@ -44,7 +44,7 @@ def export_transport_fixtures() -> str:
     document = {
         "note": (
             "Generated from backend/app/providers/mock/fixtures.py. Do not edit by hand. "
-            "Every value is fictional demo data labelled MOCK."
+            "Every value is fictional sample data labelled MOCK."
         ),
         "mock_text_note": MOCK_TEXT_NOTE,
         "services": [_template(service) for service in MOCK_SERVICES],

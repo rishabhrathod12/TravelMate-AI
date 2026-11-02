@@ -31,7 +31,7 @@ def forecast(days: int) -> dict[str, Any]:
         "location": {"name": "Goa"},
         "requested_start": date(2026, 12, 1),
         "requested_end": date(2026, 12, 2),
-        "days": [{"day": date(2026, 12, 1 + n), "summary": "Sunny (mock)"} for n in range(days)],
+        "days": [{"day": date(2026, 12, 1 + n), "summary": "Sunny"} for n in range(days)],
         "source": SOURCE,
     }
 

@@ -187,7 +187,7 @@ export function buildDemoOptions(request: TripRequest): DemoOptions {
     source: DEMO_SOURCE,
     availability: "UNKNOWN",
     cancellation_terms: null,
-    name: "Demo City Inn",
+    name: "Sample City Inn",
     location: request.destination,
     nightly_rate: inr(300_000),
   };

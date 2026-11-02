@@ -144,7 +144,7 @@ class TestTheMockTaxis:
     def test_there_are_three_fictional_taxis_with_different_capacities(self) -> None:
         taxis = [o for o in search() if o.mode is TransportMode.ROAD]
 
-        assert [o.service_label for o in taxis] == ["DEMO-R401", "DEMO-R402", "DEMO-R403"]
+        assert [o.service_label for o in taxis] == ["SMP-R401", "SMP-R402", "SMP-R403"]
         capacities = [
             o.details.passenger_capacity for o in taxis if isinstance(o.details, RoadDetails)
         ]

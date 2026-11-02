@@ -1,12 +1,12 @@
 {
-  "note": "Generated from backend/app/providers/mock/fixtures.py. Do not edit by hand. Every value is fictional demo data labelled MOCK.",
-  "mock_text_note": "Mock fixture text: not a real provider statement.",
+  "note": "Generated from backend/app/providers/mock/fixtures.py. Do not edit by hand. Every value is fictional sample data labelled MOCK.",
+  "mock_text_note": "Sample text: not a real provider statement.",
   "services": [
     {
       "key": "train-1",
       "mode": "TRAIN",
       "operator_name": "Sample Rail Express",
-      "service_label": "DEMO-T201",
+      "service_label": "SMP-T201",
       "departs": {
         "hour": 4,
         "minute": 0
@@ -20,15 +20,15 @@
       "price_minor": 150000,
       "currency": "INR",
       "availability": "AVAILABLE",
-      "cancellation_terms": "Mock fixture text: not a real provider statement.",
-      "detail": "Sleeper (demo)",
+      "cancellation_terms": "Sample text: not a real provider statement.",
+      "detail": "Sleeper",
       "capacity": null
     },
     {
       "key": "train-2",
       "mode": "TRAIN",
       "operator_name": "Example Intercity",
-      "service_label": "DEMO-T202",
+      "service_label": "SMP-T202",
       "departs": {
         "hour": 21,
         "minute": 0
@@ -43,14 +43,14 @@
       "currency": "INR",
       "availability": "AVAILABLE",
       "cancellation_terms": null,
-      "detail": "Chair car (demo)",
+      "detail": "Chair car",
       "capacity": null
     },
     {
       "key": "bus-1",
       "mode": "BUS",
-      "operator_name": "Demo Coaches",
-      "service_label": "DEMO-B301",
+      "operator_name": "Sample Coaches",
+      "service_label": "SMP-B301",
       "departs": {
         "hour": 2,
         "minute": 0
@@ -72,7 +72,7 @@
       "key": "bus-2",
       "mode": "BUS",
       "operator_name": "Example Travels",
-      "service_label": "DEMO-B302",
+      "service_label": "SMP-B302",
       "departs": {
         "hour": 19,
         "minute": 30
@@ -86,15 +86,15 @@
       "price_minor": 100000,
       "currency": "INR",
       "availability": "AVAILABLE",
-      "cancellation_terms": "Mock fixture text: not a real provider statement.",
-      "detail": "Seater (demo)",
+      "cancellation_terms": "Sample text: not a real provider statement.",
+      "detail": "Seater",
       "capacity": null
     },
     {
       "key": "flight-1",
       "mode": "FLIGHT",
-      "operator_name": "Demo Air",
-      "service_label": "DEMO-F101",
+      "operator_name": "Sample Air",
+      "service_label": "SMP-F101",
       "departs": {
         "hour": 8,
         "minute": 0
@@ -109,14 +109,14 @@
       "currency": "INR",
       "availability": "UNAVAILABLE",
       "cancellation_terms": null,
-      "detail": "Economy (demo)",
+      "detail": "Economy",
       "capacity": null
     },
     {
       "key": "flight-2",
       "mode": "FLIGHT",
       "operator_name": "Sample Wings",
-      "service_label": "DEMO-F102",
+      "service_label": "SMP-F102",
       "departs": {
         "hour": 14,
         "minute": 30
@@ -130,15 +130,15 @@
       "price_minor": 450000,
       "currency": "INR",
       "availability": "AVAILABLE",
-      "cancellation_terms": "Mock fixture text: not a real provider statement.",
-      "detail": "Economy (demo)",
+      "cancellation_terms": "Sample text: not a real provider statement.",
+      "detail": "Economy",
       "capacity": null
     },
     {
       "key": "flight-3",
       "mode": "FLIGHT",
       "operator_name": "Example Airways",
-      "service_label": "DEMO-F103",
+      "service_label": "SMP-F103",
       "departs": {
         "hour": 6,
         "minute": 10
@@ -160,7 +160,7 @@
       "key": "taxi-1",
       "mode": "ROAD",
       "operator_name": "Example Cabs",
-      "service_label": "DEMO-R401",
+      "service_label": "SMP-R401",
       "departs": {
         "hour": 5,
         "minute": 0
@@ -174,15 +174,15 @@
       "price_minor": 1800000,
       "currency": "INR",
       "availability": "AVAILABLE",
-      "cancellation_terms": "Mock fixture text: not a real provider statement.",
-      "detail": "Sedan (demo)",
+      "cancellation_terms": "Sample text: not a real provider statement.",
+      "detail": "Sedan",
       "capacity": 4
     },
     {
       "key": "taxi-2",
       "mode": "ROAD",
       "operator_name": "Sample Cabs",
-      "service_label": "DEMO-R402",
+      "service_label": "SMP-R402",
       "departs": {
         "hour": 6,
         "minute": 30
@@ -197,14 +197,14 @@
       "currency": "INR",
       "availability": "UNKNOWN",
       "cancellation_terms": null,
-      "detail": "SUV (demo)",
+      "detail": "SUV",
       "capacity": 6
     },
     {
       "key": "taxi-3",
       "mode": "ROAD",
-      "operator_name": "Demo Cabs",
-      "service_label": "DEMO-R403",
+      "operator_name": "Example Taxi Co",
+      "service_label": "SMP-R403",
       "departs": {
         "hour": 20,
         "minute": 0
@@ -218,8 +218,8 @@
       "price_minor": 4200000,
       "currency": "INR",
       "availability": "AVAILABLE",
-      "cancellation_terms": "Mock fixture text: not a real provider statement.",
-      "detail": "12-seat van (demo)",
+      "cancellation_terms": "Sample text: not a real provider statement.",
+      "detail": "12-seat van",
       "capacity": 12
     }
   ]
