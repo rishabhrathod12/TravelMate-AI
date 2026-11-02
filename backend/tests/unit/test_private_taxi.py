@@ -6,6 +6,7 @@ to end, and what a booking quote records. No network and no model.
 """
 
 from datetime import UTC, date, datetime
+from typing import cast
 
 import pytest
 from pydantic import ValidationError
@@ -13,8 +14,8 @@ from test_workflow import ONE_WAY, ROUND_TRIP, itinerary_json, make, run_input
 
 from app.config import Settings
 from app.conversation.draft import TripDraft
-from app.domain.booking_rules import quote_content_hash
-from app.domain.cost import CostLineKind
+from app.domain.booking_rules import QuoteSnapshot, quote_content_hash
+from app.domain.cost import CostEstimate, CostLine, CostLineKind
 from app.domain.cost_policy import estimate_trip_cost
 from app.domain.money import Money
 from app.domain.options import (
@@ -34,6 +35,7 @@ from app.providers.factory import build_providers
 from app.providers.queries import TransportQuery
 from app.services.quote_source import ProviderQuoteSource
 from app.workflow.pricing import quote_for_transport
+from app.workflow.state import RunOutcome
 
 DEPARTURE = date(2026, 12, 1)
 NOW = datetime(2026, 11, 2, 10, 0, tzinfo=UTC)
@@ -69,7 +71,7 @@ def trip(travellers: int, trip_type: TripType = TripType.ONE_WAY) -> TripRequest
     )
 
 
-def estimate(travellers: int, option_id: str, vehicles: list[int | None] | None):
+def estimate(travellers: int, option_id: str, vehicles: list[int | None] | None) -> CostEstimate:
     quote = quote_for_transport(option(option_id))
     assert quote is not None
     return estimate_trip_cost(
@@ -82,7 +84,7 @@ def estimate(travellers: int, option_id: str, vehicles: list[int | None] | None)
     )
 
 
-def transport_line(result):
+def transport_line(result: CostEstimate) -> CostLine:
     return next(line for line in result.lines if line.kind is CostLineKind.TRANSPORT)
 
 
@@ -109,7 +111,9 @@ class TestTheRoadDetailsType:
             TransportOption.model_validate({**sedan.model_dump(), "details": None})
 
     @pytest.mark.parametrize("wrong", [FlightDetails(), TrainDetails()])
-    def test_a_road_option_refuses_the_details_of_another_mode(self, wrong) -> None:
+    def test_a_road_option_refuses_the_details_of_another_mode(
+        self, wrong: FlightDetails | TrainDetails
+    ) -> None:
         sedan = option(SEDAN)
         with pytest.raises(ValidationError, match="do not fit"):
             TransportOption.model_validate({**sedan.model_dump(), "details": wrong.model_dump()})
@@ -233,7 +237,9 @@ class TestTheCostRules:
 
 
 class TestTheWorkflowWithATaxi:
-    def plan(self, travellers: int, outbound: str, **extra: str | None):
+    def plan(
+        self, travellers: int, outbound: str, **extra: str | None
+    ) -> tuple[RunOutcome, RunOutcome]:
         workflow, _tools, _client = make(llm_outcomes=[itinerary_json(1)])  # a one-way day
         draft = TripDraft(**{**ONE_WAY.model_dump(), "traveller_count": travellers})
         first = workflow.start("owner-1", run_input(draft))
@@ -249,7 +255,7 @@ class TestTheWorkflowWithATaxi:
         first, _done = self.plan(2, SEDAN)
 
         assert first.waiting_for is not None
-        assert SEDAN in first.waiting_for["transport"]  # type: ignore[operator]
+        assert SEDAN in cast("list[str]", first.waiting_for["transport"])
 
     def test_choosing_a_taxi_finishes_with_a_priced_estimate_not_an_error(self) -> None:
         _first, done = self.plan(2, SEDAN)
@@ -286,8 +292,8 @@ class TestTheWorkflowWithATaxi:
         first = workflow.start("owner-1", run_input(ROUND_TRIP, rooms=2))
         waiting = first.waiting_for
         assert waiting is not None
-        back = [i for i in waiting["return_transport"] if "taxi-2" in i]  # type: ignore[union-attr]
-        hotel = waiting["hotels"][0]  # type: ignore[index]
+        back = [i for i in cast("list[str]", waiting["return_transport"]) if "taxi-2" in i]
+        hotel = cast("list[str]", waiting["hotels"])[0]
 
         done = workflow.resume(
             first.run_id,
@@ -304,7 +310,7 @@ class TestTheWorkflowWithATaxi:
 
 
 class TestWhatABookingQuoteRecords:
-    def snapshot(self, travellers: int, option_id: str):
+    def snapshot(self, travellers: int, option_id: str) -> QuoteSnapshot:
         _workflow, tools, _client = make()
         source = ProviderQuoteSource(tools)
         snap = source.snapshot(trip(travellers), "TRANSPORT", option_id, "run-1", NOW)
