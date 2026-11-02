@@ -16,7 +16,7 @@ Nine of ten acceptance criteria pass with automated evidence. **AC-10 (375 px, n
 | Backend `ruff check`, `ruff format --check`, `mypy` (99 source files, strict) | clean |
 | Frontend tests (Vitest, includes 14 axe-core accessibility tests) | **422 passed** |
 | Frontend `eslint`, `tsc --noEmit`, `vite build` | clean |
-| CI, GitHub Actions, every push since the redesign (`7c876cd` to `308c5e8`) | **all jobs succeeded** (backend, frontend, postgres, secret-scan). The run for `d21d1ce` was still in progress when this was written. |
+| CI, GitHub Actions, every push since the redesign (`7c876cd` to `be2a320`) | **all jobs succeeded** (backend, frontend, postgres, secret-scan), read from the GitHub API after each push. The last two runs (`d21d1ce`, `be2a320`) were checked after this record was first written. |
 | CI `postgres` job (50 tests: migrations up and down, constraints, `audit_events` privileges, restricted-role API and booking flow) | **succeeded on `9b2f7db` and `308c5e8`.** It failed once, on the M10 commit `ccd3e23`, and `9b2f7db` fixed that. This closes the M9 and M10 criteria that could only be checked on SQLite locally. |
 
 ## 3. Acceptance criteria
@@ -48,7 +48,7 @@ Nine of ten acceptance criteria pass with automated evidence. **AC-10 (375 px, n
 - **Prompt injection (SECURITY §3, item 9):** the itinerary drafter has a suite across hotel names, weather text, place names and notes (106 tests). The plan writer, added later for the chat plan, had one injection test; M12 added `unit/test_plan_writer_injection.py` (58 tests): six hostile strings in the place name and in the notes stay inside the data block, cannot forge its markers or change the fields around them; a model that obeys is stopped (made-up prices, availability, opening times and booking claims are rejected after one repair; smuggled fields are rejected; no tool is offered). A deliberate break of the plan checker made 5 of these tests fail, so they can fail.
 - **Approvals and booking authority:** architecture tests fail if any model, tool, workflow, voice, provider or conversation code imports booking or builds an approval. The 8 deliberate breakages recorded in M10 were each caught.
 - **Dependency audit:** CI runs `pip-audit` (backend) and `npm audit --audit-level=high` (frontend) and succeeded on every push. Locally, `npm audit --omit=dev` reports 0 findings. Plain `npm audit` reports 11 moderate findings in `minimatch` inside the eslint toolchain: dev-only, not shipped, present before M12, accepted here. `pip-audit` is not installed on this machine, so the backend audit result is CI's.
-- **CI hardening:** the four GitHub Actions in `.github/workflows/ci.yml` are now pinned to full commit SHAs (resolved from GitHub's API on 2026-11-02), each with its tag as a comment. **This change has not run yet**; it is verified only when the next CI run succeeds. The gitleaks action is free for personal repositories; if the repository moves to an organisation, its licence terms need review.
+- **CI hardening:** the four GitHub Actions in `.github/workflows/ci.yml` are now pinned to full commit SHAs (resolved from GitHub's API on 2026-11-02), each with its tag as a comment. **Verified:** the run for `be2a320`, the first with the pinned actions, succeeded in all four jobs, so each pin (`checkout`, `setup-python`, `setup-node`, `gitleaks-action`) resolves and works. The gitleaks action is free for personal repositories; if the repository moves to an organisation, its licence terms need review.
 
 ## 6. What this record does not establish
 
