@@ -21,7 +21,8 @@
       "currency": "INR",
       "availability": "AVAILABLE",
       "cancellation_terms": "Mock fixture text: not a real provider statement.",
-      "detail": "Sleeper (demo)"
+      "detail": "Sleeper (demo)",
+      "capacity": null
     },
     {
       "key": "train-2",
@@ -42,7 +43,8 @@
       "currency": "INR",
       "availability": "AVAILABLE",
       "cancellation_terms": null,
-      "detail": "Chair car (demo)"
+      "detail": "Chair car (demo)",
+      "capacity": null
     },
     {
       "key": "bus-1",
@@ -63,7 +65,8 @@
       "currency": "INR",
       "availability": "UNKNOWN",
       "cancellation_terms": null,
-      "detail": null
+      "detail": null,
+      "capacity": null
     },
     {
       "key": "bus-2",
@@ -84,7 +87,8 @@
       "currency": "INR",
       "availability": "AVAILABLE",
       "cancellation_terms": "Mock fixture text: not a real provider statement.",
-      "detail": "Seater (demo)"
+      "detail": "Seater (demo)",
+      "capacity": null
     },
     {
       "key": "flight-1",
@@ -105,7 +109,8 @@
       "currency": "INR",
       "availability": "UNAVAILABLE",
       "cancellation_terms": null,
-      "detail": "Economy (demo)"
+      "detail": "Economy (demo)",
+      "capacity": null
     },
     {
       "key": "flight-2",
@@ -126,7 +131,8 @@
       "currency": "INR",
       "availability": "AVAILABLE",
       "cancellation_terms": "Mock fixture text: not a real provider statement.",
-      "detail": "Economy (demo)"
+      "detail": "Economy (demo)",
+      "capacity": null
     },
     {
       "key": "flight-3",
@@ -147,7 +153,74 @@
       "currency": "INR",
       "availability": "UNKNOWN",
       "cancellation_terms": null,
-      "detail": null
+      "detail": null,
+      "capacity": null
+    },
+    {
+      "key": "taxi-1",
+      "mode": "ROAD",
+      "operator_name": "Example Cabs",
+      "service_label": "DEMO-R401",
+      "departs": {
+        "hour": 5,
+        "minute": 0
+      },
+      "arrives": {
+        "day_offset": 0,
+        "hour": 22,
+        "minute": 30
+      },
+      "stops": null,
+      "price_minor": 1800000,
+      "currency": "INR",
+      "availability": "AVAILABLE",
+      "cancellation_terms": "Mock fixture text: not a real provider statement.",
+      "detail": "Sedan (demo)",
+      "capacity": 4
+    },
+    {
+      "key": "taxi-2",
+      "mode": "ROAD",
+      "operator_name": "Sample Cabs",
+      "service_label": "DEMO-R402",
+      "departs": {
+        "hour": 6,
+        "minute": 30
+      },
+      "arrives": {
+        "day_offset": 0,
+        "hour": 23,
+        "minute": 0
+      },
+      "stops": null,
+      "price_minor": 2600000,
+      "currency": "INR",
+      "availability": "UNKNOWN",
+      "cancellation_terms": null,
+      "detail": "SUV (demo)",
+      "capacity": 6
+    },
+    {
+      "key": "taxi-3",
+      "mode": "ROAD",
+      "operator_name": "Demo Cabs",
+      "service_label": "DEMO-R403",
+      "departs": {
+        "hour": 20,
+        "minute": 0
+      },
+      "arrives": {
+        "day_offset": 1,
+        "hour": 13,
+        "minute": 30
+      },
+      "stops": null,
+      "price_minor": 4200000,
+      "currency": "INR",
+      "availability": "AVAILABLE",
+      "cancellation_terms": "Mock fixture text: not a real provider statement.",
+      "detail": "12-seat van (demo)",
+      "capacity": 12
     }
   ]
 }

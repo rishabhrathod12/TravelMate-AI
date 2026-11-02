@@ -89,7 +89,35 @@ class BusDetails(DomainModel):
     blank_becomes_none = field_validator("seat_type")(_blank_to_none)
 
 
-ModeDetails = Annotated[FlightDetails | TrainDetails | BusDetails, Field(discriminator="kind")]
+# No real vehicle seats more than this. It only keeps an obviously wrong value out.
+MAX_VEHICLE_CAPACITY = 60
+
+
+class RoadDetails(DomainModel):
+    """Facts only a private road vehicle (a taxi or a hired car) has.
+
+    The capacity is required: it decides how many vehicles a party needs, and so what a trip
+    costs, so an option without it could not be priced honestly. The price of such an option is
+    for one vehicle, not for one traveller (`PriceBasis.PER_VEHICLE`).
+    """
+
+    kind: Literal["ROAD"] = "ROAD"
+    vehicle_type: str | None = None
+    passenger_capacity: StrictInt = Field(ge=1, le=MAX_VEHICLE_CAPACITY)
+
+    blank_becomes_none = field_validator("vehicle_type")(_blank_to_none)
+
+
+ModeDetails = Annotated[
+    FlightDetails | TrainDetails | BusDetails | RoadDetails, Field(discriminator="kind")
+]
+
+
+def vehicles_needed(travellers: int, capacity: int) -> int:
+    """How many vehicles of one type seat a party: party size over seats, rounded up."""
+    if travellers < 1 or capacity < 1:
+        raise ValueError("a party and a vehicle each need at least one seat")
+    return -(-travellers // capacity)
 
 
 class TransportOption(OptionBase):
@@ -124,6 +152,9 @@ class TransportOption(OptionBase):
     def _details_match_the_mode(self) -> Self:
         if self.details is not None and self.details.kind != self.mode.value:
             raise ValueError(f"{self.details.kind} details do not fit a {self.mode.value} option")
+        if self.mode is TransportMode.ROAD and self.details is None:
+            # A road vehicle is priced per vehicle, and its capacity says how many a party needs.
+            raise ValueError("a road option needs its vehicle details (the capacity)")
         return self
 
     @property

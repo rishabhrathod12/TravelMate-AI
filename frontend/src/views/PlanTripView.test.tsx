@@ -35,9 +35,9 @@ describe("after previewing the example trip", () => {
     expect(results).toHaveFocus();
     expect(screen.getByRole("heading", { name: "Transport options (demo)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Hotel options (demo)" })).toBeInTheDocument();
-    // One MOCK badge for each of the nine demo options (seven transport, two hotels), and no
+    // One MOCK badge for each of the twelve demo options (ten transport, two hotels), and no
     // other source label.
-    expect(screen.getAllByText(/MOCK · demo data/)).toHaveLength(9);
+    expect(screen.getAllByText(/MOCK · demo data/)).toHaveLength(12);
     expect(screen.queryByText(/^LIVE$/)).not.toBeInTheDocument();
   });
 

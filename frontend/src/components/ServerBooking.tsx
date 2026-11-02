@@ -18,6 +18,7 @@ import { StatusMessage } from "./StatusMessage";
 const BASIS_TEXT: Record<PriceBasis, string> = {
   PER_TRAVELLER: "per traveller",
   PER_ROOM_NIGHT: "per room per night",
+  PER_VEHICLE: "per vehicle",
 };
 
 const STATUS_TEXT: Record<string, string> = {

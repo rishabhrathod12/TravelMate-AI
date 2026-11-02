@@ -21,6 +21,7 @@ import {
   stayNights,
 } from "../demo/demoData";
 import { formatDay } from "../lib/dates";
+import { MODE_LABEL } from "../lib/transport";
 import { chooseVoiceAdapter } from "../voice/config";
 
 function tripLabel(request: TripRequest): string {
@@ -251,7 +252,7 @@ export function PlanTripView({
                   optionNames={{
                     ...(transport === null
                       ? {}
-                      : { [transport.id]: `${transport.mode.toLowerCase()} to ${transport.destination.name}` }),
+                      : { [transport.id]: `${MODE_LABEL[transport.mode].toLowerCase()} to ${transport.destination.name}` }),
                     ...(hotel === null ? {} : { [hotel.id]: hotel.name }),
                   }}
                   onShowOption={showOption}

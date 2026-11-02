@@ -3,12 +3,12 @@ import { useId, useState } from "react";
 import type { PlanningRun, Selection } from "../../api/planning";
 import type { HotelOption, Money, TransportMode, TransportOption } from "../../contracts/types";
 import { formatDuration, formatUtcDateTime } from "../../lib/dates";
-import { MODE_PLURAL, sortTransport } from "../../lib/transport";
+import { MODE_PLURAL, seatsOf, sortTransport } from "../../lib/transport";
 import { AvailabilityBadge, ProvenanceBadge } from "../Badges";
 import { MoneyText } from "../MoneyText";
 
 /** Modes in display order. Any other mode (for example road) follows, so no option is ever dropped. */
-const MODE_ORDER: readonly TransportMode[] = ["FLIGHT", "TRAIN", "BUS"];
+const MODE_ORDER: readonly TransportMode[] = ["FLIGHT", "TRAIN", "BUS", "ROAD"];
 
 function groupedByMode(options: readonly TransportOption[]) {
   const present = [...new Set(options.map((option) => option.mode))];
@@ -59,6 +59,12 @@ function transportDetail(option: TransportOption): string {
   return `${formatUtcDateTime(option.departs_at)} → ${formatUtcDateTime(option.arrives_at)} (${formatDuration(option.departs_at, option.arrives_at)})`;
 }
 
+/** What the price covers: a private taxi is priced per vehicle, every other fare per traveller. */
+function priceNote(option: TransportOption): string {
+  const seats = seatsOf(option);
+  return seats === null ? "per traveller" : `per vehicle (${seats} seats)`;
+}
+
 function transportTitle(option: TransportOption): string {
   return `${option.operator_name ?? ""} ${option.service_label ?? ""}`.trim() || MODE_PLURAL[option.mode];
 }
@@ -93,7 +99,7 @@ function TransportLeg({ legend, name, options, allowed, chosen, onChoose }: LegP
               title={transportTitle(option)}
               detail={transportDetail(option)}
               price={option.price}
-              priceNote="per traveller"
+              priceNote={priceNote(option)}
               option={option}
             />
           ))}

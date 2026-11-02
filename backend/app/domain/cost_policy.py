@@ -3,8 +3,11 @@
 `estimate_cost` (M5) stays free of defaults: it does what it is told. This module is where the
 owner's decisions of 2026-10-30 are written down once and handed to it:
 
-- Q12: a transport quote is per traveller; a hotel quote is per room per night. The quote's own
-  `price_basis` is checked, so a quote of the wrong kind is refused, never silently scaled.
+- Q12: a transport quote is per traveller, except a private road vehicle, which is per vehicle
+  (the owner's amendment of 2026-11-02, ADR 0007); a hotel quote is per room per night. The
+  quote's own `price_basis` is checked, so a quote of the wrong kind is refused, never silently
+  scaled. A per-vehicle quote is multiplied by the number of vehicles the party needs, and that
+  number is said in the line, never assumed.
 - Q13: a one-way or same-day trip has no hotel stay, so the accommodation line does not apply and
   a hotel quote is refused. A round trip needs one quote per leg (outbound and return).
 - Q18: contingency is 10% of the transport, accommodation and local-transport lines, rounded up
@@ -58,12 +61,15 @@ def estimate_trip_cost(
     transport_quotes: Sequence[Quote],
     hotel_quote: Quote | None,
     rooms: int | None,
+    vehicles: Sequence[int | None] | None = None,
 ) -> CostEstimate:
     """An itemised estimate for a trip, following the owner's rules.
 
     `transport_quotes` holds one quote per leg: one for a one-way trip, two for a round trip. Fewer
     is allowed and is reported as missing; more is an error. `rooms` is required when a hotel
-    quote is given and has no default (PRD Q14).
+    quote is given and has no default (PRD Q14). `vehicles` holds, for each transport quote in
+    order, how many vehicles the party needs; it is required for a per-vehicle quote and ignored
+    for the others.
     """
     windows = trip_windows(request)
     legs_expected = 2 if request.trip_type is TripType.ROUND_TRIP else 1
@@ -77,14 +83,25 @@ def estimate_trip_cost(
     extra_missing: list[str] = []
 
     for number, quote in enumerate(transport_quotes, start=1):
-        if quote.price_basis is not PriceBasis.PER_TRAVELLER:
-            raise ValueError("a transport quote must be priced per traveller")
+        if quote.price_basis is PriceBasis.PER_TRAVELLER:
+            quantity = travellers
+            description = f"Transport leg {number}: {travellers} traveller(s) at the quoted fare"
+        elif quote.price_basis is PriceBasis.PER_VEHICLE:
+            count = (
+                vehicles[number - 1] if vehicles is not None and number <= len(vehicles) else None
+            )
+            if count is None or count < 1:
+                raise ValueError("a per-vehicle transport quote needs the number of vehicles")
+            quantity = count
+            description = f"Transport leg {number}: {count} vehicle(s) at the quoted fare"
+        else:
+            raise ValueError("a transport quote must be priced per traveller or per vehicle")
         items.append(
             EstimateItem(
                 kind=CostLineKind.TRANSPORT,
-                description=f"Transport leg {number}: {travellers} traveller(s) at the quoted fare",
+                description=description,
                 unit_amount=quote.price,
-                quantity=travellers,
+                quantity=quantity,
                 provenance=quote.source.provenance,
             )
         )

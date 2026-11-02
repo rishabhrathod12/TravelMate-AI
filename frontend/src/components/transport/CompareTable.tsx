@@ -5,6 +5,7 @@ import { formatDuration, formatUtcDateTime } from "../../lib/dates";
 import {
   durationMinutes,
   MODE_LABEL,
+  TRANSPORT_MODES,
   modeSpecificFact,
   quotedTotal,
 } from "../../lib/transport";
@@ -46,7 +47,7 @@ export function CompareTable({ options, quotes, onClear }: CompareTableProps) {
   const lowestPrice = rankable ? lowest(options.map((o) => o.price?.amount_minor ?? null)) : null;
   const shortest = lowest(options.map(durationMinutes));
 
-  const modeFacts = (["FLIGHT", "TRAIN", "BUS"] as const).flatMap((mode) => {
+  const modeFacts = TRANSPORT_MODES.flatMap((mode) => {
     const sample = options.find((option) => option.mode === mode);
     const fact = sample === undefined ? null : modeSpecificFact(sample);
     return fact === null ? [] : [{ mode, label: fact.label }];
@@ -70,7 +71,7 @@ export function CompareTable({ options, quotes, onClear }: CompareTableProps) {
     {
       label: "Stops",
       cells: options.map((o) => {
-        if (o.mode === "BUS" && o.stops === null) {
+        if ((o.mode === "BUS" || o.mode === "ROAD") && o.stops === null) {
           return NOT_APPLICABLE;
         }
         return o.stops === null ? NOT_SUPPLIED : String(o.stops);
@@ -146,9 +147,10 @@ export function CompareTable({ options, quotes, onClear }: CompareTableProps) {
         </table>
       </div>
       <p className="field-hint">
-        Quoted prices are per traveller, as quoted, and the sample fees exist only in this prototype.
-        One traveller's quoted price plus fees is not the trip estimate: select one option to see
-        the cost estimate, which multiplies by the travellers and lists what it leaves out.
+        Quoted prices are as quoted: per traveller, except a private taxi, which is per vehicle. The
+        sample fees exist only in this prototype. A quoted price plus fees is not the trip estimate:
+        select one option to see the cost estimate, which multiplies by the travellers (or, for a
+        taxi, by the vehicles the party needs) and lists what it leaves out.
       </p>
       <button type="button" className="button button-quiet button-small" onClick={onClear}>
         Clear comparison

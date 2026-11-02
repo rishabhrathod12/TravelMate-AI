@@ -80,13 +80,18 @@ class TestTransportContract:
         options = self.provider.search(transport_query())
 
         assert isinstance(options, tuple)
-        assert len(options) == 7
+        assert len(options) == 10
         assert all(isinstance(option, TransportOption) for option in options)
 
-    def test_there_are_flights_trains_and_buses_and_no_other_mode(self) -> None:
+    def test_there_are_flights_trains_buses_and_private_taxis_and_no_other_mode(self) -> None:
         modes = {option.mode for option in self.provider.search(transport_query())}
 
-        assert modes == {TransportMode.FLIGHT, TransportMode.TRAIN, TransportMode.BUS}
+        assert modes == {
+            TransportMode.FLIGHT,
+            TransportMode.TRAIN,
+            TransportMode.BUS,
+            TransportMode.ROAD,
+        }
 
     def test_every_option_is_labelled_mock(self) -> None:
         for option in self.provider.search(transport_query()):
@@ -115,7 +120,7 @@ class TestTransportContract:
     def test_the_return_leg_is_available_as_a_second_search(self) -> None:
         options = self.provider.search(transport_query("Goa", "Indore"))
 
-        assert len(options) == 7
+        assert len(options) == 10
         assert all(option.origin.name == "Goa" for option in options)
         assert all(option.destination.name == "Indore" for option in options)
 

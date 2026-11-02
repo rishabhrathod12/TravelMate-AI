@@ -92,7 +92,7 @@ describe("choosing options in the conversation", () => {
     expect(onChoose).toHaveBeenCalledWith({ transportId: "a", returnTransportId: null, hotelId: null });
   });
 
-  test("an option of a mode this screen has no special name for (such as road) is still offered, not dropped", () => {
+  test("a private taxi is offered under its own heading and says its price is per vehicle", () => {
     const withRoad: PlanningRun = {
       ...RUN,
       choices: { transport: ["a", "road1"], returnTransport: [], hotels: [] },
@@ -100,14 +100,15 @@ describe("choosing options in the conversation", () => {
         ...(RUN.research as NonNullable<PlanningRun["research"]>),
         transport: [
           ...((RUN.research as NonNullable<PlanningRun["research"]>).transport),
-          { ...(RUN.research as NonNullable<PlanningRun["research"]>).transport[0], id: "road1", mode: "ROAD", operator_name: "FakeCabs", service_label: "Sedan" },
+          { ...(RUN.research as NonNullable<PlanningRun["research"]>).transport[0], id: "road1", mode: "ROAD", operator_name: "FakeCabs", service_label: "Sedan", details: { kind: "ROAD", vehicle_type: "Sedan", passenger_capacity: 4 } },
         ],
       } as PlanningRun["research"],
     };
     render(<RunChoices run={withRoad} onChoose={() => undefined} />);
 
     expect(screen.getByRole("radio", { name: /FakeCabs Sedan/ })).toBeInTheDocument();
-    expect(screen.getByText("Road")).toBeInTheDocument();
+    expect(screen.getByText("Private taxis")).toBeInTheDocument();
+    expect(screen.getByText("per vehicle (4 seats)")).toBeInTheDocument();
   });
 
   test("an unreadable run shows nothing rather than guessing", () => {

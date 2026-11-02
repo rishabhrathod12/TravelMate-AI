@@ -4,7 +4,8 @@ A quote is a snapshot. Hashing it for approvals is Milestone 10, and booking
 execution is Milestone 14; nothing here talks to a provider.
 
 A quote carries its price basis explicitly (`price_basis`, PRD Q12): the price is for one
-traveller, or for one room for one night. Fees are fixed amounts as quoted, not scaled.
+traveller, for one private vehicle, or for one room for one night. Fees are fixed amounts as
+quoted, not scaled.
 
 Provisional, not yet approved:
 - Fees are held separately from `price` and must use the price's currency
@@ -30,14 +31,16 @@ from app.domain.timeutil import UtcDateTime, ensure_utc
 
 
 class PriceBasis(StrEnum):
-    """What a quoted price covers (the owner's answer to PRD Q12, 2026-10-30).
+    """What a quoted price covers (the owner's answer to PRD Q12, 2026-10-30, amended 2026-11-02).
 
-    Transport fares are per traveller; hotel prices are per room per night. A quote says which, so
+    Transport fares are per traveller, except a private road vehicle, which is priced per vehicle
+    (the owner's amendment, ADR 0007); hotel prices are per room per night. A quote says which, so
     nothing has to guess how to scale it. There is deliberately no default.
     """
 
     PER_TRAVELLER = "PER_TRAVELLER"
     PER_ROOM_NIGHT = "PER_ROOM_NIGHT"
+    PER_VEHICLE = "PER_VEHICLE"
 
 
 class Fee(DomainModel):

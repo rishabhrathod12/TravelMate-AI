@@ -29,6 +29,7 @@ import type {
 } from "../contracts/types";
 import { addDays, daysBetween } from "../lib/dates";
 import { multiplyMoney, percentageRoundedUp, sumMoney } from "../lib/money";
+import { seatsOf, vehiclesNeeded } from "../lib/transport";
 import transportFixtures from "./transportFixtures.json";
 
 export const DEMO_NOTICE =
@@ -66,7 +67,7 @@ export interface DemoOptions {
  */
 interface TransportTemplate {
   key: string;
-  mode: Exclude<TransportOption["mode"], "ROAD">;
+  mode: TransportOption["mode"];
   operator_name: string;
   service_label: string;
   departs: { hour: number; minute: number };
@@ -77,6 +78,8 @@ interface TransportTemplate {
   availability: TransportOption["availability"];
   cancellation_terms: string | null;
   detail: string | null;
+  /** Seats, for a private taxi only. Its price is per vehicle. */
+  capacity: number | null;
 }
 
 export const TRANSPORT_FIXTURES = transportFixtures as unknown as {
@@ -98,6 +101,12 @@ function isoAt(day: string, dayOffset: number, hour: number, minute: number): st
 }
 
 function detailsFor(template: TransportTemplate): TransportOption["details"] {
+  if (template.mode === "ROAD") {
+    if (template.capacity === null) {
+      throw new Error(`the road fixture ${template.key} has no capacity`);
+    }
+    return { kind: "ROAD", vehicle_type: template.detail, passenger_capacity: template.capacity };
+  }
   if (template.detail === null) {
     return null;
   }
@@ -109,6 +118,7 @@ function detailsFor(template: TransportTemplate): TransportOption["details"] {
     case "BUS":
       return { kind: "BUS", seat_type: template.detail };
   }
+  return null;
 }
 
 function transportFromTemplate(
@@ -146,7 +156,8 @@ function demoQuote(
     option_id: option.id,
     price,
     price_basis: priceBasis,
-    fees: [{ label: feeLabel, amount: inr(feeAmount) }],
+    // A fee of nothing is no fee: a taxi has no sample fee, so none is listed.
+    fees: feeAmount > 0 ? [{ label: feeLabel, amount: inr(feeAmount) }] : [],
     availability: option.availability,
     cancellation_terms: option.cancellation_terms,
     valid_until: DEMO_VALID_UNTIL,
@@ -193,7 +204,7 @@ export function buildDemoOptions(request: TripRequest): DemoOptions {
         `a${String(index + 1).padStart(2, "0")}`,
         option,
         option.price,
-        "PER_TRAVELLER",
+        option.mode === "ROAD" ? "PER_VEHICLE" : "PER_TRAVELLER",
         fee.amount_minor,
         fee.label,
       );
@@ -241,10 +252,16 @@ export function buildDemoCostEstimate(
   } else if (transport.price === null) {
     missing.push("Transport: the option has no price");
   } else {
+    // A private taxi is priced per vehicle, so the line counts the vehicles the party needs.
+    const seats = seatsOf(transport);
+    const vehicles = seats === null ? null : vehiclesNeeded(travellers, seats);
     lines.push({
       kind: "TRANSPORT",
-      description: `Transport: ${travellers} ${travellerWord} at the quoted fare`,
-      amount: multiplyMoney(transport.price, travellers),
+      description:
+        vehicles === null
+          ? `Transport: ${travellers} ${travellerWord} at the quoted fare`
+          : `Transport: ${vehicles} ${vehicles === 1 ? "vehicle" : "vehicles"} at the quoted fare`,
+      amount: multiplyMoney(transport.price, vehicles ?? travellers),
       provenance: "MOCK",
     });
     if (request.trip_type === "ROUND_TRIP") {

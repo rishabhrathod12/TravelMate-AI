@@ -3,14 +3,15 @@
 Providers return options with a displayed price. The cost rules (`app.domain.cost_policy`) work on
 quotes, which carry what the price covers. Until real quote retrieval exists (M10), a quote is made
 from the option's own price, with the option's source and freshness window, and no fees. The
-quote's price basis follows the owner's answer to Q12: transport per traveller, hotels per room per
-night. The quote id is derived from the option id, so the same option always gives the same quote.
+quote's price basis follows the owner's answer to Q12: transport per traveller (a private road
+vehicle per vehicle, ADR 0007), hotels per room per night. The quote id is derived from the option
+id, so the same option always gives the same quote.
 """
 
 import uuid
 from datetime import datetime, timedelta
 
-from app.domain.options import HotelOption, TransportOption
+from app.domain.options import HotelOption, TransportMode, TransportOption
 from app.domain.quote import PriceBasis, Quote
 
 
@@ -52,7 +53,11 @@ def _quote(
 def quote_for_transport(
     option: TransportOption, retrieved_at: datetime | None = None
 ) -> Quote | None:
-    return _quote(option, option.price, PriceBasis.PER_TRAVELLER, retrieved_at)
+    # A private road vehicle is priced per vehicle; every other fare is per traveller (ADR 0007).
+    basis = (
+        PriceBasis.PER_VEHICLE if option.mode is TransportMode.ROAD else PriceBasis.PER_TRAVELLER
+    )
+    return _quote(option, option.price, basis, retrieved_at)
 
 
 def quote_for_hotel(option: HotelOption, retrieved_at: datetime | None = None) -> Quote | None:

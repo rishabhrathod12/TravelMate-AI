@@ -8,8 +8,10 @@ import {
   groupByMode,
   modeSpecificFact,
   quotedTotal,
+  seatsOf,
   sortTransport,
   transportFacts,
+  vehiclesNeeded,
 } from "./transport";
 
 const validated = validateTripForm(EXAMPLE_FORM);
@@ -60,11 +62,12 @@ describe("sortTransport", () => {
 });
 
 describe("groupByMode", () => {
-  test("gives flights, trains and buses in that order, only the modes that have options", () => {
+  test("gives flights, trains, buses and taxis in that order, only the modes that have options", () => {
     expect(groupByMode(demo.transport).map((group) => [group.mode, group.options.length])).toEqual([
       ["FLIGHT", 3],
       ["TRAIN", 2],
       ["BUS", 2],
+      ["ROAD", 3],
     ]);
     expect(groupByMode(demo.transport.filter((o) => o.mode === "BUS")).map((g) => g.mode)).toEqual([
       "BUS",
@@ -120,7 +123,8 @@ describe("transportFacts shows only what fits the mode", () => {
     expect(modeSpecificFact(byLabel("DEMO-F101"))?.label).toBe("Cabin class");
     expect(modeSpecificFact(byLabel("DEMO-T201"))?.label).toBe("Class");
     expect(modeSpecificFact(byLabel("DEMO-B302"))?.label).toBe("Seat type");
-    expect(modeSpecificFact({ ...byLabel("DEMO-B302"), mode: "ROAD", details: null })).toBeNull();
+    expect(modeSpecificFact(byLabel("DEMO-R401"))).toEqual({ label: "Vehicle", value: "Sedan (demo)" });
+    expect(modeSpecificFact({ ...byLabel("DEMO-R401"), details: null })).toEqual({ label: "Vehicle", value: null });
   });
 });
 
@@ -151,5 +155,33 @@ describe("quotedTotal", () => {
         fees: [{ label: "x", amount: { amount_minor: 1, currency: "USD" } }],
       }),
     ).toBeNull();
+  });
+});
+
+describe("private taxis", () => {
+  test("enough vehicles of one type to seat the whole party, rounded up", () => {
+    expect(vehiclesNeeded(1, 4)).toBe(1);
+    expect(vehiclesNeeded(4, 4)).toBe(1);
+    expect(vehiclesNeeded(5, 4)).toBe(2);
+    expect(vehiclesNeeded(9, 4)).toBe(3);
+    expect(vehiclesNeeded(13, 12)).toBe(2);
+  });
+
+  test("seats come from the vehicle details, and only taxis have them", () => {
+    expect(seatsOf(byLabel("DEMO-R401"))).toBe(4);
+    expect(seatsOf(byLabel("DEMO-R403"))).toBe(12);
+    expect(seatsOf(byLabel("DEMO-F101"))).toBeNull();
+  });
+
+  test("a taxi card says the price covers one vehicle and shows its seats", () => {
+    const facts = Object.fromEntries(transportFacts(byLabel("DEMO-R402")).map((f) => [f.label, f.value]));
+    expect(facts["Seats"]).toBe("6");
+    expect(facts["Price covers"]).toBe("One vehicle, not each traveller");
+    expect(transportFacts(byLabel("DEMO-F101")).map((f) => f.label)).not.toContain("Price covers");
+  });
+
+  test("the demo estimate counts vehicles, not travellers, for a taxi", () => {
+    const taxi = byLabel("DEMO-R401");
+    expect(demo.quotes[taxi.id]?.price_basis).toBe("PER_VEHICLE");
   });
 });

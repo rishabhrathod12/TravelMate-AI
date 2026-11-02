@@ -20,7 +20,7 @@ interface TransportBrowserProps {
   onToggleSelect: (optionId: string) => void;
 }
 
-/** Flights, trains and buses in separate groups, with sorting and a side-by-side comparison. */
+/** Flights, trains, buses and private taxis in separate groups, with sorting and a comparison. */
 export function TransportBrowser({
   options,
   quotes,
@@ -92,7 +92,7 @@ export function TransportBrowser({
 
       {groups.length === 0 && (
         <StatusMessage kind="empty" title="No transport options">
-          No flights, trains or buses were found for this trip.
+          No flights, trains, buses or taxis were found for this trip.
         </StatusMessage>
       )}
 

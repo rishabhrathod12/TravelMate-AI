@@ -27,11 +27,11 @@ describe("the demo options are honestly labelled", () => {
   const demo = buildDemoOptions(roundTrip);
   const everyOption = [...demo.transport, ...demo.hotels];
 
-  test("every quote says what its price covers: transport per traveller, hotels per room night", () => {
+  test("every quote says what its price covers: fares per traveller, taxis per vehicle, hotels per room night", () => {
     for (const option of demo.transport) {
       const quote = demo.quotes[option.id];
       if (quote !== undefined) {
-        expect(quote.price_basis).toBe("PER_TRAVELLER");
+        expect(quote.price_basis).toBe(option.mode === "ROAD" ? "PER_VEHICLE" : "PER_TRAVELLER");
       }
     }
     for (const hotel of demo.hotels) {

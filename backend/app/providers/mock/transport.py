@@ -5,6 +5,7 @@ from app.domain.options import (
     BusDetails,
     FlightDetails,
     ModeDetails,
+    RoadDetails,
     TrainDetails,
     TransportMode,
     TransportOption,
@@ -24,7 +25,7 @@ from app.providers.queries import TransportQuery
 
 def _details(service: MockService) -> ModeDetails | None:
     """The mode-specific fact, if the service has one."""
-    if service.detail is None:
+    if service.detail is None and service.mode is not TransportMode.ROAD:
         return None
     if service.mode is TransportMode.FLIGHT:
         return FlightDetails(cabin_class=service.detail)
@@ -32,11 +33,17 @@ def _details(service: MockService) -> ModeDetails | None:
         return TrainDetails(travel_class=service.detail)
     if service.mode is TransportMode.BUS:
         return BusDetails(seat_type=service.detail)
+    if service.mode is TransportMode.ROAD:
+        # A road vehicle always has a capacity: it decides how many vehicles a party needs.
+        if service.capacity is None:
+            raise ValueError(f"the road service {service.key} has no capacity")
+        return RoadDetails(vehicle_type=service.detail, passenger_capacity=service.capacity)
     return None
 
 
 class MockTransportProvider:
-    """Fictional flights, trains and buses for Indore to Goa and back. Nothing for other routes."""
+    """Fictional flights, trains, buses and private taxis for Indore to Goa and back. Nothing for
+    other routes."""
 
     name: str = "mock-transport"
     mode: ProviderMode = ProviderMode.MOCK

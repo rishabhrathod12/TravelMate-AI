@@ -28,12 +28,13 @@ const compareBox = (operator: string) =>
   screen.getByRole("checkbox", { name: new RegExp(`Compare.*${operator}`) });
 
 describe("the three categories", () => {
-  test("flights, trains and buses each have a heading with a count", () => {
+  test("flights, trains, buses and taxis each have a heading with a count", () => {
     setup();
 
     expect(screen.getByRole("heading", { name: "Flights (3)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Trains (2)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Buses (2)" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Private taxis (3)" })).toBeInTheDocument();
   });
 
   test("each card sits under its own category and names its operator", () => {
@@ -49,8 +50,8 @@ describe("the three categories", () => {
   test("every card says MOCK and shows when its fictional data was retrieved", () => {
     setup();
 
-    expect(screen.getAllByText(/MOCK · demo data/)).toHaveLength(7);
-    expect(screen.getAllByText(/retrieved/).length).toBeGreaterThanOrEqual(7);
+    expect(screen.getAllByText(/MOCK · demo data/)).toHaveLength(10);
+    expect(screen.getAllByText(/retrieved/).length).toBeGreaterThanOrEqual(10);
   });
 
   test("only the facts that fit a mode are shown on its cards", () => {
@@ -141,7 +142,7 @@ describe("comparing", () => {
     expect(within(table).queryByRole("row", { name: /Seat type/ })).not.toBeInTheDocument();
   });
 
-  test("marks the lowest price and the shortest journey, and states the basis is per traveller", () => {
+  test("marks the lowest price and the shortest journey, and states the basis (per traveller, taxis per vehicle)", () => {
     setup();
     fireEvent.click(compareBox("Sample Wings"));
     fireEvent.click(compareBox("Sample Rail Express"));
@@ -150,7 +151,7 @@ describe("comparing", () => {
     expect(within(within(table).getByRole("row", { name: /^Quoted price ₹/ })).getByText("(lowest)")).toBeInTheDocument();
     expect(within(table).getByText("(shortest)")).toBeInTheDocument();
     const comparison = screen.getByRole("region", { name: "Comparison" });
-    expect(within(comparison).getByText(/per traveller, as quoted/)).toBeInTheDocument();
+    expect(within(comparison).getByText(/per traveller, except a private taxi/)).toBeInTheDocument();
     expect(within(comparison).getByText(/not the trip estimate/)).toBeInTheDocument();
   });
 

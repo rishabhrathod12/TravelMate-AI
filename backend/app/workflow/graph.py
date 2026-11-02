@@ -23,7 +23,13 @@ from app.conversation.draft import QUESTIONS, TripDraft, build_request, conflict
 from app.domain.cost import CostEstimate
 from app.domain.cost_policy import estimate_trip_cost
 from app.domain.errors import DomainError
-from app.domain.options import AvailabilityStatus, HotelOption, TransportOption
+from app.domain.options import (
+    AvailabilityStatus,
+    HotelOption,
+    RoadDetails,
+    TransportOption,
+    vehicles_needed,
+)
 from app.domain.provenance import Provenance
 from app.domain.quote import Quote
 from app.domain.trip import MAX_ITINERARY_DAYS, TripType
@@ -271,10 +277,18 @@ class _Nodes:
             if state.return_transport
             else None
         )
+        vehicles: list[int | None] = []
         for option in (outbound, returning):
             quote = quote_for_transport(option) if option is not None else None
             if quote is not None:
                 legs.append(quote)
+                # A private road vehicle is priced per vehicle, so the line needs how many the
+                # party needs. The other modes are priced per traveller and need no count.
+                vehicles.append(
+                    vehicles_needed(len(request.travellers), option.details.passenger_capacity)
+                    if option is not None and isinstance(option.details, RoadDetails)
+                    else None
+                )
         hotel = _find(state.hotels.options, selection.hotel_id) if state.hotels else None
         hotel_quote = quote_for_hotel(hotel) if hotel is not None else None
         has_stay = trip_windows(request).has_hotel_stay
@@ -286,6 +300,7 @@ class _Nodes:
                 transport_quotes=legs,
                 hotel_quote=None if rooms_missing else hotel_quote,
                 rooms=state.rooms,
+                vehicles=vehicles,
             )
         except (ValueError, DomainError):
             return {

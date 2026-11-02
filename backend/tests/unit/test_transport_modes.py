@@ -143,7 +143,7 @@ class TestFictionalFixtures:
     def test_overnight_services_arrive_the_next_day(self) -> None:
         overnight = [o for o in mock_options() if o.arrives_at.date() > o.departs_at.date()]
 
-        assert {o.service_label for o in overnight} == {"DEMO-T202", "DEMO-B302"}
+        assert {o.service_label for o in overnight} == {"DEMO-T202", "DEMO-B302", "DEMO-R403"}
         assert all(o.arrives_at.date() == date(2026, 12, 2) for o in overnight)
 
     def test_the_unavailable_and_unknown_cases_are_present(self) -> None:
@@ -172,7 +172,12 @@ class TestGrouping:
     def test_groups_by_mode_in_a_fixed_order_and_keeps_the_order_inside(self) -> None:
         groups = group_transport_by_mode(mock_options())
 
-        assert list(groups) == [TransportMode.FLIGHT, TransportMode.TRAIN, TransportMode.BUS]
+        assert list(groups) == [
+            TransportMode.FLIGHT,
+            TransportMode.TRAIN,
+            TransportMode.BUS,
+            TransportMode.ROAD,
+        ]
         assert [o.service_label for o in groups[TransportMode.FLIGHT]] == [
             "DEMO-F101",
             "DEMO-F102",

@@ -35,6 +35,7 @@ def _template(service: MockService) -> dict[str, Any]:
         "availability": service.availability.value,
         "cancellation_terms": service.cancellation_terms,
         "detail": service.detail,
+        "capacity": service.capacity,
     }
 
 

@@ -156,6 +156,9 @@ class TestSortTransport:
             "DEMO-F103",
             "DEMO-F102",
             "DEMO-F101",
+            "DEMO-R401",
+            "DEMO-R402",
+            "DEMO-R403",
         ]
 
 

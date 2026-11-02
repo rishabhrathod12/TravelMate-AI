@@ -12,6 +12,7 @@ interface SelectableProps {
 const BASIS_TEXT: Record<Quote["price_basis"], string> = {
   PER_TRAVELLER: "Per traveller, as quoted.",
   PER_ROOM_NIGHT: "Per room per night, as quoted.",
+  PER_VEHICLE: "Per vehicle, as quoted.",
 };
 
 function PriceBlock({

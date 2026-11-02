@@ -61,7 +61,9 @@ interface OptionBase {
 export type ModeDetails =
   | { kind: "FLIGHT"; cabin_class: string | null }
   | { kind: "TRAIN"; travel_class: string | null }
-  | { kind: "BUS"; seat_type: string | null };
+  | { kind: "BUS"; seat_type: string | null }
+  /** A private taxi or hired car. Its price is per vehicle, and its seats decide how many a party needs. */
+  | { kind: "ROAD"; vehicle_type: string | null; passenger_capacity: number };
 
 export interface TransportOption extends OptionBase {
   mode: TransportMode;
@@ -89,10 +91,11 @@ export interface Fee {
 }
 
 /**
- * What a quoted price covers (the owner's answer to PRD Q12): a transport fare is per traveller, a
- * hotel price is per room per night. Mirrors `PriceBasis` in `backend/app/domain/quote.py`.
+ * What a quoted price covers (the owner's answer to PRD Q12, amended for taxis in ADR 0007): a
+ * transport fare is per traveller, except a private taxi, which is per vehicle; a hotel price is per
+ * room per night. Mirrors `PriceBasis` in `backend/app/domain/quote.py`.
  */
-export type PriceBasis = "PER_TRAVELLER" | "PER_ROOM_NIGHT";
+export type PriceBasis = "PER_TRAVELLER" | "PER_ROOM_NIGHT" | "PER_VEHICLE";
 
 export interface Quote {
   id: string;

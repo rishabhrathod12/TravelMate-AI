@@ -148,7 +148,7 @@ class TestMigrations:
         with postgres_engine.connect() as connection:
             version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
 
-        assert version == "0002"  # the head of backend/migrations/versions
+        assert version == "0003"  # the head of backend/migrations/versions
 
 
 class TestConstraints:

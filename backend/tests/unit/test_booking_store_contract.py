@@ -17,6 +17,7 @@ from test_trip_store_contract import make_trip
 
 from app.domain.booking_lifecycle import BookingStatus
 from app.domain.booking_rules import quote_content_hash
+from app.domain.quote import PriceBasis
 from app.persistence.policy import ALL_TABLES
 from app.persistence.sql_booking_store import SqlBookingStore
 from app.persistence.sql_store import SqlTripStore
@@ -116,6 +117,27 @@ class TestIntents:
         assert stored is not None
         assert stored.content_hash == quote.content_hash
         assert stored.snapshot == quote.snapshot
+
+    def test_a_per_vehicle_taxi_quote_is_kept_and_read_back_in_every_store(
+        self, store: BookingStore
+    ) -> None:
+        snapshot = make_snapshot(index=7)  # the first private taxi in the mock services
+        assert snapshot.quote.price_basis is PriceBasis.PER_VEHICLE
+        quote = QuoteRecord(
+            id=str(snapshot.quote.id),
+            trip_id="trip-1",
+            snapshot=snapshot,
+            content_hash=quote_content_hash(snapshot),
+            created_at=NOW,
+        )
+        store.add_intent(make_intent(quote), quote)
+
+        stored = store.get_quote(quote.id)
+
+        assert stored is not None
+        assert stored.snapshot.quote.price_basis is PriceBasis.PER_VEHICLE
+        assert stored.content_hash == quote.content_hash
+        assert stored.snapshot == snapshot
 
     def test_unknown_ids_are_none(self, store: BookingStore) -> None:
         assert store.get_intent("nope") is None

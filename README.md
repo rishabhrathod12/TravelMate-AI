@@ -74,6 +74,7 @@ In development, Vite forwards `/health` and `/api` to the backend on `127.0.0.1:
 
 - **Chat:** type "plan my 5 days itinerary for Goa this weekend" and press "Show the plan", or "from Indore to Goa on 1 December, round trip returning 5 December, 2 people". Replies appear progressively (a browser effect: the server sends each reply whole), "Esc" shows one at once, and "Stop" cancels a reply you are waiting for.
 - **Plan from the conversation:** once the chat has read a trip, press "Plan this trip". The assistant asks how many rooms you need (it never assumes), then researches transport, hotels and weather. The options, the forecast, the cost estimate, a draft itinerary and the approval step appear in the conversation. Nothing is booked, and the approval step only records your agreement when you press its button.
+- **Private taxis:** the mock research now includes three fictional taxis (priced per vehicle; a larger party gets enough vehicles of one type, and the estimate says how many). Demo booking does not cover taxis.
 - **Server planning panel:** under the demo results, enter the number of rooms, plan, choose options, edit the itinerary and walk through the approval step.
 - **Voice:** the mic button starts a labelled MOCK voice session (no microphone, no sound, scripted replies).
 - **Trip form:** the menu entry "Trip Form" works without the backend.

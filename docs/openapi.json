@@ -836,10 +836,11 @@
         "type": "object"
       },
       "PriceBasis": {
-        "description": "What a quoted price covers (the owner's answer to PRD Q12, 2026-10-30).\n\nTransport fares are per traveller; hotel prices are per room per night. A quote says which, so\nnothing has to guess how to scale it. There is deliberately no default.",
+        "description": "What a quoted price covers (the owner's answer to PRD Q12, 2026-10-30, amended 2026-11-02).\n\nTransport fares are per traveller, except a private road vehicle, which is priced per vehicle\n(the owner's amendment, ADR 0007); hotel prices are per room per night. A quote says which, so\nnothing has to guess how to scale it. There is deliberately no default.",
         "enum": [
           "PER_TRAVELLER",
-          "PER_ROOM_NIGHT"
+          "PER_ROOM_NIGHT",
+          "PER_VEHICLE"
         ],
         "title": "PriceBasis",
         "type": "string"
@@ -1057,6 +1058,40 @@
           }
         },
         "title": "ResearchResults",
+        "type": "object"
+      },
+      "RoadDetails": {
+        "additionalProperties": false,
+        "description": "Facts only a private road vehicle (a taxi or a hired car) has.\n\nThe capacity is required: it decides how many vehicles a party needs, and so what a trip\ncosts, so an option without it could not be priced honestly. The price of such an option is\nfor one vehicle, not for one traveller (`PriceBasis.PER_VEHICLE`).",
+        "properties": {
+          "kind": {
+            "const": "ROAD",
+            "default": "ROAD",
+            "title": "Kind",
+            "type": "string"
+          },
+          "passenger_capacity": {
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Passenger Capacity",
+            "type": "integer"
+          },
+          "vehicle_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle Type"
+          }
+        },
+        "required": [
+          "passenger_capacity"
+        ],
+        "title": "RoadDetails",
         "type": "object"
       },
       "RunError": {
@@ -1471,6 +1506,7 @@
                   "mapping": {
                     "BUS": "#/components/schemas/BusDetails",
                     "FLIGHT": "#/components/schemas/FlightDetails",
+                    "ROAD": "#/components/schemas/RoadDetails",
                     "TRAIN": "#/components/schemas/TrainDetails"
                   },
                   "propertyName": "kind"
@@ -1484,6 +1520,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/BusDetails"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RoadDetails"
                   }
                 ]
               },

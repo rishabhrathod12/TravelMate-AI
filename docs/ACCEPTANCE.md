@@ -92,3 +92,8 @@ The acceptance results above were recorded at M12. These changes came after it. 
 - **Planning from the conversation.** "Plan this trip" starts the existing planning workflow, asks for the number of rooms (never defaulted), and shows the options, the weather forecast, the cost estimate, the draft itinerary and the approval step inside the conversation. The weather had been returned by the API but shown nowhere.
 - **Checks:** 584 frontend tests; axe-core 0 violations in a real browser (including colour contrast) at both widths on the planning screens; a real-browser run against the real backend recorded no booking-related request until the reader pressed "Get the terms to approve", and then only the terms were requested. Break-and-restore checks were run on the key guards.
 - **Still true:** this path is development-only (no real authentication, PRD Q4), everything is MOCK, no real model or provider was used, and the gaps in section 6 stand. Workflow clarification questions are answered in the existing form, not in free text. Private taxi, broader natural-language understanding and budget are not built.
+
+## 10. Addendum: private taxi (2026-11-02)
+
+- Mock private taxis (sedan, SUV, van) priced per vehicle; the estimate uses enough vehicles of one type to seat the party and states the count (ADR 0007, PRD A24). Migration `0003`, additive OpenAPI change. Demo booking still excludes taxis; booking stays off; all data MOCK.
+- Checks: backend 2177 passed, 70 skipped (PostgreSQL tests run only in CI); frontend 588 passed; lint, type checks and build clean; break-and-restore checks on the basis, the vehicle count and the workflow wiring. Real-browser and CI results are recorded separately when run.

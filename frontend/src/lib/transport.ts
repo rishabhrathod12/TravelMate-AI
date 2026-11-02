@@ -7,22 +7,37 @@ import type { Money, Quote, TransportMode, TransportOption } from "../contracts/
 import { formatDuration, formatUtcDateTime } from "./dates";
 import { sumMoney } from "./money";
 
-/** The three categories shown to the user, in display order. ROAD is not offered in the UI. */
-export const TRANSPORT_MODES = ["FLIGHT", "TRAIN", "BUS"] as const satisfies readonly TransportMode[];
+/** The categories shown to the user, in display order. */
+export const TRANSPORT_MODES = [
+  "FLIGHT",
+  "TRAIN",
+  "BUS",
+  "ROAD",
+] as const satisfies readonly TransportMode[];
 
 export const MODE_LABEL: Record<TransportMode, string> = {
   FLIGHT: "Flight",
   TRAIN: "Train",
   BUS: "Bus",
-  ROAD: "Road",
+  ROAD: "Private taxi",
 };
 
 export const MODE_PLURAL: Record<TransportMode, string> = {
   FLIGHT: "Flights",
   TRAIN: "Trains",
   BUS: "Buses",
-  ROAD: "Road",
+  ROAD: "Private taxis",
 };
+
+/** How many vehicles of one type seat a party: party size over seats, rounded up. */
+export function vehiclesNeeded(travellers: number, seats: number): number {
+  return Math.ceil(travellers / seats);
+}
+
+/** The seats of a private taxi, or null for any other option. */
+export function seatsOf(option: TransportOption): number | null {
+  return option.details?.kind === "ROAD" ? option.details.passenger_capacity : null;
+}
 
 export type TransportSortKey = "price" | "duration";
 
@@ -76,7 +91,7 @@ export function modeSpecificFact(option: TransportOption): { label: string; valu
     case "BUS":
       return { label: "Seat type", value: details?.kind === "BUS" ? details.seat_type : null };
     case "ROAD":
-      return null;
+      return { label: "Vehicle", value: details?.kind === "ROAD" ? details.vehicle_type : null };
   }
 }
 
@@ -89,13 +104,18 @@ export function transportFacts(option: TransportOption): Fact[] {
     { label: "Arrives", value: formatUtcDateTime(option.arrives_at) },
     { label: "Duration", value: formatDuration(option.departs_at, option.arrives_at) },
   ];
-  // A bus without a stop count is not asked about stops; a flight or train always is.
-  if (option.mode !== "BUS" || option.stops !== null) {
+  // A bus or a taxi without a stop count is not asked about stops; a flight or train always is.
+  if ((option.mode !== "BUS" && option.mode !== "ROAD") || option.stops !== null) {
     facts.push({ label: "Stops", value: option.stops === null ? NOT_SUPPLIED : String(option.stops) });
   }
   const specific = modeSpecificFact(option);
   if (specific !== null) {
     facts.push({ label: specific.label, value: specific.value ?? NOT_SUPPLIED });
+  }
+  const seats = seatsOf(option);
+  if (seats !== null) {
+    facts.push({ label: "Seats", value: String(seats) });
+    facts.push({ label: "Price covers", value: "One vehicle, not each traveller" });
   }
   facts.push({ label: "Cancellation", value: option.cancellation_terms ?? NOT_SUPPLIED });
   return facts;

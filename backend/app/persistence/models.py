@@ -168,7 +168,8 @@ class QuoteRow(Base):
     __table_args__ = (
         CheckConstraint("amount_minor >= 0", name="ck_quotes_amount"),
         CheckConstraint(
-            "price_basis IN ('PER_TRAVELLER', 'PER_ROOM_NIGHT')", name="ck_quotes_price_basis"
+            "price_basis IN ('PER_TRAVELLER', 'PER_ROOM_NIGHT', 'PER_VEHICLE')",
+            name="ck_quotes_price_basis",
         ),
         Index("ix_quotes_trip_id", "trip_id"),
     )

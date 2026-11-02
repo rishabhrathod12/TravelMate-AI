@@ -147,6 +147,8 @@ Money is stored as `amount_minor BIGINT` plus `currency CHAR(3)`. Timestamps are
 - `provider_calls` exists, but nothing writes it yet (M12).
 - M10 (revision `0002`) reshaped `quotes`, `booking_intents` and `approvals`, which had never held a row: a quote stores the whole snapshot, its trip and its content hash; an intent stores its owner, a hash of the caller's idempotency key, a hash of what was asked for and `updated_at`; an approval names the quote snapshot it approved. Quotes and approvals are append-only for the application role, and an intent may be updated but not deleted.
 
+- Revision `0003` (private taxi, ADR 0007) widens the `quotes.price_basis` check to allow `PER_VEHICLE`. Its downgrade refuses while a per-vehicle quote exists.
+
 Migrations are managed with Alembic. Each schema change is a reviewed revision with a working downgrade or a documented reason why none exists.
 
 ## 6. Human approval and booking lifecycle

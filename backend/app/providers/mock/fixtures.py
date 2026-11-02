@@ -47,8 +47,10 @@ class MockService:
     price_minor: int
     availability: AvailabilityStatus
     cancellation_terms: str | None
-    # The one mode-specific fact, by name: cabin_class, travel_class or seat_type.
+    # The one mode-specific fact, by name: cabin_class, travel_class, seat_type or vehicle_type.
     detail: str | None
+    # Seats in the vehicle: only for a private road vehicle, whose price is per vehicle.
+    capacity: int | None = None
 
 
 CURRENCY = "INR"
@@ -153,6 +155,53 @@ MOCK_SERVICES: tuple[MockService, ...] = (
         availability=AvailabilityStatus.UNKNOWN,
         cancellation_terms=None,
         detail=None,
+    ),
+    # Fictional private taxis. Each price is for one vehicle, not per traveller (ADR 0007), and the
+    # capacity decides how many vehicles a party needs. All names and amounts are invented.
+    MockService(
+        key="taxi-1",
+        mode=TransportMode.ROAD,
+        operator_name="Example Cabs",
+        service_label="DEMO-R401",
+        departs=(5, 0),
+        arrives=(22, 30),
+        arrives_day_offset=0,
+        stops=None,
+        price_minor=1_800_000,
+        availability=AvailabilityStatus.AVAILABLE,
+        cancellation_terms=MOCK_TEXT_NOTE,
+        detail="Sedan (demo)",
+        capacity=4,
+    ),
+    MockService(
+        key="taxi-2",
+        mode=TransportMode.ROAD,
+        operator_name="Sample Cabs",
+        service_label="DEMO-R402",
+        departs=(6, 30),
+        arrives=(23, 0),
+        arrives_day_offset=0,
+        stops=None,
+        price_minor=2_600_000,
+        availability=AvailabilityStatus.UNKNOWN,
+        cancellation_terms=None,
+        detail="SUV (demo)",
+        capacity=6,
+    ),
+    MockService(
+        key="taxi-3",
+        mode=TransportMode.ROAD,
+        operator_name="Demo Cabs",
+        service_label="DEMO-R403",
+        departs=(20, 0),
+        arrives=(13, 30),
+        arrives_day_offset=1,
+        stops=None,
+        price_minor=4_200_000,
+        availability=AvailabilityStatus.AVAILABLE,
+        cancellation_terms=MOCK_TEXT_NOTE,
+        detail="12-seat van (demo)",
+        capacity=12,
     ),
 )
 
