@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import type { ItineraryRequest, TripRequest } from "../../contracts/types";
 import type { VoiceAdapter } from "../../voice/VoiceAdapter";
@@ -6,6 +6,7 @@ import type { VoiceSession } from "../../voice/useVoiceSession";
 import { PlanSection } from "../PlanSection";
 import { VoiceMode } from "../voice/VoiceMode";
 import { PlanTripView } from "../../views/PlanTripView";
+import { useFollowBottom } from "./useFollowBottom";
 import type { ChatMessage } from "./useTripChat";
 
 interface ConversationProps {
@@ -35,15 +36,18 @@ export function Conversation({
 }: ConversationProps) {
   const [plan, setPlan] = useState<ItineraryRequest | null>(null);
   const [compare, setCompare] = useState<TripRequest | null>(null);
-  const end = useRef<HTMLDivElement>(null);
   const voiceShown = session.state.status !== "idle" || session.state.transcript.length > 0;
 
-  useEffect(() => {
-    end.current?.scrollIntoView?.({ block: "end" });
-  }, [messages.length, busy, plan, compare]);
+  // Follows the newest content while the reader is at the bottom; leaves a reader who scrolled up
+  // alone (see the hook).
+  const lastMessage = messages[messages.length - 1];
+  const { contentRef, endRef } = useFollowBottom({
+    messageCount: messages.length,
+    lastFromUser: lastMessage?.from === "you",
+  });
 
   return (
-    <div className="conversation">
+    <div className="conversation" ref={contentRef}>
       {/* The page's one level-one heading while the conversation replaces the home heading. */}
       <h1 className="visually-hidden">Conversation with TravelMate</h1>
       <p className="conversation-notice" role="note">
@@ -95,7 +99,7 @@ export function Conversation({
           <PlanTripView key={JSON.stringify(compare)} embedded initialRequest={compare} />
         </div>
       )}
-      <div ref={end} />
+      <div ref={endRef} className="conversation-end" aria-hidden="true" />
     </div>
   );
 }

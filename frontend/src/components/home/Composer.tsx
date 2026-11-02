@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode, type Ref } from "react";
 
 import { ArrowUpIcon } from "./icons";
 
@@ -16,6 +16,8 @@ interface ComposerProps {
   footnote?: string;
   /** Extra control placed at the left of the send button, such as a small voice button. */
   actions?: ReactNode;
+  /** The form element, so the screen can measure how much room the composer takes. */
+  ref?: Ref<HTMLFormElement>;
 }
 
 const MAX_HEIGHT_PX = 200;
@@ -30,6 +32,7 @@ export function Composer({
   example,
   footnote,
   actions,
+  ref,
 }: ComposerProps) {
   const inputId = useId();
   const exampleId = useId();
@@ -62,6 +65,7 @@ export function Composer({
 
   return (
     <form
+      ref={ref}
       className="composer"
       onSubmit={(event) => {
         event.preventDefault();

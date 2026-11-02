@@ -1373,3 +1373,10 @@ input[aria-invalid="true"] {
 fieldset.card {
   min-width: 0;
 }
+
+/* The end of the conversation. Scrolling to it stops this far short of the viewport's bottom edge,
+   which leaves room for the sticky composer (its height is published by the home screen). */
+.conversation-end {
+  height: 1px;
+  scroll-margin-bottom: calc(var(--composer-height, 8rem) + var(--space-4));
+}

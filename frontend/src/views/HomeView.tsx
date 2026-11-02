@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { sendChatTurn } from "../api/chat";
 import { Composer } from "../components/home/Composer";
@@ -62,6 +62,23 @@ export function HomeView({
   const chat = useChat(send);
   const [text, setText] = useState("");
   const [engaged, setEngaged] = useState(false);
+  const homeRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLFormElement>(null);
+
+  // The composer stays fixed at the bottom and grows with the text. Publish its height so the
+  // conversation can stop scrolling short of it and never end up underneath it.
+  useEffect(() => {
+    const home = homeRef.current;
+    const composer = composerRef.current;
+    if (home === null || composer === null || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const publish = () => home.style.setProperty("--composer-height", `${composer.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(composer);
+    return () => observer.disconnect();
+  }, []);
 
   function submit() {
     if (!chatAvailable || text.trim() === "") {
@@ -82,7 +99,7 @@ export function HomeView({
   const inVoiceSession = session.state.status !== "idle" && session.state.status !== "error";
 
   return (
-    <div className={`home${engaged ? " home-chat" : ""}`}>
+    <div ref={homeRef} className={`home${engaged ? " home-chat" : ""}`}>
       {engaged && ConversationScreen !== null ? (
         <ConversationScreen
           messages={chat.messages}
@@ -103,6 +120,7 @@ export function HomeView({
       )}
 
       <Composer
+        ref={composerRef}
         value={text}
         onChange={setText}
         onSubmit={submit}
