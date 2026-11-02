@@ -5,6 +5,7 @@ import { parseRoute, ROUTES } from "./route";
 describe("parseRoute", () => {
   test.each([
     ["#/plan", "plan"],
+    ["#/form", "form"],
     ["#/trips", "trips"],
     ["#/about", "about"],
   ])("%s opens %s", (hash, route) => {
@@ -24,7 +25,7 @@ describe("parseRoute", () => {
     }
   });
 
-  test("the navigation has the three views from the brief", () => {
-    expect(ROUTES.map((item) => item.label)).toEqual(["Plan Trip", "My Trips", "About"]);
+  test("the navigation has the three views from the brief, plus the trip form", () => {
+    expect(ROUTES.map((item) => item.label)).toEqual(["Plan Trip", "Trip Form", "My Trips", "About"]);
   });
 });

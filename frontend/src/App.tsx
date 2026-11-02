@@ -7,9 +7,11 @@ import { useRoute, type Route } from "./lib/route";
 import { AboutView } from "./views/AboutView";
 import { MyTripsView } from "./views/MyTripsView";
 import { HomeView } from "./views/HomeView";
+import { PlanTripView } from "./views/PlanTripView";
 
 const PAGE_TITLE: Record<Route, string> = {
   plan: "Plan Trip",
+  form: "Trip Form",
   trips: "My Trips",
   about: "About",
 };
@@ -51,6 +53,9 @@ export default function App() {
         {/* The home screen is a voice button and a message box. Chat works only in development:
             it runs on a stand-in, and the backend refuses to serve it in production. */}
         {route === "plan" && <HomeView />}
+        {/* The trip form and the demo comparison, reachable from the menu in every build. It does
+            not depend on chat or voice, so it also works in production. */}
+        {route === "form" && <PlanTripView />}
         {route === "trips" && <MyTripsView />}
         {route === "about" && <AboutView />}
       </main>

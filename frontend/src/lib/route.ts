@@ -2,16 +2,19 @@ import { useSyncExternalStore } from "react";
 
 /** Hash-based navigation, so no router library is needed for three views. */
 
-export type Route = "plan" | "trips" | "about";
+export type Route = "plan" | "form" | "trips" | "about";
 
 export const ROUTES: readonly { route: Route; label: string; href: string }[] = [
   { route: "plan", label: "Plan Trip", href: "#/plan" },
+  { route: "form", label: "Trip Form", href: "#/form" },
   { route: "trips", label: "My Trips", href: "#/trips" },
   { route: "about", label: "About", href: "#/about" },
 ];
 
 export function parseRoute(hash: string): Route {
   switch (hash) {
+    case "#/form":
+      return "form";
     case "#/trips":
       return "trips";
     case "#/about":

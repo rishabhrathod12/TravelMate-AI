@@ -18,7 +18,7 @@ function openMenu() {
 }
 
 describe("the application shell", () => {
-  test("shows the TravelMate AI brand and keeps the three links in a menu", () => {
+  test("shows the TravelMate AI brand and keeps the links in a menu", () => {
     render(<App />);
 
     expect(screen.getByRole("link", { name: "TravelMate AI" })).toBeInTheDocument();
@@ -26,6 +26,7 @@ describe("the application shell", () => {
     openMenu();
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(nav).toHaveTextContent("Plan Trip");
+    expect(nav).toHaveTextContent("Trip Form");
     expect(nav).toHaveTextContent("My Trips");
     expect(nav).toHaveTextContent("About");
   });
@@ -71,6 +72,21 @@ describe("the application shell", () => {
 
     expect(screen.getByRole("main")).toHaveFocus();
     expect(window.location.hash).toBe("");
+  });
+});
+
+describe("the trip form", () => {
+  test("is one menu entry away and keeps the home screen free of it", async () => {
+    render(<App />);
+    expect(screen.queryByRole("button", { name: /preview with demo data/i })).not.toBeInTheDocument();
+
+    openMenu();
+    fireEvent.click(screen.getByRole("link", { name: "Trip Form" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Plan your trip" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview with demo data" })).toBeInTheDocument();
+    expect(document.title).toBe("Trip Form · TravelMate AI");
+    expect(screen.getByRole("note", { name: "Demo data notice" })).toBeInTheDocument();
   });
 });
 
