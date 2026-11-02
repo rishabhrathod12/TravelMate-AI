@@ -77,6 +77,9 @@ const RUN: PlanningRun = {
   selected: { transportId: "a", returnTransportId: null, hotelId: null },
   itinerary: null,
   itineraryWarnings: [],
+  weather: null,
+  providerIssues: [],
+  notes: [],
 };
 
 const json = (body: unknown, status = 200) =>

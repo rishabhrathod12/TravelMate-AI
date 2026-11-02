@@ -16,6 +16,9 @@ const RUN: PlanningRun = {
   selected: null,
   itinerary: null,
   itineraryWarnings: [],
+  weather: null,
+  providerIssues: [],
+  notes: [],
 };
 
 const DRAFT = {

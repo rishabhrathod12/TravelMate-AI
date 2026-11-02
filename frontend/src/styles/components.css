@@ -1289,6 +1289,9 @@ input[aria-invalid="true"] {
 
 .messages {
   display: grid;
+  /* One column that can never be wider than the page, so a long code line scrolls inside its own
+     block instead of stretching the whole conversation. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -1379,4 +1382,264 @@ fieldset.card {
 .conversation-end {
   height: 1px;
   scroll-margin-bottom: calc(var(--composer-height, 8rem) + var(--space-4));
+}
+
+/* ---------- Progressive replies and Markdown ---------- */
+
+/* Markdown supplies its own paragraphs and line breaks, so the reply must not also keep newlines. */
+.message-assistant {
+  white-space: normal;
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown pre {
+  margin: 0 0 var(--space-3);
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 1.4rem;
+}
+
+.markdown .md-heading {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.markdown h2.md-heading {
+  font-size: 1.15rem;
+}
+
+.markdown code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: #2c2c2e;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.markdown pre.md-code {
+  max-width: 100%;
+  padding: var(--space-3);
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #121213;
+  white-space: pre;
+}
+
+.markdown pre.md-code code {
+  padding: 0;
+  background: none;
+}
+
+.markdown a,
+.markdown .md-link {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+/* While a reply is revealed, the full text sits invisibly under the part shown so far. The bubble
+   has its final size from the first frame, so nothing jumps as the text arrives. */
+.reveal-stack {
+  display: grid;
+}
+
+.reveal-stack > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.reveal-full {
+  visibility: hidden;
+}
+
+/* A small badge on the corner of the reply being revealed. It is out of the text flow, so showing
+   it and removing it never changes the bubble's size. */
+.message-assistant {
+  position: relative;
+}
+
+.reveal-skip {
+  position: absolute;
+  top: -0.6rem;
+  right: -0.6rem;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reveal-skip:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.conversation-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.conversation-status p {
+  margin: 0;
+}
+
+.thinking-dots {
+  display: inline-flex;
+  gap: 4px;
+  margin-right: var(--space-2);
+  vertical-align: middle;
+}
+
+.thinking-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+  animation: thinking 1.2s ease-in-out infinite;
+}
+
+.thinking-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinking {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+
+  40% {
+    opacity: 1;
+  }
+}
+
+/* ---------- Planning inside the conversation ---------- */
+
+.run-panel {
+  margin-top: var(--space-5);
+}
+
+.run-panel h2 {
+  margin-top: 0;
+  font-size: var(--text-lg);
+}
+
+.run-panel h3 {
+  margin-top: var(--space-4);
+  font-size: var(--text-md);
+}
+
+.choice-group {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.weather-days {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weather-days li {
+  overflow-wrap: anywhere;
+}
+
+/* The cost estimate inside the conversation: a list that reflows on a phone. */
+.estimate-lines {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.estimate-lines li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.estimate-text {
+  flex: 1 1 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.estimate-meta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.estimate-total {
+  border-bottom: 0;
+}
+
+/* An option to choose, in the conversation: one block per option, so rows never run together. */
+.run-panel .choice-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.run-panel .choice-row input {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0.2rem 0 0;
+}
+
+.choice-body {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.choice-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
 }

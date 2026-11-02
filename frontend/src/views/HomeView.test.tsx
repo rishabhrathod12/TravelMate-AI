@@ -167,3 +167,128 @@ describe("the home screen in production (no voice, no chat)", () => {
     expect(send).not.toHaveBeenCalled();
   });
 });
+
+
+describe("replies shown progressively", () => {
+  const FIRST = "Which dates would you like to travel, and how many people are going on this trip?";
+  const SECOND = "Thanks. And where would you like to start from?";
+
+  function say(message: string) {
+    type(message);
+    fireEvent.keyDown(screen.getByLabelText("Message TravelMate"), { key: "Enter" });
+  }
+
+  test("says plainly that the browser shows each reply progressively and the server sends it whole", async () => {
+    const send = vi.fn().mockResolvedValue(turn({ reply: FIRST }));
+    render(<HomeView adapter={null} chatAvailable send={send} />);
+
+    say("Goa");
+
+    const note = await screen.findByRole("note");
+    expect(note).toHaveTextContent(
+      "Replies are shown progressively by your browser; the server sends each one whole.",
+    );
+  });
+
+  test("a reply is revealed, can be shown at once, and appears exactly once", async () => {
+    const send = vi.fn().mockResolvedValue(turn({ reply: FIRST }));
+    render(<HomeView adapter={null} chatAvailable send={send} />);
+    say("Goa");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Show the whole reply" }));
+
+    expect(screen.getAllByText(FIRST)).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Show the whole reply" })).not.toBeInTheDocument();
+    expect(document.querySelectorAll(".message-assistant")).toHaveLength(1);
+  });
+
+  test("writing again while a reply is still being revealed completes it, and only the new reply is revealed", async () => {
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce(turn({ reply: FIRST }))
+      .mockResolvedValueOnce(turn({ reply: SECOND }));
+    render(<HomeView adapter={null} chatAvailable send={send} />);
+    say("Goa");
+    await screen.findByRole("button", { name: "Show the whole reply" }); // the first reply is mid-reveal
+
+    say("12 December");
+
+    await waitFor(() => expect(document.querySelectorAll(".message-assistant")).toHaveLength(2));
+    expect(screen.getAllByText(FIRST)).toHaveLength(1); // whole, and not twice
+    expect(screen.getAllByRole("button", { name: "Show the whole reply" })).toHaveLength(1); // only the new reply
+  });
+
+  test("shows a thinking indicator with a Stop button while waiting, and Stop leaves the composer usable", async () => {
+    const send = vi
+      .fn()
+      .mockImplementationOnce(
+        (_message: string, _draft: unknown, signal?: AbortSignal) =>
+          new Promise((_resolve, reject) => {
+            signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+          }),
+      )
+      .mockResolvedValue(turn({ reply: SECOND }));
+    render(<HomeView adapter={null} chatAvailable send={send} />);
+
+    say("Goa");
+    expect(await screen.findByText(/TravelMate is thinking/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+
+    expect(await screen.findByText(/You stopped this reply/)).toBeInTheDocument();
+    expect(screen.queryByText(/TravelMate is thinking/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument(); // stopping is not an error
+    expect(document.querySelectorAll(".message-assistant")).toHaveLength(0); // nothing was invented
+
+    say("Goa again");
+    fireEvent.click(await screen.findByRole("button", { name: "Show the whole reply" }));
+    expect(await screen.findByText(SECOND)).toBeInTheDocument();
+    expect(screen.queryByText(/You stopped this reply/)).not.toBeInTheDocument();
+  });
+
+  test("an error shows the error line, not a half reply", async () => {
+    const send = vi.fn().mockRejectedValue(new Error("boom"));
+    render(<HomeView adapter={null} chatAvailable send={send} />);
+
+    say("Goa");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Something went wrong/);
+    expect(document.querySelectorAll(".message-assistant")).toHaveLength(0);
+    expect(screen.queryByText(/TravelMate is thinking/)).not.toBeInTheDocument();
+  });
+
+  test("a Markdown reply becomes real headings, lists, code and links once shown", async () => {
+    const reply = [
+      "## Plan",
+      "",
+      "- Day 1: **beach**",
+      "- Day 2: [guide](https://example.com/guide)",
+      "",
+      "```",
+      "npm test",
+      "```",
+    ].join("\n");
+    const send = vi.fn().mockResolvedValue(turn({ reply }));
+    render(<HomeView adapter={null} chatAvailable send={send} />);
+    say("Goa");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Show the whole reply" }));
+
+    expect(screen.getByRole("heading", { level: 2, name: "Plan" })).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem").some((item) => item.textContent === "Day 1: beach")).toBe(true);
+    expect(screen.getByRole("link", { name: "guide" })).toHaveAttribute("href", "https://example.com/guide");
+    expect(document.querySelector("pre code")?.textContent).toBe("npm test");
+  });
+
+  test("raw HTML and script links in a reply are shown as text, never run", async () => {
+    const reply = '<img src=x onerror="alert(1)"> [click](javascript:alert(1))';
+    const send = vi.fn().mockResolvedValue(turn({ reply }));
+    render(<HomeView adapter={null} chatAvailable send={send} />);
+    say("Goa");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Show the whole reply" }));
+
+    expect(document.querySelector(".message-assistant img")).toBeNull();
+    expect(document.querySelector(".message-assistant a")).toBeNull();
+    expect(document.querySelector(".message-assistant")?.textContent).toContain("<img src=x");
+  });
+});

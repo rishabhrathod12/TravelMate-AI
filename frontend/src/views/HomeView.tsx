@@ -4,6 +4,7 @@ import type { sendChatTurn } from "../api/chat";
 import { Composer } from "../components/home/Composer";
 import { Conversation } from "../components/home/Conversation";
 import { MicIcon } from "../components/home/icons";
+import { usePlanningRun, type PlanningRunController } from "../components/home/usePlanningRun";
 import { useTripChat } from "../components/home/useTripChat";
 import { VoiceButton } from "../components/home/VoiceButton";
 import { chooseVoiceAdapter } from "../voice/config";
@@ -31,15 +32,37 @@ function useUnavailableChat(): TripChat {
     notice: "",
     busy: false,
     error: null,
+    stopped: false,
     tripRequest: null,
     itineraryRequest: null,
     submit: () => Promise.resolve(),
+    cancel: () => undefined,
+    addMessage: () => undefined,
+  };
+}
+
+/** What production gets: no planning code at all (the planning API refuses to run there). */
+function useUnavailablePlanning(): PlanningRunController {
+  return {
+    stage: "idle",
+    run: null,
+    error: null,
+    stale: false,
+    awaitingRooms: false,
+    canStart: false,
+    busy: false,
+    begin: () => undefined,
+    answerRooms: () => false,
+    choose: () => Promise.resolve(),
+    resume: () => undefined,
+    stop: () => undefined,
   };
 }
 
 // Build-time constants: a production build drops the chat and the conversation screen entirely
 // (the backend refuses to serve chat in production; ADR 0004).
 const useChat = import.meta.env.DEV ? useTripChat : useUnavailableChat;
+const usePlanning = import.meta.env.DEV ? usePlanningRun : useUnavailablePlanning;
 const ConversationScreen = import.meta.env.DEV ? Conversation : null;
 
 const EXAMPLE = "For example: I want to go to Goa this weekend. Plan my trip.";
@@ -60,6 +83,7 @@ export function HomeView({
   );
   const session = useVoiceSession(adapter);
   const chat = useChat(send);
+  const planning = usePlanning({ request: chat.tripRequest, say: chat.addMessage });
   const [text, setText] = useState("");
   const [engaged, setEngaged] = useState(false);
   const homeRef = useRef<HTMLDivElement>(null);
@@ -87,6 +111,12 @@ export function HomeView({
     const message = text;
     setText("");
     setEngaged(true);
+    if (planning.awaitingRooms) {
+      // The assistant has just asked how many rooms: this message is the answer, not a new chat turn.
+      chat.addMessage("you", message);
+      planning.answerRooms(message);
+      return;
+    }
     void chat.submit(message);
   }
 
@@ -106,10 +136,13 @@ export function HomeView({
           notice={chat.notice}
           busy={chat.busy}
           error={chat.error}
+          stopped={chat.stopped}
+          onStop={chat.cancel}
           tripRequest={chat.tripRequest}
           itineraryRequest={chat.itineraryRequest}
           adapter={adapter}
           session={session}
+          planning={planning}
         />
       ) : (
         <section className="home-hero" aria-labelledby="home-title">

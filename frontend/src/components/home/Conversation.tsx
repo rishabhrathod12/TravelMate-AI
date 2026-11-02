@@ -6,18 +6,32 @@ import type { VoiceSession } from "../../voice/useVoiceSession";
 import { PlanSection } from "../PlanSection";
 import { VoiceMode } from "../voice/VoiceMode";
 import { PlanTripView } from "../../views/PlanTripView";
+import { AssistantText } from "./AssistantText";
+import { RunPanel } from "./RunPanel";
 import { useFollowBottom } from "./useFollowBottom";
+import type { PlanningRunController } from "./usePlanningRun";
 import type { ChatMessage } from "./useTripChat";
+
+/** The message box, so a keyboard user who skipped a reveal lands somewhere useful. */
+function focusComposer(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(".composer-input");
+}
 
 interface ConversationProps {
   messages: readonly ChatMessage[];
   notice: string;
   busy: boolean;
   error: string | null;
+  /** The reader stopped waiting for the last reply. */
+  stopped: boolean;
+  /** Stop waiting for the reply that is on its way. */
+  onStop: () => void;
   tripRequest: TripRequest | null;
   itineraryRequest: ItineraryRequest | null;
   adapter: VoiceAdapter | null;
   session: VoiceSession;
+  /** The planning journey: asking for rooms, running the workflow, showing its choices and results. */
+  planning: PlanningRunController;
 }
 
 /**
@@ -29,10 +43,13 @@ export function Conversation({
   notice,
   busy,
   error,
+  stopped,
+  onStop,
   tripRequest,
   itineraryRequest,
   adapter,
   session,
+  planning,
 }: ConversationProps) {
   const [plan, setPlan] = useState<ItineraryRequest | null>(null);
   const [compare, setCompare] = useState<TripRequest | null>(null);
@@ -51,7 +68,8 @@ export function Conversation({
       {/* The page's one level-one heading while the conversation replaces the home heading. */}
       <h1 className="visually-hidden">Conversation with TravelMate</h1>
       <p className="conversation-notice" role="note">
-        {notice} Nothing is booked.
+        {notice} Nothing is booked. Replies are shown progressively by your browser; the server sends
+        each one whole. Esc shows a reply at once.
       </p>
 
       {voiceShown && (
@@ -59,17 +77,43 @@ export function Conversation({
       )}
 
       <ol className="messages" aria-label="Conversation" aria-live="polite">
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <li key={message.id} className={`message message-${message.from}`}>
             <span className="visually-hidden">{message.from === "you" ? "You: " : "TravelMate: "}</span>
-            <span className="message-text">{message.text}</span>
+            {message.from === "you" ? (
+              <span className="message-text">{message.text}</span>
+            ) : (
+              <div className="message-text">
+                {/* Only the newest reply is revealed; once the reader writes again it is whole. */}
+                <AssistantText
+                  text={message.text}
+                  reveal={index === messages.length - 1 && message.local !== true}
+                  focusAfterSkip={focusComposer}
+                />
+              </div>
+            )}
           </li>
         ))}
       </ol>
 
       {busy && (
+        <div className="conversation-status">
+          <p role="status">
+            <span className="thinking-dots" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+            TravelMate is thinking…
+          </p>
+          <button type="button" className="button button-small button-quiet" onClick={onStop}>
+            Stop
+          </button>
+        </div>
+      )}
+      {stopped && !busy && (
         <p className="conversation-status" role="status">
-          TravelMate is thinking…
+          You stopped this reply. Your message was not answered; send it again if you like.
         </p>
       )}
       {error !== null && (
@@ -86,12 +130,24 @@ export function Conversation({
             </button>
           )}
           {tripRequest !== null && (
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={!planning.canStart}
+              onClick={planning.begin}
+            >
+              Plan this trip
+            </button>
+          )}
+          {tripRequest !== null && (
             <button type="button" className="button button-secondary" onClick={() => setCompare(tripRequest)}>
               Use these details
             </button>
           )}
         </div>
       )}
+
+      <RunPanel planning={planning} />
 
       {plan !== null && <PlanSection key={JSON.stringify(plan)} request={plan} />}
       {compare !== null && (

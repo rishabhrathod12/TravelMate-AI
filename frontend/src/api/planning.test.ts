@@ -169,3 +169,91 @@ describe("failures", () => {
     await expect(startRun("t1")).rejects.toMatchObject({ status: null });
   });
 });
+
+const FORECAST = {
+  location: { name: "Goa" },
+  requested_start: "2026-12-01",
+  requested_end: "2026-12-05",
+  days: [
+    { day: "2026-12-01", summary: "Sunny", temperature_min_c: 24, temperature_max_c: 31, precipitation_chance_percent: 5 },
+    { day: "2026-12-02", summary: "Light rain", temperature_min_c: null, temperature_max_c: 28, precipitation_chance_percent: null },
+  ],
+  source: { ...SOURCE, provider_name: "mock-weather" },
+};
+
+describe("weather, provider problems and notes", () => {
+  test("the forecast is read while the run waits for a choice, with its source label", async () => {
+    stubFetch(() => json({ ...RUN, research: { ...RUN.research, weather: { forecast: FORECAST, errors: [], empty_reason: null } } }));
+
+    const run = await getRun("r1");
+
+    expect(run.weather?.location).toBe("Goa");
+    expect(run.weather?.start).toBe("2026-12-01");
+    expect(run.weather?.end).toBe("2026-12-05");
+    expect(run.weather?.days).toHaveLength(2);
+    expect(run.weather?.source?.provenance).toBe("MOCK");
+  });
+
+  test("the forecast is also read from the summary of a finished run", async () => {
+    stubFetch(() =>
+      json({ ...RUN, status: "completed", waiting_for: null, summary: { weather: { forecast: FORECAST, errors: [], empty_reason: null } } }),
+    );
+
+    expect((await getRun("r1")).weather?.days[0]?.summary).toBe("Sunny");
+  });
+
+  test("a value the provider left out stays missing: it is never turned into zero", async () => {
+    stubFetch(() => json({ ...RUN, research: { weather: { forecast: FORECAST, errors: [], empty_reason: null } } }));
+
+    const days = (await getRun("r1")).weather?.days ?? [];
+
+    expect(days[0]).toEqual({ day: "2026-12-01", summary: "Sunny", temperatureMinC: 24, temperatureMaxC: 31, rainChancePercent: 5 });
+    expect(days[1]).toEqual({ day: "2026-12-02", summary: "Light rain", temperatureMinC: null, temperatureMaxC: 28, rainChancePercent: null });
+  });
+
+  test("no forecast, with the reason, is kept so the screen can say why", async () => {
+    stubFetch(() => json({ ...RUN, research: { weather: { forecast: null, errors: [], empty_reason: "Too far ahead." } } }));
+
+    const weather = (await getRun("r1")).weather;
+
+    expect(weather?.days).toEqual([]);
+    expect(weather?.emptyReason).toBe("Too far ahead.");
+  });
+
+  test("a run with no weather has none", async () => {
+    stubFetch(() => json(RUN));
+
+    expect((await getRun("r1")).weather).toBeNull();
+  });
+
+  test("a forecast of the wrong shape is refused rather than half used", async () => {
+    stubFetch(() => json({ ...RUN, research: { weather: { forecast: { ...FORECAST, days: "rain" }, errors: [] } } }));
+
+    await expect(getRun("r1")).rejects.toMatchObject({ detail: expect.stringContaining("shape") });
+  });
+
+  test("providers that failed are read, as text, and the rest of the answer is kept", async () => {
+    stubFetch(() =>
+      json({
+        ...RUN,
+        status: "completed",
+        waiting_for: null,
+        summary: {
+          provider_errors: [{ provider_name: "mock-hotels", kind: "TIMEOUT", message: "Timed out <b>twice</b>" }],
+          notes: ["No hotel was searched: this trip has no hotel stay."],
+        },
+      }),
+    );
+
+    const run = await getRun("r1");
+
+    expect(run.providerIssues).toEqual([{ provider: "mock-hotels", message: "Timed out <b>twice</b>" }]);
+    expect(run.notes).toEqual(["No hotel was searched: this trip has no hotel stay."]);
+  });
+
+  test("a malformed list of provider problems is refused", async () => {
+    stubFetch(() => json({ ...RUN, status: "completed", waiting_for: null, summary: { provider_errors: [{ provider_name: 7 }] } }));
+
+    await expect(getRun("r1")).rejects.toBeInstanceOf(PlanningApiError);
+  });
+});

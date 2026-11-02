@@ -72,7 +72,8 @@ npm run build
 
 In development, Vite forwards `/health` and `/api` to the backend on `127.0.0.1:8000`, so the browser needs no CORS. With the backend running as above you can try:
 
-- **Chat:** type "plan my 5 days itinerary for Goa this weekend", or "from Indore to Goa on 12 December, one way, 1 person" then "Use these details".
+- **Chat:** type "plan my 5 days itinerary for Goa this weekend" and press "Show the plan", or "from Indore to Goa on 1 December, round trip returning 5 December, 2 people". Replies appear progressively (a browser effect: the server sends each reply whole), "Esc" shows one at once, and "Stop" cancels a reply you are waiting for.
+- **Plan from the conversation:** once the chat has read a trip, press "Plan this trip". The assistant asks how many rooms you need (it never assumes), then researches transport, hotels and weather. The options, the forecast, the cost estimate, a draft itinerary and the approval step appear in the conversation. Nothing is booked, and the approval step only records your agreement when you press its button.
 - **Server planning panel:** under the demo results, enter the number of rooms, plan, choose options, edit the itinerary and walk through the approval step.
 - **Voice:** the mic button starts a labelled MOCK voice session (no microphone, no sound, scripted replies).
 - **Trip form:** the menu entry "Trip Form" works without the backend.

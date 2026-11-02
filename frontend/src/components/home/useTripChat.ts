@@ -7,6 +7,11 @@ export interface ChatMessage {
   id: number;
   from: "you" | "assistant";
   text: string;
+  /**
+   * Written by this page, not sent by the server (for example the planning questions). It is
+   * shown whole: the "shown progressively" note is only about replies the server sent.
+   */
+  local?: boolean;
 }
 
 const INTRO_NOTICE =
@@ -38,6 +43,7 @@ export function useTripChat(send: typeof sendChatTurn = sendChatTurn) {
   const [notice, setNotice] = useState(INTRO_NOTICE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stopped, setStopped] = useState(false);
   const pending = useRef<AbortController | null>(null);
   const nextId = useRef(1);
 
@@ -50,6 +56,7 @@ export function useTripChat(send: typeof sendChatTurn = sendChatTurn) {
         return;
       }
       setError(null);
+      setStopped(false);
       setBusy(true);
       setMessages((before) => [...before, { id: nextId.current++, from: "you", text: message }]);
       const controller = new AbortController();
@@ -79,5 +86,36 @@ export function useTripChat(send: typeof sendChatTurn = sendChatTurn) {
     [draft, send],
   );
 
-  return { messages, notice, busy, error, tripRequest, itineraryRequest, submit };
+  /** Adds a line to the conversation without asking the server: the page's own question or the reader's answer to it. */
+  const addMessage = useCallback((from: "you" | "assistant", text: string) => {
+    setMessages((before) => [...before, { id: nextId.current++, from, text, local: true }]);
+  }, []);
+
+  /**
+   * Stops waiting for the reply to the message just sent. The request is cancelled in the browser;
+   * the message stays in the conversation, unanswered, and the reader may send it again.
+   */
+  const cancel = useCallback(() => {
+    const controller = pending.current;
+    if (controller === null) {
+      return;
+    }
+    controller.abort();
+    pending.current = null;
+    setBusy(false);
+    setStopped(true);
+  }, []);
+
+  return {
+    messages,
+    notice,
+    busy,
+    error,
+    stopped,
+    tripRequest,
+    itineraryRequest,
+    submit,
+    cancel,
+    addMessage,
+  };
 }

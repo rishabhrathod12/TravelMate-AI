@@ -82,3 +82,13 @@ Frontend
 ## 8. M12 changes made (uncommitted when written)
 
 `.github/workflows/ci.yml` (pinned actions), `backend/tests/unit/test_plan_writer_injection.py` (new), `docs/ACCEPTANCE.md` (this file), and the M12 status lines in `docs/IMPLEMENTATION_PLAN.md` and `docs/PROJECT_CONTEXT.md`.
+
+## 9. Addendum: work after the M12 record (2026-11-02)
+
+The acceptance results above were recorded at M12. These changes came after it. They are frontend-only, add no dependency, change no API contract and leave booking switched off.
+
+- **Chat always shows the newest message.** The newest message used to land under the sticky composer. Measured before and after in a real browser at 375 px and 1280 px (111 px hidden before, a 13 px gap after).
+- **Progressive replies.** Each reply is revealed gradually by the browser. This is a presentation effect: the server sends each reply whole, and the conversation says so on screen. It includes a Markdown renderer written without a dependency (raw HTML shown as text; only http and https links clickable), a Stop button for a pending reply, and a skip badge and Esc.
+- **Planning from the conversation.** "Plan this trip" starts the existing planning workflow, asks for the number of rooms (never defaulted), and shows the options, the weather forecast, the cost estimate, the draft itinerary and the approval step inside the conversation. The weather had been returned by the API but shown nowhere.
+- **Checks:** 584 frontend tests; axe-core 0 violations in a real browser (including colour contrast) at both widths on the planning screens; a real-browser run against the real backend recorded no booking-related request until the reader pressed "Get the terms to approve", and then only the terms were requested. Break-and-restore checks were run on the key guards.
+- **Still true:** this path is development-only (no real authentication, PRD Q4), everything is MOCK, no real model or provider was used, and the gaps in section 6 stand. Workflow clarification questions are answered in the existing form, not in free text. Private taxi, broader natural-language understanding and budget are not built.

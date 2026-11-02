@@ -14,6 +14,7 @@ import type {
   CostEstimate,
   HotelOption,
   Itinerary,
+  SourceMetadata,
   TransportOption,
   TripRequest,
 } from "../contracts/types";
@@ -69,6 +70,38 @@ export interface PlanningRun {
   /** The itinerary draft the run wrote, if any. It is a draft, not a verified plan. */
   itinerary: Itinerary | null;
   itineraryWarnings: string[];
+  /** The destination's forecast, once researched (it is there while the run waits for a choice). */
+  weather: WeatherInfo | null;
+  /** Providers that failed. The rest of the answer is still returned (PRD AC-04). */
+  providerIssues: ProviderIssue[];
+  /** The server's own notes about the run, for example that no hotel was searched. */
+  notes: string[];
+}
+
+export interface WeatherDayInfo {
+  /** ISO calendar date. */
+  day: string;
+  summary: string;
+  temperatureMinC: number | null;
+  temperatureMaxC: number | null;
+  rainChancePercent: number | null;
+}
+
+export interface WeatherInfo {
+  location: string;
+  /** The dates that were asked for. A forecast may cover fewer (its horizon). */
+  start: string;
+  end: string;
+  days: WeatherDayInfo[];
+  source: SourceMetadata | null;
+  /** Why there is no forecast, when there is none and no provider error. */
+  emptyReason: string | null;
+}
+
+export interface ProviderIssue {
+  provider: string;
+  /** Provider-originated text: untrusted data, shown as text only. */
+  message: string;
 }
 
 export interface Selection {
@@ -176,13 +209,97 @@ function readQuestions(waitingFor: unknown): string[] {
   return stringList(waitingFor.questions) ?? [];
 }
 
+function readWeather(value: unknown): WeatherInfo | null | undefined {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (!isObject(value)) {
+    return undefined;
+  }
+  const emptyReason = value.empty_reason;
+  if (emptyReason !== null && emptyReason !== undefined && typeof emptyReason !== "string") {
+    return undefined;
+  }
+  const forecast = value.forecast;
+  if (forecast === null || forecast === undefined) {
+    return {
+      location: "",
+      start: "",
+      end: "",
+      days: [],
+      source: null,
+      emptyReason: emptyReason ?? null,
+    };
+  }
+  if (
+    !isObject(forecast) ||
+    !isObject(forecast.location) ||
+    typeof forecast.location.name !== "string" ||
+    typeof forecast.requested_start !== "string" ||
+    typeof forecast.requested_end !== "string" ||
+    !isObject(forecast.source) ||
+    !Array.isArray(forecast.days)
+  ) {
+    return undefined;
+  }
+  const number = (item: unknown) => (typeof item === "number" ? item : null);
+  const days: WeatherDayInfo[] = [];
+  for (const raw of forecast.days as unknown[]) {
+    if (!isObject(raw) || typeof raw.day !== "string" || typeof raw.summary !== "string") {
+      return undefined;
+    }
+    days.push({
+      day: raw.day,
+      summary: raw.summary,
+      temperatureMinC: number(raw.temperature_min_c),
+      temperatureMaxC: number(raw.temperature_max_c),
+      rainChancePercent: number(raw.precipitation_chance_percent),
+    });
+  }
+  return {
+    location: forecast.location.name,
+    start: forecast.requested_start,
+    end: forecast.requested_end,
+    days,
+    source: forecast.source as unknown as SourceMetadata,
+    emptyReason: emptyReason ?? null,
+  };
+}
+
+function readIssues(value: unknown): ProviderIssue[] | null {
+  if (value === null || value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const issues: ProviderIssue[] = [];
+  for (const raw of value as unknown[]) {
+    if (!isObject(raw) || typeof raw.provider_name !== "string" || typeof raw.message !== "string") {
+      return null;
+    }
+    issues.push({ provider: raw.provider_name, message: raw.message });
+  }
+  return issues;
+}
+
 function readSummaryParts(summary: unknown): {
   selected: Selection | null;
   itinerary: Itinerary | null;
   itineraryWarnings: string[];
+  weather: WeatherInfo | null;
+  providerIssues: ProviderIssue[];
+  notes: string[];
 } | null {
   if (summary === null || summary === undefined) {
-    return { selected: null, itinerary: null, itineraryWarnings: [] };
+    return {
+      selected: null,
+      itinerary: null,
+      itineraryWarnings: [],
+      weather: null,
+      providerIssues: [],
+      notes: [],
+    };
   }
   if (!isObject(summary)) {
     return null;
@@ -206,10 +323,13 @@ function readSummaryParts(summary: unknown): {
     itinerary = draft as unknown as Itinerary;
   }
   const warnings = stringList(summary.itinerary_warnings);
-  if (warnings === null) {
+  const weather = readWeather(summary.weather);
+  const providerIssues = readIssues(summary.provider_errors);
+  const notes = stringList(summary.notes);
+  if (warnings === null || weather === undefined || providerIssues === null || notes === null) {
     return null;
   }
-  return { selected, itinerary, itineraryWarnings: warnings };
+  return { selected, itinerary, itineraryWarnings: warnings, weather, providerIssues, notes };
 }
 
 function readRun(body: unknown): PlanningRun | null {
@@ -226,11 +346,15 @@ function readRun(body: unknown): PlanningRun | null {
   const research = readResearch(body.research);
   const estimate = readEstimate(body.summary);
   const parts = readSummaryParts(body.summary);
+  // The forecast is researched before the traveller chooses, so it is available from the research
+  // while the run waits, and from the summary once the run has finished.
+  const researchWeather = isObject(body.research) ? readWeather(body.research.weather) : null;
   if (
     choices === undefined ||
     research === undefined ||
     estimate === undefined ||
-    parts === null
+    parts === null ||
+    researchWeather === undefined
   ) {
     return null;
   }
@@ -250,6 +374,9 @@ function readRun(body: unknown): PlanningRun | null {
     selected: parts.selected,
     itinerary: parts.itinerary,
     itineraryWarnings: parts.itineraryWarnings,
+    weather: parts.weather ?? researchWeather,
+    providerIssues: parts.providerIssues,
+    notes: parts.notes,
   };
 }
 
