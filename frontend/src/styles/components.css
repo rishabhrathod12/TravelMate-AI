@@ -1343,3 +1343,33 @@ input[aria-invalid="true"] {
     right: var(--space-3);
   }
 }
+
+/* ---------- Server planner panels (development) ---------- */
+
+.plain-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.itinerary-edit-row {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.itinerary-edit-row input {
+  width: 100%;
+  min-width: 0;
+}
+
+.itinerary-edit-row .button {
+  justify-self: start;
+  margin-top: var(--space-1);
+}
+
+fieldset.card {
+  min-width: 0;
+}
