@@ -1,7 +1,7 @@
 import { useId } from "react";
 
 import type { VoiceAdapter } from "../../voice/VoiceAdapter";
-import { useVoiceSession } from "../../voice/useVoiceSession";
+import { useVoiceSession, type VoiceSession } from "../../voice/useVoiceSession";
 import type { VoiceSessionState } from "../../voice/voiceMachine";
 import { StatusMessage } from "../StatusMessage";
 import { DevMockControls } from "./DevMockControls";
@@ -17,6 +17,13 @@ interface VoiceModeProps {
   onReturnToPlanner?: () => void;
   /** The text of that button. Defaults to the trip form; the chat-first screen says "chat". */
   returnLabel?: string;
+  /**
+   * An already-running session to show, so the home screen's voice button and this panel share
+   * one session. When absent the panel runs its own.
+   */
+  session?: VoiceSession;
+  /** Hides this panel's own typed-message box when the screen already has a message input. */
+  hideTextInput?: boolean;
 }
 
 function statusText(state: VoiceSessionState, playsAudio: boolean, hearsUser: boolean): string {
@@ -50,8 +57,12 @@ export function VoiceMode({
   adapter,
   onReturnToPlanner,
   returnLabel = "Back to the trip form",
+  session: sharedSession,
+  hideTextInput = false,
 }: VoiceModeProps) {
-  const session = useVoiceSession(adapter);
+  // Hooks cannot be conditional, so the panel's own session gets no adapter when one is shared.
+  const ownSession = useVoiceSession(sharedSession === undefined ? adapter : null);
+  const session = sharedSession ?? ownSession;
   const { state } = session;
   const headingId = useId();
   const noteId = useId();
@@ -159,10 +170,12 @@ export function VoiceMode({
         )}
       </div>
 
-      <TextChat
-        disabled={!session.available || state.status === "connecting" || state.status === "error"}
-        onSend={(text) => void session.sendText(text)}
-      />
+      {!hideTextInput && (
+        <TextChat
+          disabled={!session.available || state.status === "connecting" || state.status === "error"}
+          onSend={(text) => void session.sendText(text)}
+        />
+      )}
 
       <VoiceTranscript entries={state.transcript} />
 

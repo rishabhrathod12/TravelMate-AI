@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import App from "./App";
@@ -13,11 +13,17 @@ afterEach(() => {
   window.location.hash = "";
 });
 
+function openMenu() {
+  fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+}
+
 describe("the application shell", () => {
-  test("shows the TravelMate AI brand and the three navigation links", () => {
+  test("shows the TravelMate AI brand and keeps the three links in a menu", () => {
     render(<App />);
 
     expect(screen.getByRole("link", { name: "TravelMate AI" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+    openMenu();
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(nav).toHaveTextContent("Plan Trip");
     expect(nav).toHaveTextContent("My Trips");
@@ -27,7 +33,8 @@ describe("the application shell", () => {
   test("opens on the planning page and marks it as the current page", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Where to next?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Where do you want to go?" })).toBeInTheDocument();
+    openMenu();
     expect(screen.getByRole("link", { name: "Plan Trip" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "About" })).not.toHaveAttribute("aria-current");
     expect(document.title).toBe("Plan Trip · TravelMate AI");
@@ -54,7 +61,7 @@ describe("the application shell", () => {
     render(<App />);
 
     expect(await screen.findByText(/Backend: not reachable/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Where to next?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Where do you want to go?" })).toBeInTheDocument();
   });
 
   test("the skip link moves focus to the main content without changing the page", () => {
@@ -67,15 +74,29 @@ describe("the application shell", () => {
   });
 });
 
+describe("the menu", () => {
+  test("closes with Escape and gives focus back to its button", () => {
+    render(<App />);
+    openMenu();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Menu" })).toHaveFocus();
+  });
+});
+
 describe("navigation", () => {
   test("My Trips is an honest empty state", async () => {
     render(<App />);
 
+    openMenu();
     fireEvent.click(screen.getByRole("link", { name: "My Trips" }));
 
     expect(await screen.findByRole("heading", { name: "My trips" })).toBeInTheDocument();
     expect(screen.getByText("No saved trips")).toBeInTheDocument();
     expect(screen.getByText(/stores nothing/)).toBeInTheDocument();
+    openMenu();
     expect(screen.getByRole("link", { name: "My Trips" })).toHaveAttribute("aria-current", "page");
     expect(document.title).toBe("My Trips · TravelMate AI");
   });
@@ -83,6 +104,7 @@ describe("navigation", () => {
   test("About says what exists, what is demo and what is not built", async () => {
     render(<App />);
 
+    openMenu();
     fireEvent.click(screen.getByRole("link", { name: "About" }));
 
     expect(await screen.findByRole("heading", { name: "About TravelMate AI" })).toBeInTheDocument();
@@ -96,8 +118,9 @@ describe("navigation", () => {
     render(<App />);
 
     for (const name of ["My Trips", "About", "Plan Trip"]) {
+      openMenu();
       fireEvent.click(screen.getByRole("link", { name }));
-      expect(await screen.findByRole("link", { name, current: "page" })).toBeInTheDocument();
+      await waitFor(() => expect(window.location.hash).not.toBe(""));
       expect(screen.getByRole("note", { name: "Demo data notice" })).toBeInTheDocument();
     }
   });
@@ -105,8 +128,9 @@ describe("navigation", () => {
   test("moves focus to the page content after navigating", async () => {
     render(<App />);
 
+    openMenu();
     fireEvent.click(screen.getByRole("link", { name: "About" }));
-    await screen.findByRole("link", { name: "About", current: "page" });
+    await screen.findByRole("heading", { name: "About TravelMate AI" });
 
     expect(screen.getByRole("main")).toHaveFocus();
   });
@@ -116,6 +140,6 @@ describe("navigation", () => {
 
     render(<App />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Where to next?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Where do you want to go?" })).toBeInTheDocument();
   });
 });

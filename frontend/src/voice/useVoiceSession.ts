@@ -7,6 +7,9 @@ import {
 } from "./VoiceAdapter";
 import { initialVoiceState, voiceReducer, type VoiceMode } from "./voiceMachine";
 
+/** What `useVoiceSession` returns. Shared so one session can drive several screens. */
+export type VoiceSession = ReturnType<typeof useVoiceSession>;
+
 /** Runs a voice session: the state machine plus the adapter calls that drive it. */
 export function useVoiceSession(adapter: VoiceAdapter | null) {
   const [state, dispatch] = useReducer(voiceReducer, initialVoiceState);

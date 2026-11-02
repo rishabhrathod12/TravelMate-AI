@@ -4,6 +4,7 @@ import { ApprovalPreview } from "../components/ApprovalPreview";
 import { CostBreakdown } from "../components/CostBreakdown";
 import { HeroArt } from "../components/HeroArt";
 import { ItineraryView } from "../components/ItineraryView";
+import { ServerPlanner } from "../components/ServerPlanner";
 import { DemoBookingPanel } from "../components/demoBooking/DemoBookingPanel";
 import { HotelCard } from "../components/OptionCards";
 import { TransportBrowser } from "../components/transport/TransportBrowser";
@@ -41,12 +42,23 @@ interface PlanTripViewProps {
    * comparison sits behind a button. Off by default and in production, where no chat exists.
    */
   chatFirst?: boolean;
+  /**
+   * Shown inside the home conversation: no hero and no second voice panel (the conversation owns
+   * the one voice session). Everything else is the same comparison view.
+   */
+  embedded?: boolean;
+  /** A trip request to preview straight away, for example one the chat just collected. */
+  initialRequest?: TripRequest | null;
 }
 
-export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTripViewProps) {
+export function PlanTripView({
+  chatFirst: chatFirstRequested = false,
+  embedded = false,
+  initialRequest = null,
+}: PlanTripViewProps) {
   // `import.meta.env.DEV` is a build-time constant, so a production build drops the chat code.
   const chatFirst = import.meta.env.DEV ? chatFirstRequested : false;
-  const [request, setRequest] = useState<TripRequest | null>(null);
+  const [request, setRequest] = useState<TripRequest | null>(initialRequest);
   const [itineraryRequest, setItineraryRequest] = useState<ItineraryRequest | null>(null);
   const [showDashboard, setShowDashboard] = useState(!chatFirst);
   const [transportId, setTransportId] = useState<string | null>(null);
@@ -96,6 +108,7 @@ export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTrip
 
   return (
     <>
+      {!embedded && (
       <section className="hero" aria-labelledby="plan-title">
         <div className="hero-copy">
           <h1 id="plan-title">{chatFirst ? "Where to next?" : "Plan your trip"}</h1>
@@ -107,6 +120,7 @@ export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTrip
         </div>
         <HeroArt />
       </section>
+      )}
 
       {chatFirst && (
         <>
@@ -147,7 +161,7 @@ export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTrip
 
       {showDashboard && (
         <div id="comparison-view">
-          {!chatFirst && <VoiceMode adapter={voiceAdapter} onReturnToPlanner={focusPlanner} />}
+          {!chatFirst && !embedded && <VoiceMode adapter={voiceAdapter} onReturnToPlanner={focusPlanner} />}
 
           <div ref={planner} tabIndex={-1} className="planner-anchor">
             <TripForm onSubmit={handleSubmit} />
@@ -176,6 +190,11 @@ export function PlanTripView({ chatFirst: chatFirstRequested = false }: PlanTrip
                 <summary>Request preview (JSON, not sent anywhere)</summary>
                 <pre>{JSON.stringify(request, null, 2)}</pre>
               </details>
+
+              {/* Development builds only: the planning API has no authentication yet (PRD Q4). */}
+              {import.meta.env.DEV && (
+                <ServerPlanner key={JSON.stringify(request)} request={request} />
+              )}
 
               <section aria-labelledby="transport-title">
                 <h2 id="transport-title">Transport options (demo)</h2>

@@ -6,7 +6,7 @@ import { DemoBanner } from "./components/DemoBanner";
 import { useRoute, type Route } from "./lib/route";
 import { AboutView } from "./views/AboutView";
 import { MyTripsView } from "./views/MyTripsView";
-import { PlanTripView } from "./views/PlanTripView";
+import { HomeView } from "./views/HomeView";
 
 const PAGE_TITLE: Record<Route, string> = {
   plan: "Plan Trip",
@@ -29,7 +29,7 @@ export default function App() {
   }, [route]);
 
   return (
-    <>
+    <div className="app-shell">
       <a
         className="skip-link"
         href="#/plan"
@@ -42,18 +42,22 @@ export default function App() {
         Skip to main content
       </a>
       <AppHeader route={route} />
-      <DemoBanner />
-      <BackendStatus />
-      <main id="main" className="page" tabIndex={-1} ref={mainRef}>
-        {/* Chat first only in development: the chat runs on a stand-in, and the backend refuses
-            to serve it in production. */}
-        {route === "plan" && <PlanTripView chatFirst={import.meta.env.DEV} />}
+      <main
+        id="main"
+        className={route === "plan" ? "page page-home" : "page"}
+        tabIndex={-1}
+        ref={mainRef}
+      >
+        {/* The home screen is a voice button and a message box. Chat works only in development:
+            it runs on a stand-in, and the backend refuses to serve it in production. */}
+        {route === "plan" && <HomeView />}
         {route === "trips" && <MyTripsView />}
         {route === "about" && <AboutView />}
       </main>
       <footer className="app-footer">
-        TravelMate AI · portfolio prototype · demo data only · nothing is booked
+        <DemoBanner />
+        <BackendStatus />
       </footer>
-    </>
+    </div>
   );
 }
