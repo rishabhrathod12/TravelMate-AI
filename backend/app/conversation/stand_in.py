@@ -12,7 +12,7 @@ Anything it reports is labelled `DEV_STAND_IN` by the API. It is never used in p
 
 import json
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import date
 
 from pydantic import BaseModel
@@ -24,6 +24,10 @@ from app.conversation.claims import (
     ExtractedDetails,
     TextClaim,
     TripTypeClaim,
+    fixed_party,
+    mentions_an_infant,
+    written_duration,
+    written_party,
 )
 from app.conversation.dates import explicit_date_mentions
 from app.domain.trip import TripType
@@ -41,12 +45,32 @@ _PLAIN_TO = re.compile(rf"^\s*({_PLACE})\s+to\s+({_PLACE}){_END_OF_PLACE}", re.I
 _AFTER_A_WORD = re.compile(
     rf"\b(?:for|in|visit|visiting)\s+({_PLACE}){_END_OF_PLACE}", re.IGNORECASE
 )
+# "to Goa from Indore": the destination comes first. Tried from every "to" in the sentence, so
+# "I want to go to Goa from Indore" still finds "to Goa from Indore".
+_TO_FROM = re.compile(rf"\bto\s+({_PLACE})\s+from\s+({_PLACE}){_END_OF_PLACE}", re.IGNORECASE)
+# "Indore -> Goa", "Indore → Goa", "Indore - Goa" (a spaced dash only: an unspaced hyphen is part
+# of names such as Port-Blair and is never split).
+_ARROW = re.compile(
+    rf"^\s*({_PLACE})\s*(?:->|=>|→|➝)\s*({_PLACE}){_END_OF_PLACE}"
+    rf"|^\s*({_PLACE})\s+[-–—]\s+({_PLACE}){_END_OF_PLACE}",
+    re.IGNORECASE,
+)
+# "trip to Goa", "go to Goa", "travelling to Goa": a destination on its own.
+_GO_TO = re.compile(
+    rf"\b(?:trip|go|going|travel|travelling|traveling|fly|flying|drive|driving|head|heading)"
+    rf"\s+to\s+({_PLACE}){_END_OF_PLACE}",
+    re.IGNORECASE,
+)
 _ONLY_A_PLACE = re.compile(r"^\s*([a-z][a-z .'\-]{0,60}?)\s*[.!]?\s*$", re.IGNORECASE)
 _ONE_WAY = re.compile(r"\bone[\s\-]?way\b", re.IGNORECASE)
 _ROUND_TRIP = re.compile(r"\b(?:round[\s\-]?trip|return\s+trip)\b", re.IGNORECASE)
 _TRAVELLERS = re.compile(
     r"\b(\d{1,3}|" + "|".join(sorted(NUMBER_WORDS, key=len, reverse=True)) + r")\s+"
     r"(?:people|persons?|travell?ers?|adults?|passengers?|of\s+us)\b",
+    re.IGNORECASE,
+)
+_FAMILY_OF = re.compile(
+    r"\bfamily\s+of\s+(\d{1,3}|" + "|".join(sorted(NUMBER_WORDS, key=len, reverse=True)) + r")\b",
     re.IGNORECASE,
 )
 _ONLY_A_NUMBER = re.compile(r"^\s*(\d{1,3})\s*[.!]?\s*$")
@@ -110,6 +134,48 @@ _NOT_PART_OF_A_PLACE = {
     "night",
     "nights",
     "itinerary",
+    # A time, a day or a party is never a place.
+    "today",
+    "tomorrow",
+    "tonight",
+    "yesterday",
+    "kal",
+    "parso",
+    "aaj",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+    "people",
+    "person",
+    "persons",
+    "adult",
+    "adults",
+    "child",
+    "children",
+    "kid",
+    "kids",
+    "hello",
+    "hey",
+    "there",
+    "thank",
+    "thanks",
+    "yes",
+    "no",
+    "ok",
+    "okay",
+    "please",
+    "so",
+    "much",
+    "traveller",
+    "travellers",
+    "traveler",
+    "travelers",
+    "passenger",
+    "passengers",
 }
 
 
@@ -117,9 +183,27 @@ def _clean(place: str) -> str:
     return " ".join(place.split()).strip(" .,'-")
 
 
+def _every_match(pattern: re.Pattern[str], text: str) -> Iterator[re.Match[str]]:
+    """Each place `pattern` matches, starting a fresh search one character after the last start.
+
+    A plain `finditer` skips a match that begins inside an earlier one, so "I want to go to Goa
+    from Indore" would be tried only from the first "to" and never reach "to Goa from Indore".
+    """
+    position = 0
+    while position <= len(text):
+        match = pattern.search(text, position)
+        if match is None:
+            return
+        yield match
+        position = match.start() + 1
+
+
 def _is_a_place(place: str) -> bool:
     words = place.casefold().split()
-    return bool(words) and len(words) <= 4 and not set(words) & _NOT_PART_OF_A_PLACE
+    if not words or len(words) > 4 or set(words) & _NOT_PART_OF_A_PLACE:
+        return False
+    # A number, written or spelled out, is a count or a date, not part of a place name.
+    return not any(word in NUMBER_WORDS or any(ch.isdigit() for ch in word) for word in words)
 
 
 def _data_block(request: LLMRequest) -> dict[str, object]:
@@ -190,6 +274,24 @@ class DevStandInClient:
                     return TextClaim(value=origin, quote=origin), TextClaim(
                         value=destination, quote=destination
                     )
+        # Destination first: "to Goa from Indore".
+        for match in _every_match(_TO_FROM, message):
+            destination, origin = _clean(match[1]), _clean(match[2])
+            if _is_a_place(origin) and _is_a_place(destination):
+                return TextClaim(value=origin, quote=origin), TextClaim(
+                    value=destination, quote=destination
+                )
+        arrow = _ARROW.search(message)
+        if arrow is not None:
+            origin, destination = _clean(arrow[1] or arrow[3]), _clean(arrow[2] or arrow[4])
+            if _is_a_place(origin) and _is_a_place(destination):
+                return TextClaim(value=origin, quote=origin), TextClaim(
+                    value=destination, quote=destination
+                )
+        for match in _every_match(_GO_TO, message):
+            place = _clean(match[1])
+            if _is_a_place(place):
+                return None, TextClaim(value=place, quote=place)
         after = _AFTER_A_WORD.search(message)
         if after is not None and _is_a_place(_clean(after[1])):
             return None, TextClaim(value=_clean(after[1]), quote=_clean(after[1]))
@@ -237,18 +339,35 @@ class DevStandInClient:
     def _days(message: str) -> CountClaim | None:
         match = _DAYS.search(message)
         if match is None:
-            return None
+            duration = written_duration(message)
+            if duration is None:
+                return None
+            return CountClaim(value=duration[0], quote=duration[1])
         word = match[1].casefold()
         number = int(word) if word.isdigit() else NUMBER_WORDS[word]
         return CountClaim(value=number, quote=match[0]) if number >= 1 else None
 
     @staticmethod
     def _count(message: str, known: dict[str, object]) -> CountClaim | None:
+        # A baby may or may not need a seat, so the party is not guessed: the chat asks.
+        if mentions_an_infant(message):
+            return None
+        party = written_party(message)
+        if party is not None:
+            return CountClaim(value=party[0], quote=party[1])
         match = _TRAVELLERS.search(message)
         if match is not None:
             word = match[1].casefold()
             number = int(word) if word.isdigit() else NUMBER_WORDS[word]
             return CountClaim(value=number, quote=match[0]) if number >= 1 else None
+        family = _FAMILY_OF.search(message)
+        if family is not None:
+            word = family[1].casefold()
+            number = int(word) if word.isdigit() else NUMBER_WORDS[word]
+            return CountClaim(value=number, quote=family[0]) if number >= 1 else None
+        fixed = fixed_party(message)
+        if fixed is not None:
+            return CountClaim(value=fixed[0], quote=fixed[1])
         bare = _ONLY_A_NUMBER.match(message)
         if bare is not None and "traveller_count" not in known and "departure_date" in known:
             return CountClaim(value=int(bare[1]), quote=bare[1]) if int(bare[1]) >= 1 else None

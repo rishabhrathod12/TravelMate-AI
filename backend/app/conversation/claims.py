@@ -9,7 +9,12 @@ Checks, per detail:
 - places: the place name itself must appear in the message;
 - dates: the quote must contain an explicit date that code reads itself, and the model's date
   must equal it. Relative words are not dates;
-- traveller count: the number must be written in the quote, as digits or as a number word;
+- traveller count: the number must be written in the quote, as digits or as a number word,
+  or be a total that code adds up from the written parts ("2 adults and 1 child") or a
+  fixed small party ("a couple"). A baby in the quote makes the count unclear, so none is
+  accepted;
+- trip days: a number written in the quote, or one code works out from "3 nights" (4 days)
+  or "a week" (7 days). "Next week" is a date, not a length;
 - preferences: stored as the traveller's own quoted words, not the model's paraphrase.
 """
 
@@ -113,6 +118,121 @@ def numbers_in(text: str) -> set[int]:
     return found
 
 
+_NUMBER = r"(\d{1,3}|" + "|".join(sorted(NUMBER_WORDS, key=len, reverse=True)) + r")"
+_PARTY_PART = re.compile(rf"\b{_NUMBER}\s+(adults?|children|child|kids?)\b", re.IGNORECASE)
+_INFANT = re.compile(r"\b(?:infants?|babies|baby|toddlers?|newborns?)\b", re.IGNORECASE)
+_INCLUDING = re.compile(r"\b(?:including|incl|of which|of them|out of|among)\b", re.IGNORECASE)
+# Small parties that have a fixed size in everyday speech. "A couple of days" is not one.
+_FIXED_PARTY: tuple[tuple[re.Pattern[str], int], ...] = (
+    (re.compile(r"\bcouple\b(?!\s+of\b)", re.IGNORECASE), 2),
+    (
+        re.compile(
+            r"\b(?:me|i)\s+and\s+my\s+(?:wife|husband|partner|spouse|girlfriend|boyfriend)\b"
+            r"|\bmy\s+(?:wife|husband|partner|spouse|girlfriend|boyfriend)\s+and\s+(?:me|i)\b",
+            re.IGNORECASE,
+        ),
+        2,
+    ),
+    (
+        re.compile(
+            r"\b(?:solo|by myself|just me|only me|(?:travelling|traveling|going)\s+alone)\b",
+            re.IGNORECASE,
+        ),
+        1,
+    ),
+)
+
+
+def _as_number(word: str) -> int:
+    lowered = word.casefold()
+    return int(lowered) if lowered.isdigit() else NUMBER_WORDS[lowered]
+
+
+def mentions_an_infant(text: str) -> bool:
+    """A baby may or may not need a seat or a fare, so a party that includes one is not counted."""
+    return _INFANT.search(text) is not None
+
+
+def written_party(text: str) -> tuple[int, str] | None:
+    """The total of "2 adults and 1 child" worked out by code, with the words it came from.
+
+    Needs at least one group of adults, and is not used when a baby is mentioned or when one
+    group is said to be part of another ("4 people including 2 kids").
+    """
+    if mentions_an_infant(text) or _INCLUDING.search(text) is not None:
+        return None
+    parts = list(_PARTY_PART.finditer(text))
+    if not parts or not any(part[2].casefold().startswith("adult") for part in parts):
+        return None
+    total = sum(_as_number(part[1]) for part in parts)
+    return total, text[parts[0].start() : parts[-1].end()]
+
+
+def fixed_party(text: str) -> tuple[int, str] | None:
+    """ "A couple", "me and my wife", "solo": a size code knows, with the words it came from."""
+    if mentions_an_infant(text):
+        return None
+    found = [(size, match[0]) for pattern, size in _FIXED_PARTY for match in pattern.finditer(text)]
+    if len({size for size, _ in found}) != 1:
+        return None
+    return found[0]
+
+
+_NUMBER_WORD_ALTERNATIVES = "|".join(sorted(NUMBER_WORDS, key=len, reverse=True))
+_NIGHTS = re.compile(rf"\b(\d{{1,2}}|{_NUMBER_WORD_ALTERNATIVES})[\s-]*nights?\b", re.IGNORECASE)
+# "a week", "one week", "2 weeks". Not "next week" or "this week" (a date, not a length), not "in
+# a week" or "a week from now" (a point in time), and not "weekend" (the word boundary).
+_WEEKS = re.compile(
+    rf"(?<!\bin )\b(an?|\d{{1,2}}|{_NUMBER_WORD_ALTERNATIVES})[\s-]*weeks?\b"
+    r"(?!\s+(?:from|later|ago|before|after))",
+    re.IGNORECASE,
+)
+_A_DAY_WORD = re.compile(r"\bdays?\b", re.IGNORECASE)
+
+
+def written_duration(text: str) -> tuple[int, str] | None:
+    """How many days a stay of "3 nights" or "a week" is, worked out by code, with its words.
+
+    N nights is N + 1 days (the day of arrival counts), a week is 7 days. Not used when the text
+    also says "days", which is read as written.
+    """
+    if _A_DAY_WORD.search(text) is not None:
+        return None
+    nights = _NIGHTS.search(text)
+    if nights is not None:
+        return _as_number(nights[1]) + 1, nights[0]
+    weeks = _WEEKS.search(text)
+    if weeks is not None:
+        count = 1 if weeks[1].casefold() in ("a", "an") else _as_number(weeks[1])
+        return 7 * count, weeks[0]
+    return None
+
+
+def days_are_supported(value: int, quote: str) -> bool:
+    """Whether the quote's own words give this number of days, by the traveller or by code."""
+    duration = written_duration(quote)
+    if duration is not None:
+        return value == duration[0]
+    return value in numbers_in(quote)
+
+
+def count_is_supported(value: int, quote: str) -> bool:
+    """Whether the quote's own words give this number.
+
+    A number written in the quote is supported. A total is supported only when code adds up the
+    written parts and gets the same answer: the model's own arithmetic is never believed.
+    """
+    if mentions_an_infant(quote):
+        return False
+    party = written_party(quote)
+    if party is not None:
+        return value == party[0]
+    fixed = fixed_party(quote)
+    if fixed is not None and value == fixed[0]:
+        return True
+    return value in numbers_in(quote)
+
+
 def verify(
     details: ExtractedDetails, message: str, today: date
 ) -> tuple[Accepted, tuple[Rejection, ...]]:
@@ -154,14 +274,14 @@ def verify(
     if details.traveller_count is not None and quoted(
         TripField.TRAVELLERS, details.traveller_count.quote
     ):
-        if details.traveller_count.value in numbers_in(details.traveller_count.quote):
+        if count_is_supported(details.traveller_count.value, details.traveller_count.quote):
             count = details.traveller_count.value
         else:
             rejections.append(Rejection(TripField.TRAVELLERS, RejectionReason.NUMBER_NOT_IN_QUOTE))
 
     days: int | None = None
     if details.trip_days is not None and quoted(TripField.TRIP_DAYS, details.trip_days.quote):
-        if details.trip_days.value not in numbers_in(details.trip_days.quote):
+        if not days_are_supported(details.trip_days.value, details.trip_days.quote):
             rejections.append(Rejection(TripField.TRIP_DAYS, RejectionReason.NUMBER_NOT_IN_QUOTE))
         elif details.trip_days.value > MAX_ITINERARY_DAYS:
             rejections.append(Rejection(TripField.TRIP_DAYS, RejectionReason.OUT_OF_RANGE))

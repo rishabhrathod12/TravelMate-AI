@@ -239,8 +239,10 @@ class TestCorrectionsAndConflicts:
         assert result.status is TurnStatus.CONFLICT
         assert "before the departure date" in result.reply
 
-    def test_a_total_the_model_worked_out_is_not_accepted_and_the_traveller_is_asked(self) -> None:
-        manager, _, _ = make(details(traveller_count={"value": 3, "quote": "2 adults and 1 child"}))
+    def test_a_total_the_model_worked_out_wrongly_is_not_accepted_and_the_traveller_is_asked(
+        self,
+    ) -> None:
+        manager, _, _ = make(details(traveller_count={"value": 5, "quote": "2 adults and 1 child"}))
         draft = TripDraft(
             origin="A",
             destination="B",
@@ -252,6 +254,19 @@ class TestCorrectionsAndConflicts:
 
         assert result.draft.traveller_count is None
         assert result.reply == "How many people are travelling?"
+
+    def test_a_total_is_accepted_when_code_adds_up_the_same_number_from_the_words(self) -> None:
+        manager, _, _ = make(details(traveller_count={"value": 3, "quote": "2 adults and 1 child"}))
+        draft = TripDraft(
+            origin="A",
+            destination="B",
+            trip_type=TripType.ONE_WAY,
+            departure_date=date(2026, 12, 12),
+        )
+
+        result = manager.handle(draft, "2 adults and 1 child")
+
+        assert result.draft.traveller_count == 3
 
 
 class TestTheModelIsNotTrusted:

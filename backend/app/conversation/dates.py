@@ -120,9 +120,15 @@ def explicit_date_mentions(text: str, today: date) -> tuple[tuple[str, ParsedDat
             found.append((match.start(), match[0], parsed))
 
     ordered: list[tuple[str, ParsedDate]] = []
-    for _, words, parsed in sorted(found, key=lambda item: item[0]):
+    last_end = -1
+    for start, words, parsed in sorted(found, key=lambda item: item[0]):
+        # A later pattern that starts inside an earlier date is the same words read twice: the
+        # "Dec 2" inside "1 Dec 2 adults" is a traveller count, not a second date.
+        if start < last_end:
+            continue
         if parsed not in [p for _, p in ordered]:
             ordered.append((words, parsed))
+            last_end = start + len(words)
     return tuple(ordered)
 
 

@@ -167,15 +167,71 @@ class TestTravellerCount:
         assert accepted.traveller_count == value
         assert rejections == ()
 
-    def test_a_total_the_model_worked_out_is_refused(self) -> None:
+    def test_a_total_is_accepted_only_when_code_reads_the_same_total_from_the_words(self) -> None:
         accepted, rejections = verify(
             details(traveller_count={"value": 3, "quote": "2 adults and 1 child"}),
             "2 adults and 1 child",
             TODAY,
         )
 
+        assert accepted.traveller_count == 3
+        assert rejections == ()
+
+    @pytest.mark.parametrize("wrong", [1, 2, 4, 5])
+    def test_any_other_total_for_the_same_words_is_refused(self, wrong: int) -> None:
+        accepted, rejections = verify(
+            details(traveller_count={"value": wrong, "quote": "2 adults and 1 child"}),
+            "2 adults and 1 child",
+            TODAY,
+        )
+
         assert accepted.traveller_count is None
         assert reasons(rejections) == [(TripField.TRAVELLERS, RejectionReason.NUMBER_NOT_IN_QUOTE)]
+
+    def test_a_sum_of_things_that_are_not_travellers_is_still_refused(self) -> None:
+        accepted, rejections = verify(
+            details(traveller_count={"value": 3, "quote": "2 rooms and 1 night"}),
+            "2 rooms and 1 night",
+            TODAY,
+        )
+
+        assert accepted.traveller_count is None
+        assert reasons(rejections) == [(TripField.TRAVELLERS, RejectionReason.NUMBER_NOT_IN_QUOTE)]
+
+    def test_a_baby_makes_a_sum_unclear_so_it_is_refused(self) -> None:
+        accepted, _ = verify(
+            details(traveller_count={"value": 3, "quote": "2 adults and 1 baby"}),
+            "2 adults and 1 baby",
+            TODAY,
+        )
+
+        assert accepted.traveller_count is None
+
+    @pytest.mark.parametrize(
+        ("quote", "value"), [("couple", 2), ("me and my wife", 2), ("solo", 1), ("just me", 1)]
+    )
+    def test_a_fixed_phrase_for_a_small_party_is_read_by_code(self, quote: str, value: int) -> None:
+        accepted, _ = verify(
+            details(traveller_count={"value": value, "quote": quote}), f"we are {quote}", TODAY
+        )
+
+        assert accepted.traveller_count == value
+
+    def test_a_fixed_phrase_cannot_stand_for_a_different_number(self) -> None:
+        accepted, _ = verify(
+            details(traveller_count={"value": 3, "quote": "couple"}), "we are a couple", TODAY
+        )
+
+        assert accepted.traveller_count is None
+
+    def test_a_couple_of_days_is_not_a_party(self) -> None:
+        accepted, _ = verify(
+            details(traveller_count={"value": 2, "quote": "couple of days"}),
+            "for a couple of days",
+            TODAY,
+        )
+
+        assert accepted.traveller_count is None
 
     def test_zero_or_a_negative_count_cannot_even_be_proposed(self) -> None:
         for bad in (0, -2):
@@ -264,3 +320,43 @@ class TestHelpers:
     def test_numbers_in_reads_digits_and_number_words(self) -> None:
         assert numbers_in("Do log, 3 bags and five seats") == {2, 3, 5}
         assert numbers_in("no numbers here") == set()
+
+
+class TestALengthOfStayIsWorkedOutByCode:
+    @pytest.mark.parametrize(
+        ("quote", "value"),
+        [("3 nights", 4), ("two nights", 3), ("a week", 7), ("2 weeks", 14), ("5 days", 5)],
+    )
+    def test_the_days_code_reads_from_the_words_are_accepted(self, quote: str, value: int) -> None:
+        accepted, rejections = verify(
+            details(trip_days={"value": value, "quote": quote}), f"plan {quote} in Goa", TODAY
+        )
+
+        assert accepted.trip_days == value
+        assert rejections == ()
+
+    @pytest.mark.parametrize(
+        ("quote", "value"),
+        [("3 nights", 3), ("3 nights", 7), ("a week", 5), ("a week", 1), ("3 days", 4)],
+    )
+    def test_any_other_number_for_the_same_words_is_refused(self, quote: str, value: int) -> None:
+        accepted, rejections = verify(
+            details(trip_days={"value": value, "quote": quote}), f"plan {quote} in Goa", TODAY
+        )
+
+        assert accepted.trip_days is None
+        assert reasons(rejections) == [(TripField.TRIP_DAYS, RejectionReason.NUMBER_NOT_IN_QUOTE)]
+
+    @pytest.mark.parametrize("quote", ["next week", "this weekend", "in a week"])
+    def test_a_date_phrase_is_not_a_length(self, quote: str) -> None:
+        accepted, _ = verify(details(trip_days={"value": 7, "quote": quote}), f"Goa {quote}", TODAY)
+
+        assert accepted.trip_days is None
+
+    def test_a_stay_longer_than_the_limit_is_refused(self) -> None:
+        accepted, rejections = verify(
+            details(trip_days={"value": 22, "quote": "3 weeks"}), "Goa for 3 weeks", TODAY
+        )
+
+        assert accepted.trip_days is None
+        assert rejections

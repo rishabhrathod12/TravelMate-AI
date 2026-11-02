@@ -78,10 +78,15 @@ def test_relative_dates_are_not_turned_into_dates() -> None:
 
 
 def test_a_sentence_is_not_mistaken_for_place_names() -> None:
+    # Only "Goa" is a place. "I want to go" is never taken for an origin or a destination.
     result = say("I want to go to Goa")
 
     assert result.draft.origin is None
-    assert result.draft.destination is None
+    assert result.draft.destination == "Goa"
+
+    nothing = say("I want to go")
+    assert nothing.draft.origin is None
+    assert nothing.draft.destination is None
 
 
 def test_a_second_date_after_departure_is_the_return_of_a_round_trip() -> None:
