@@ -6,7 +6,7 @@ Every result below says how it was obtained. "Automated" means a test that runs 
 
 ## 1. Result in one paragraph
 
-Nine of ten acceptance criteria pass with automated evidence. **AC-10 (375 px, no horizontal scroll) passes by manual measurement only; there is no committed browser test**, so it needs the owner's decision (section 3). No open high-severity finding is known to me, but that is not the same as a security review by someone else (section 6). Nothing in the MVP can book, pay, or reach a live provider or a live language model, and none of the evidence below used one.
+Nine of ten acceptance criteria pass with automated evidence. **AC-10 (375 px, no horizontal scroll) passes by manual measurement only; there is no committed browser test. The project owner accepted that evidence on 2026-11-02** (section 3, PRD A20). No open high-severity finding is known to me, but that is not the same as a security review by someone else (section 6). Nothing in the MVP can book, pay, or reach a live provider or a live language model, and none of the evidence below used one.
 
 ## 2. What was run
 
@@ -32,7 +32,7 @@ Nine of ten acceptance criteria pass with automated evidence. **AC-10 (375 px, n
 | AC-07 The LLM is reached only through `LLMClient`; tests use a fake and no network | **Pass** | Automated: `architecture/test_llm_imports.py` (only the transport imports the SDK). No test calls OpenAI. **No real model call has ever been made in this project.** |
 | AC-08 No secret appears in logs, responses or repository files | **Pass** | Automated: `unit/test_logging.py`, including against a running uvicorn. CI `secret-scan` (gitleaks) succeeded on every push. Local scan of all 311 tracked files for key, token and private-key patterns: only deliberately fake test values and the documented throwaway CI database password. `.env` is not tracked. |
 | AC-09 Missing inputs give clarification questions and no provider calls | **Pass** | Automated: `unit/test_workflow.py`. |
-| AC-10 The planning flow works at 375 px without horizontal scrolling | **Pass by manual measurement; no automated test** | Manual, headless Edge with mobile emulation at 375 px: home, conversation, trip form with results, and every server-planner panel (choices, estimate, itinerary, approval terms, approved, clarification) measured zero horizontal overflow and no touch target under 36 px. **Gap:** the PRD asks for a browser test and Playwright was not added (owner chose Vitest only). Needs an owner decision: accept the manual evidence, or approve Playwright. |
+| AC-10 The planning flow works at 375 px without horizontal scrolling | **Pass by manual measurement; accepted by the owner (2026-11-02)** | Manual, headless Edge with mobile emulation at 375 px: home, conversation, trip form with results, and every server-planner panel (choices, estimate, itinerary, approval terms, approved, clarification) measured zero horizontal overflow and no touch target under 36 px. **Gap, accepted:** the PRD asks for a browser test and Playwright was not added (owner chose Vitest only). On 2026-11-02 the owner accepted this manual evidence instead (PRD A20). The measurements are not a committed test, so a layout regression would not fail CI; they should be repeated after any large layout change. |
 
 ## 4. Non-functional checks run in M12
 
