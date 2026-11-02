@@ -1,6 +1,6 @@
 # TravelMate AI: MVP acceptance record (Milestone 12)
 
-Status: **Draft, awaiting owner review.** Run on 2026-11-02 against commit `d21d1ce` plus the uncommitted M12 changes listed at the end. Plan: `docs/IMPLEMENTATION_PLAN.md` M12. Requirements: `docs/PRD.md` §8 and §9.
+Status: **Accepted by the project owner on 2026-11-02 as the record for a project complete at its current scope (PRD A23).** The gaps it lists stay true. Run on 2026-11-02 against commit `d21d1ce` plus the uncommitted M12 changes listed at the end. Plan: `docs/IMPLEMENTATION_PLAN.md` M12. Requirements: `docs/PRD.md` §8 and §9.
 
 Every result below says how it was obtained. "Automated" means a test that runs in CI with no network and no key. "Manual" means a person or an agent ran it by hand and the evidence is described here, not committed as a test.
 
