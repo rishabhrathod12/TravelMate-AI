@@ -52,7 +52,7 @@ function QuoteSummary({ title, quote }: { title: string; quote: Quote | undefine
         </div>
         <div>
           <dt>Quote valid until</dt>
-          <dd>{formatUtcDateTime(quote.valid_until)} (fictional demo time)</dd>
+          <dd>{formatUtcDateTime(quote.valid_until)} (sample time)</dd>
         </div>
       </dl>
       <SourceLine source={quote.source} />

@@ -43,7 +43,7 @@ export function BackendStatus() {
       )}
       {state.kind === "offline" && (
         <>
-          <span>Backend: not reachable. The demo screens still work.</span>
+          <span>Backend: not reachable. The trip form still works.</span>
           <button type="button" className="button button-small button-quiet" onClick={retry}>
             Retry
           </button>

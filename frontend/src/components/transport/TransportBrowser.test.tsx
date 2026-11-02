@@ -50,7 +50,7 @@ describe("the three categories", () => {
   test("every card says MOCK and shows when its fictional data was retrieved", () => {
     setup();
 
-    expect(screen.getAllByText(/MOCK · demo data/)).toHaveLength(10);
+    expect(screen.getAllByText(/Sample data/)).toHaveLength(10);
     expect(screen.getAllByText(/retrieved/).length).toBeGreaterThanOrEqual(10);
   });
 
@@ -163,7 +163,7 @@ describe("comparing", () => {
     const table = screen.getByRole("table");
     expect(within(table).getAllByText(/Availability unknown/).length).toBe(2);
     expect(within(table).getAllByText("Not supplied").length).toBeGreaterThan(0);
-    expect(within(table).getAllByText(/MOCK · demo data/)).toHaveLength(2);
+    expect(within(table).getAllByText(/Sample data/)).toHaveLength(2);
     expect(within(table).getAllByText(/retrieved/)).toHaveLength(2);
   });
 

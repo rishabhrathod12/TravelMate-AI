@@ -187,7 +187,7 @@ describe("the disclaimers", () => {
     expect(text).toMatch(/No actual transport is reserved/);
     expect(text).toMatch(/No real ticket is issued/);
     expect(text).toMatch(/No payment is collected/);
-    expect(text).toMatch(/fictional demo data/);
+    expect(text).toMatch(/fictional sample data/);
     expect(text).toMatch(/not a real provider confirmation/);
   });
 });

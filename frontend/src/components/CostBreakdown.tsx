@@ -10,7 +10,7 @@ export function CostBreakdown({ estimate }: { estimate: CostEstimate }) {
     <div className="card">
       <table className="cost-table">
         <caption>
-          Demo cost estimate{" "}
+          Cost estimate{" "}
           {incomplete && <span className="badge badge-incomplete">Incomplete</span>}
         </caption>
         <thead>

@@ -3,7 +3,7 @@ import type { AvailabilityStatus, Provenance } from "../contracts/types";
 const PROVENANCE_TEXT: Record<Provenance, { label: string; hint: string }> = {
   LIVE: { label: "LIVE", hint: "Fresh data from an authorised provider" },
   CACHED_LIVE: { label: "CACHED · may be stale", hint: "Provider data older than its freshness window" },
-  MOCK: { label: "MOCK · demo data", hint: "Sample data. Not a real price or schedule" },
+  MOCK: { label: "Sample data", hint: "Fictional sample. Not a real price or schedule" },
 };
 
 /** Says where a value came from. MOCK is never styled like LIVE. */

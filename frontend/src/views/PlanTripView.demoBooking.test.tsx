@@ -5,7 +5,7 @@ import { PlanTripView } from "./PlanTripView";
 
 function previewExampleTrip() {
   fireEvent.click(screen.getByRole("button", { name: /Use example trip/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+  fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
 }
 
 const select = (name: RegExp) => fireEvent.click(screen.getByRole("button", { name }));
@@ -25,7 +25,7 @@ describe("transport and demo booking on the plan page", () => {
     render(<PlanTripView />);
     previewExampleTrip();
 
-    const demo = screen.getByRole("region", { name: "Demo booking (simulation)" });
+    const demo = screen.getByRole("region", { name: "Booking simulation" });
     expect(within(demo).getByText("DEMO · SIMULATION ONLY")).toBeInTheDocument();
     expect(within(demo).getByText(/Select a flight, train or bus/)).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Booking approval preview" })).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe("transport and demo booking on the plan page", () => {
     previewExampleTrip();
 
     select(/Select Flight.*Sample Wings/);
-    const demo = screen.getByRole("region", { name: "Demo booking (simulation)" });
+    const demo = screen.getByRole("region", { name: "Booking simulation" });
     fireEvent.click(within(demo).getByRole("checkbox", { name: /I understand/ }));
     fireEvent.click(within(demo).getByRole("button", { name: "Simulate booking" }));
 
@@ -57,7 +57,7 @@ describe("transport and demo booking on the plan page", () => {
 
     select(/Select Bus.*Demo Coaches/);
 
-    const demo = screen.getByRole("region", { name: "Demo booking (simulation)" });
+    const demo = screen.getByRole("region", { name: "Booking simulation" });
     expect(within(demo).getByText(/Availability is unknown/)).toBeInTheDocument();
     expect(within(demo).queryByRole("button", { name: "Simulate booking" })).not.toBeInTheDocument();
   });
@@ -66,7 +66,7 @@ describe("transport and demo booking on the plan page", () => {
     render(<PlanTripView />);
     previewExampleTrip();
     select(/Select Train.*Sample Rail Express/);
-    const demo = screen.getByRole("region", { name: "Demo booking (simulation)" });
+    const demo = screen.getByRole("region", { name: "Booking simulation" });
     fireEvent.click(within(demo).getByRole("checkbox", { name: /I understand/ }));
 
     select(/Select Train.*Example Intercity/);

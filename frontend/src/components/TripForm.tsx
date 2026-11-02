@@ -205,7 +205,7 @@ export function TripForm({ onSubmit }: TripFormProps) {
 
       <div className="button-row">
         <button type="submit" className="button button-primary">
-          Preview with demo data
+          Preview the trip
         </button>
         <button
           type="button"

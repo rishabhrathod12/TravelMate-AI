@@ -5,7 +5,7 @@ import { PlanTripView } from "./PlanTripView";
 
 function previewExampleTrip() {
   fireEvent.click(screen.getByRole("button", { name: /Use example trip/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+  fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
 }
 
 function selectButton(name: RegExp) {
@@ -21,7 +21,7 @@ describe("before a preview", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Plan your trip" })).toBeInTheDocument();
     expect(screen.getByText("No preview yet")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Demo results" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Results" })).not.toBeInTheDocument();
   });
 });
 
@@ -31,13 +31,13 @@ describe("after previewing the example trip", () => {
 
     previewExampleTrip();
 
-    const results = screen.getByRole("heading", { name: "Demo results" });
+    const results = screen.getByRole("heading", { name: "Results" });
     expect(results).toHaveFocus();
-    expect(screen.getByRole("heading", { name: "Transport options (demo)" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Hotel options (demo)" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Transport options" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Hotel options" })).toBeInTheDocument();
     // One MOCK badge for each of the twelve demo options (ten transport, two hotels), and no
     // other source label.
-    expect(screen.getAllByText(/MOCK · demo data/)).toHaveLength(12);
+    expect(screen.getAllByText(/Sample data/)).toHaveLength(12);
     expect(screen.queryByText(/^LIVE$/)).not.toBeInTheDocument();
   });
 
@@ -109,7 +109,7 @@ describe("selection, cost and approval preview", () => {
     fireEvent.click(selectButton(TRAIN_ONE));
     fireEvent.click(selectButton(/Select Sample Beach Resort/));
 
-    const table = screen.getByRole("table", { name: /Demo cost estimate/ });
+    const table = screen.getByRole("table", { name: /Cost estimate/ });
     const total = within(table).getByRole("row", { name: /Total of the lines shown/ });
     // 2 x 1,500 fare + 4 nights x 6,000 + 150 in fees + 10% contingency of 27,000.
     expect(total).toHaveTextContent("₹29,850.00");
@@ -172,7 +172,7 @@ describe("selection, cost and approval preview", () => {
     previewExampleTrip();
     fireEvent.click(selectButton(TRAIN_ONE));
 
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
 
     expect(selectButton(TRAIN_ONE)).toHaveAttribute("aria-pressed", "false");
   });
@@ -194,12 +194,12 @@ describe("one-way and same-day trips", () => {
     fireEvent.click(screen.getByRole("button", { name: /Use example trip/ }));
     fireEvent.click(screen.getByRole("radio", { name: kind }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
     fireEvent.click(selectButton(TRAIN_ONE));
 
     expect(screen.getByText("No hotel stay for this trip")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Select Sample Beach Resort/ })).not.toBeInTheDocument();
-    const table = screen.getByRole("table", { name: /Demo cost estimate/ });
+    const table = screen.getByRole("table", { name: /Cost estimate/ });
     expect(within(table).queryByText(/Sample Beach Resort:/)).not.toBeInTheDocument();
     expect(within(table).getByText(/Contingency at 10\.00%/)).toBeInTheDocument();
     expect(screen.queryByText(/stay length is not defined/)).not.toBeInTheDocument();

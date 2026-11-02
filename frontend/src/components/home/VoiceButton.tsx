@@ -18,7 +18,7 @@ function adapterNote(adapter: VoiceAdapter | null): string | null {
     return null;
   }
   if (adapter.isMock) {
-    return "MOCK voice (development build): no microphone, no sound, scripted replies.";
+    return "Scripted voice (development build): no microphone, no sound, scripted replies.";
   }
   if (!adapter.hearsUser) {
     return "Voice session only (development build): TravelMate can't hear or speak yet.";

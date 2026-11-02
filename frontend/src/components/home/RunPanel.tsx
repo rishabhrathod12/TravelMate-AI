@@ -115,7 +115,7 @@ export function RunPanel({ planning }: RunPanelProps) {
     <section className="run-panel" aria-labelledby={titleId}>
       <h2 id={titleId}>Trip planning</h2>
       <p className="field-hint">
-        This uses the planner with sample (MOCK) data from the development server. Nothing is booked.
+        This uses the planner with sample data from the development server. Nothing is booked.
       </p>
 
       {stale && (

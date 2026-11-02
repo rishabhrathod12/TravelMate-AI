@@ -146,7 +146,7 @@ export function TripChat({ onUseRequest, onUseItinerary, send = sendChatTurn }: 
       {ready !== null && (
         <div className="chat-ready">
           <p>
-            These details are ready. Using them previews demo data only; nothing is booked.
+            These details are ready. Using them previews sample data only; nothing is booked.
           </p>
           <button type="button" className="button button-primary" onClick={() => onUseRequest(ready)}>
             Use these details

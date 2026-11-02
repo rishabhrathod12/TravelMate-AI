@@ -53,8 +53,8 @@ describe("when no voice service is available", () => {
     expect(screen.getByText("Voice isn't available yet")).toBeInTheDocument();
     expect(button("Talk to TravelMate")).toBeDisabled();
     expect(screen.getByLabelText("Or type a message")).toBeDisabled();
-    expect(screen.queryByText(/Mock:/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/MOCK/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Simulate:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Scripted/)).not.toBeInTheDocument();
   });
 });
 
@@ -248,7 +248,7 @@ describe("text chat", () => {
     expect(mine).toHaveTextContent("Goa trip");
     expect(mine).toHaveTextContent("typed");
     expect(theirs).toHaveTextContent(MOCK_REPLIES[0] as string);
-    expect(theirs).toHaveTextContent("MOCK reply");
+    expect(theirs).toHaveTextContent("Scripted reply");
     expect(screen.getByLabelText("Or type a message")).toHaveValue("");
   });
 
@@ -266,32 +266,34 @@ describe("the labelled development mock", () => {
     render(<VoiceMode adapter={createMockVoiceAdapter(fast)} />);
 
     const note = screen.getByRole("note");
-    expect(note).toHaveTextContent("MOCK voice (development build)");
+    expect(note).toHaveTextContent("Scripted voice (development build)");
     expect(note).toHaveTextContent("No microphone is used and no sound is played or recorded");
   });
 
   test("the simulation controls live in a separate, labelled developer section", () => {
     render(<VoiceMode adapter={createMockVoiceAdapter(fast)} />);
 
-    const dev = screen.getByText("Developer mock controls (development build only)").closest("details");
+    const dev = screen.getByText("Developer controls (development build only)").closest("details");
     expect(dev).not.toBeNull();
     expect(within(dev as HTMLElement).getAllByRole("button", { hidden: true })).toHaveLength(3);
     // Nothing in the main experience is a simulation control.
-    expect(screen.queryByRole("button", { name: /Simulate/ })).not.toBeInTheDocument();
+    for (const control of screen.queryAllByRole("button", { name: /Simulate:/, hidden: true })) {
+      expect(dev?.contains(control)).toBe(true);
+    }
   });
 
   test("a mock user phrase and reply appear with honest labels, and Interrupt works", async () => {
     render(<VoiceMode adapter={createMockVoiceAdapter(slowSpeech)} />);
     await startVoice();
 
-    fireEvent.click(screen.getByRole("button", { name: "Mock: user says a phrase", hidden: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Simulate: user says a phrase", hidden: true }));
     await waitFor(() => expect(status()).toHaveTextContent("Speaking… (text only, no sound)"));
 
     const log = screen.getByRole("log", { name: "Transcript" });
     const [said, replied] = within(log).getAllByRole("listitem");
     expect(said).toHaveTextContent(SIMULATED_USER_PHRASE);
     expect(said).toHaveTextContent("simulated, not heard");
-    expect(replied).toHaveTextContent("MOCK reply");
+    expect(replied).toHaveTextContent("Scripted reply");
 
     fireEvent.click(button("Interrupt"));
     await waitFor(() => expect(status()).toHaveTextContent("Listening"));
@@ -300,7 +302,7 @@ describe("the labelled development mock", () => {
   test("the mock can simulate a blocked microphone", async () => {
     render(<VoiceMode adapter={createMockVoiceAdapter(fast)} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Mock: block the microphone next time", hidden: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Simulate: block the microphone next time", hidden: true }));
     fireEvent.click(button("Talk to TravelMate"));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Microphone access was blocked");
@@ -349,7 +351,7 @@ describe("the session-only adapter (a real server session, no audio, no assistan
     const note = screen.getByRole("note");
     expect(note).toHaveTextContent("Voice session mode (development build)");
     expect(note).toHaveTextContent("TravelMate cannot hear or speak");
-    expect(screen.queryByText(/MOCK/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Scripted/)).not.toBeInTheDocument();
     expect(screen.getByText(/No audio is captured, recorded or sent anywhere/)).toBeInTheDocument();
   });
 
@@ -376,7 +378,7 @@ describe("the session-only adapter (a real server session, no audio, no assistan
     expect(mine).toHaveTextContent("Goa trip");
     expect(notice).toHaveTextContent(NO_ASSISTANT_NOTICE);
     expect(notice).toHaveTextContent("notice, not an answer");
-    expect(notice).not.toHaveTextContent("MOCK reply");
+    expect(notice).not.toHaveTextContent("Scripted reply");
     expect(api.activity).toHaveBeenCalledTimes(1);
   });
 

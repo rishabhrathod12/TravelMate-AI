@@ -97,7 +97,7 @@ describe("planning a trip from the conversation", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Weather in Goa" })).toBeInTheDocument();
     expect(screen.getByText(/No forecast for:/)).toBeInTheDocument(); // the horizon is reported, not filled in
     expect(screen.getByRole("heading", { level: 2, name: "Trip planning" })).toBeInTheDocument();
-    expect(screen.getAllByText(/MOCK · demo data/).length).toBeGreaterThan(2);
+    expect(screen.getAllByText(/Sample data/).length).toBeGreaterThan(2);
 
     // 3. A choice. Nothing is sent until the reader presses the button.
     fireEvent.click(screen.getByRole("radio", { name: /FakeAir F1/ }));

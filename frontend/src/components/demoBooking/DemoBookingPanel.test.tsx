@@ -49,7 +49,7 @@ describe("what the panel says before anything happens", () => {
       "No actual transport is reserved.",
       "No real ticket is issued.",
       "No payment is collected.",
-      "Availability and prices are fictional demo data.",
+      "Availability and prices are fictional sample data.",
       "A simulated confirmation is not a real provider confirmation.",
     ]) {
       expect(screen.getByText(text)).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe("simulating", () => {
     expect(within(result).getByText("DEMO-BOOKING-001")).toBeInTheDocument();
     expect(within(result).getByText(/not a PNR, a ticket number or a provider confirmation/)).toBeInTheDocument();
     expect(within(result).getByText(/Nothing was sent to any airline, railway, bus operator or payment service/)).toBeInTheDocument();
-    expect(within(result).getByText(/MOCK · demo data/)).toBeInTheDocument();
+    expect(within(result).getByText(/Sample data/)).toBeInTheDocument();
     expect(within(result).getByText(/Sample Rail Express/)).toBeInTheDocument();
     expect(result.textContent).not.toMatch(/\b(PNR|ticket number)\s*[:#]\s*\w/i);
     // The button is gone once the simulation exists, so it cannot be pressed twice.

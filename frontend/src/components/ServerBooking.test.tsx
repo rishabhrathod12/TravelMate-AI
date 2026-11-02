@@ -122,7 +122,7 @@ describe("the approval step", () => {
     expect(await screen.findByText("Free until 24 hours before")).toBeInTheDocument();
     expect(screen.getByText(/per traveller/)).toBeInTheDocument();
     expect(screen.getByText("Convenience fee")).toBeInTheDocument();
-    expect(screen.getByText(/MOCK · demo data/)).toBeInTheDocument();
+    expect(screen.getByText(/Sample data/)).toBeInTheDocument();
     expect(screen.getByText(/Booking is switched off\. Approving records/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Book (switched off)" })).toBeDisabled();
     const sent = bodyOf(spy, "POST /api/v1/trips/t1/booking-intents") as Record<string, string>;

@@ -76,7 +76,7 @@ export function VoiceMode({
 
       {adapter?.isMock === true && (
         <p className="voice-mock-note" role="note">
-          <strong>MOCK voice (development build).</strong> No microphone is used and no sound is
+          <strong>Scripted voice (development build).</strong> No microphone is used and no sound is
           played or recorded. Replies are scripted and nothing you say or type is understood or sent
           anywhere. Real voice is not built yet.
         </p>

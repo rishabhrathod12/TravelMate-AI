@@ -41,11 +41,12 @@ describe("the application shell", () => {
     expect(document.title).toBe("Plan Trip · TravelMate AI");
   });
 
-  test("the demo notice is always visible and says nothing is booked", () => {
+  test("the sample-data notice is always visible and says nothing is booked", () => {
     render(<App />);
 
-    const notice = screen.getByRole("note", { name: "Demo data notice" });
-    expect(notice).toHaveTextContent(/demo data/i);
+    const notice = screen.getByRole("note", { name: "Sample data notice" });
+    expect(notice).toHaveTextContent(/sample data/i);
+    expect(notice).not.toHaveTextContent(/demo|prototype|mock/i);
     expect(notice).toHaveTextContent(/nothing is booked/i);
     expect(notice).toHaveTextContent(/booking and payment are disabled/i);
   });
@@ -78,15 +79,15 @@ describe("the application shell", () => {
 describe("the trip form", () => {
   test("is one menu entry away and keeps the home screen free of it", async () => {
     render(<App />);
-    expect(screen.queryByRole("button", { name: /preview with demo data/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /preview the trip/i })).not.toBeInTheDocument();
 
     openMenu();
     fireEvent.click(screen.getByRole("link", { name: "Trip Form" }));
 
     expect(await screen.findByRole("heading", { level: 1, name: "Plan your trip" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Preview with demo data" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview the trip" })).toBeInTheDocument();
     expect(document.title).toBe("Trip Form · TravelMate AI");
-    expect(screen.getByRole("note", { name: "Demo data notice" })).toBeInTheDocument();
+    expect(screen.getByRole("note", { name: "Sample data notice" })).toBeInTheDocument();
   });
 });
 
@@ -111,7 +112,7 @@ describe("navigation", () => {
 
     expect(await screen.findByRole("heading", { name: "My trips" })).toBeInTheDocument();
     expect(screen.getByText("No saved trips")).toBeInTheDocument();
-    expect(screen.getByText(/stores nothing/)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing is stored here/)).toBeInTheDocument();
     openMenu();
     expect(screen.getByRole("link", { name: "My Trips" })).toHaveAttribute("aria-current", "page");
     expect(document.title).toBe("My Trips · TravelMate AI");
@@ -125,19 +126,19 @@ describe("navigation", () => {
 
     expect(await screen.findByRole("heading", { name: "About TravelMate AI" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "What exists today" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "What is demo data" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "About the sample data" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Not built yet" })).toBeInTheDocument();
     expect(screen.getByText(/Nothing in this app can book or pay/)).toBeInTheDocument();
   });
 
-  test("the demo notice stays on every page", async () => {
+  test("the sample-data notice stays on every page", async () => {
     render(<App />);
 
     for (const name of ["My Trips", "About", "Plan Trip"]) {
       openMenu();
       fireEvent.click(screen.getByRole("link", { name }));
       await waitFor(() => expect(window.location.hash).not.toBe(""));
-      expect(screen.getByRole("note", { name: "Demo data notice" })).toBeInTheDocument();
+      expect(screen.getByRole("note", { name: "Sample data notice" })).toBeInTheDocument();
     }
   });
 

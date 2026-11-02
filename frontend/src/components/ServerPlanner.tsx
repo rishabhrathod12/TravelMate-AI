@@ -79,7 +79,7 @@ function ChoiceList<T extends TransportOption | HotelOption>({
             <span className="field-hint">
               {" "}
               Retrieved {formatUtcDateTime(option.source.retrieved_at)}
-              {option.source.provenance === "MOCK" ? " (fictional demo timestamp)" : ""}
+              {option.source.provenance === "MOCK" ? " (sample timestamp)" : ""}
             </span>
           </label>
         );
@@ -203,7 +203,7 @@ export function ServerPlanner({ request }: ServerPlannerProps) {
       <h2 id="server-planner-title">Plan with the server (development)</h2>
       <p className="field-hint">
         Sends this trip to the planning API on your own machine. Options and prices come from the
-        server and keep the label it gives them; MOCK means sample data. Nothing is booked.
+        server and keep the label it gives them; the sample label means the data is fictional. Nothing is booked.
       </p>
 
       {phase === "idle" && (

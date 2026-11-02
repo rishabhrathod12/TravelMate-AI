@@ -113,8 +113,8 @@ describe("pages", () => {
     window.location.hash = "#/form";
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: /Use example trip/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
-    await screen.findByRole("heading", { name: "Demo results" });
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
+    await screen.findByRole("heading", { name: "Results" });
     fireEvent.click(screen.getAllByRole("button", { name: /^Select/ })[0] as HTMLElement);
 
     await expectNoViolations(container, { page: true });
@@ -140,7 +140,7 @@ describe("the conversation", () => {
     fireEvent.change(screen.getByLabelText("Message TravelMate"), { target: { value: "Indore to Goa" } });
     fireEvent.keyDown(screen.getByLabelText("Message TravelMate"), { key: "Enter" });
     fireEvent.click(await screen.findByRole("button", { name: "Use these details" }));
-    await screen.findByRole("heading", { name: "Demo results" });
+    await screen.findByRole("heading", { name: "Results" });
 
     await expectNoViolations(container);
   });

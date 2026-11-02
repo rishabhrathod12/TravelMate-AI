@@ -6,7 +6,7 @@ const SOURCE_LABEL: Record<TranscriptSource, string> = {
   typed: "typed",
   simulated: "simulated, not heard",
   assistant: "assistant",
-  "mock-reply": "MOCK reply",
+  "mock-reply": "Scripted reply",
   notice: "notice, not an answer",
 };
 

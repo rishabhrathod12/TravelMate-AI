@@ -13,7 +13,7 @@ import {
 export const MOCK_REPLIES: readonly string[] = [
   "Bilkul! Aap kis date ko travel karna chahte hain?",
   "Theek hai. Kitne log travel karenge?",
-  "Mock mode mein main bas yeh scripted baatcheet dikha sakta hoon. Asli search aur kharcha baad ke milestones mein judenge.",
+  "Scripted mode mein main bas yeh scripted baatcheet dikha sakta hoon. Asli search aur kharcha baad ke milestones mein judenge.",
 ];
 
 export const SIMULATED_USER_PHRASE = "Mujhe Indore se Goa jana hai. Saste options batao.";
@@ -62,7 +62,7 @@ export function createMockVoiceAdapter(options: MockVoiceOptions = {}): VoiceAda
       const current = turn;
       turn += 1;
       if (options.failAtTurn === current) {
-        emit({ type: "error", code: "connection", message: "Mock voice failure (simulated)." });
+        emit({ type: "error", code: "connection", message: "Scripted voice failure (simulated)." });
         return;
       }
       const text = MOCK_REPLIES[Math.min(current, MOCK_REPLIES.length - 1)] ?? "";
@@ -73,7 +73,7 @@ export function createMockVoiceAdapter(options: MockVoiceOptions = {}): VoiceAda
   }
 
   return {
-    name: "Mock voice",
+    name: "Scripted voice",
     isMock: true,
     playsAudio: false,
     // The mock pretends to listen so the screens can be reviewed; its note says it does not.

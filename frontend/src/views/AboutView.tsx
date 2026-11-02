@@ -24,10 +24,10 @@ export function AboutView() {
       </div>
 
       <div className="card">
-        <h2>What is demo data</h2>
+        <h2>About the sample data</h2>
         <p>
           Every option, price, availability label, cost line and itinerary shown after “Preview with
-          demo data” is a hand-written sample marked MOCK. None of it is real, and none of it comes
+          sample data” is a hand-written sample. None of it is real, and none of it comes
           from an AI model.
         </p>
       </div>

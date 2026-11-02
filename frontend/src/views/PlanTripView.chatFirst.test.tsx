@@ -66,7 +66,7 @@ describe("chat first", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Where to next?" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Describe your trip in a message" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Use example trip/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Preview with demo data" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Preview the trip" })).not.toBeInTheDocument();
   });
 
   test("chat and voice are both on the screen at once, without opening the comparison", () => {
@@ -165,7 +165,7 @@ describe("chat first", () => {
     await ask("from Indore to Goa on 12 December, one way, 1 person");
     fireEvent.click(screen.getByRole("button", { name: "Use these details" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Demo results" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Results" })).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Hide the transport and hotel comparison" })).toBeInTheDocument();
   });
 

@@ -32,7 +32,7 @@ describe("the weather card", () => {
     render(<WeatherCard weather={weather()} />);
 
     expect(screen.getByRole("heading", { level: 3, name: "Weather in Goa" })).toBeInTheDocument();
-    expect(screen.getByText(/MOCK · demo data/)).toBeInTheDocument();
+    expect(screen.getByText(/Sample data/)).toBeInTheDocument();
     expect(screen.getByText(/Sunny · 24–31 °C · 5% chance of rain/)).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
   });

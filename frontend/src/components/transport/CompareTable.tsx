@@ -120,7 +120,7 @@ export function CompareTable({ options, quotes, onClear }: CompareTableProps) {
     <div className="compare-block">
       <div className="compare-scroll">
         <table className="compare-table">
-          <caption>Comparison of {options.length} selected options (MOCK demo data)</caption>
+          <caption>Comparison of {options.length} selected options (sample data)</caption>
           <thead>
             <tr>
               <th scope="col">
@@ -148,7 +148,7 @@ export function CompareTable({ options, quotes, onClear }: CompareTableProps) {
       </div>
       <p className="field-hint">
         Quoted prices are as quoted: per traveller, except a private taxi, which is per vehicle. The
-        sample fees exist only in this prototype. A quoted price plus fees is not the trip estimate:
+        sample fees exist only in this sample. A quoted price plus fees is not the trip estimate:
         select one option to see the cost estimate, which multiplies by the travellers (or, for a
         taxi, by the vehicles the party needs) and lists what it leaves out.
       </p>

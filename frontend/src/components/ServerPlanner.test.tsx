@@ -129,7 +129,7 @@ describe("the whole flow against a stubbed server", () => {
 
     expect(await screen.findByText("Choose from what the server found")).toBeInTheDocument();
     expect(screen.getByText(/FLIGHT FakeAir/)).toBeInTheDocument();
-    expect(screen.getAllByText(/MOCK · demo data/).length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText(/Sample data/).length).toBeGreaterThanOrEqual(3);
 
     const use = screen.getByRole("button", { name: "Use these choices" });
     expect(use).toBeDisabled();

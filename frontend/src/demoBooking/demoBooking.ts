@@ -18,7 +18,7 @@ export const DEMO_DISCLAIMERS: readonly string[] = [
   "No actual transport is reserved.",
   "No real ticket is issued.",
   "No payment is collected.",
-  "Availability and prices are fictional demo data.",
+  "Availability and prices are fictional sample data.",
   "A simulated confirmation is not a real provider confirmation.",
 ];
 

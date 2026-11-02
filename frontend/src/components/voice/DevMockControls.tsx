@@ -8,9 +8,9 @@ import type { DevMockControls as Controls } from "../../voice/VoiceAdapter";
 export function DevMockControls({ controls }: { controls: Controls }) {
   return (
     <details className="dev-mock-controls">
-      <summary>Developer mock controls (development build only)</summary>
+      <summary>Developer controls (development build only)</summary>
       <p className="field-hint">
-        These act on the MOCK voice. They do not represent anything a real user can do.
+        These act on the scripted voice. They do not represent anything a real user can do.
       </p>
       <div className="button-row">
         <button
@@ -18,21 +18,21 @@ export function DevMockControls({ controls }: { controls: Controls }) {
           className="button button-quiet button-small"
           onClick={controls.simulateUserPhrase}
         >
-          Mock: user says a phrase
+          Simulate: user says a phrase
         </button>
         <button
           type="button"
           className="button button-quiet button-small"
           onClick={controls.denyMicrophoneNextTime}
         >
-          Mock: block the microphone next time
+          Simulate: block the microphone next time
         </button>
         <button
           type="button"
           className="button button-quiet button-small"
           onClick={controls.simulateError}
         >
-          Mock: drop the connection
+          Simulate: drop the connection
         </button>
       </div>
     </details>

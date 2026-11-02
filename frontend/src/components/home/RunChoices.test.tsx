@@ -44,7 +44,7 @@ describe("choosing options in the conversation", () => {
     expect(outbound.getAllByText("per traveller").length).toBeGreaterThan(0);
     expect(screen.getByRole("group", { name: "Return" })).toBeInTheDocument();
     expect(within(screen.getByRole("group", { name: "Hotel" })).getByText("per room per night")).toBeInTheDocument();
-    expect(screen.getAllByText(/MOCK · demo data/).length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByText(/Sample data/).length).toBeGreaterThanOrEqual(4);
   });
 
   test("the button stays off until every leg the trip has is chosen, then sends exactly those ids", () => {

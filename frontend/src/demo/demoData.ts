@@ -33,7 +33,7 @@ import { seatsOf, vehiclesNeeded } from "../lib/transport";
 import transportFixtures from "./transportFixtures.json";
 
 export const DEMO_NOTICE =
-  "Demo data: sample values written by hand. They are not real prices, availability, schedules or weather, and nothing is booked.";
+  "Sample data: values written by hand. They are not real prices, availability, schedules or weather, and nothing is booked.";
 
 /** Prototype-only: keeps the sample itinerary short for very long trips. */
 export const PROTOTYPE_MAX_ITINERARY_DAYS = 14;
@@ -47,7 +47,7 @@ function inr(amountMinor: number): Money {
 /** A fixed, fictional timestamp. It is not a real retrieval time. */
 const DEMO_SOURCE: SourceMetadata = {
   provenance: "MOCK",
-  provider_name: "frontend-demo-fixture",
+  provider_name: "frontend-sample-fixture",
   retrieved_at: "2026-11-01T09:00:00Z",
   freshness_window_seconds: 900,
 };
@@ -177,7 +177,7 @@ export function buildDemoOptions(request: TripRequest): DemoOptions {
     id: "demo-hotel-1",
     source: DEMO_SOURCE,
     availability: "AVAILABLE",
-    cancellation_terms: "Demo text: cancellation terms would come from the provider.",
+    cancellation_terms: "Sample text: cancellation terms would come from the provider.",
     name: "Sample Beach Resort",
     location: request.destination,
     nightly_rate: inr(600_000),
@@ -386,7 +386,7 @@ export function buildDemoItinerary(
       }
       items.push({
         title: "Return journey",
-        description: "Return-leg options are not modelled in this prototype.",
+        description: "Return-leg options are not modelled here.",
         option_id: null,
       });
     }

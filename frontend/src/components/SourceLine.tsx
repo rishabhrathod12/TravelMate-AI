@@ -11,7 +11,7 @@ export function SourceLine({ source }: { source: SourceMetadata }) {
       <ProvenanceBadge provenance={source.provenance} />{" "}
       <span>
         Source: {source.provider_name} · retrieved {formatUtcDateTime(source.retrieved_at)}
-        {isMock ? " (fictional demo timestamp)" : ""} · fresh for {minutes} min
+        {isMock ? " (sample timestamp)" : ""} · fresh for {minutes} min
       </span>
     </p>
   );

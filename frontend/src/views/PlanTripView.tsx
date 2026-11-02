@@ -116,7 +116,7 @@ export function PlanTripView({
           <p>
             {chatFirst
               ? "Tell TravelMate what you have in mind, for example “plan my 5 days itinerary for Goa this weekend”. Nothing is booked, and no language model is connected yet."
-              : "Describe a trip and preview how options, costs and a day-by-day plan will look. The results below are demo data until real providers are connected."}
+              : "Describe a trip and preview how options, costs and a day-by-day plan will look. The results below are sample data until real providers are connected."}
           </p>
         </div>
         <HeroArt />
@@ -170,12 +170,12 @@ export function PlanTripView({
 
           {request === null || demo === null ? (
             <StatusMessage kind="empty" title="No preview yet">
-              Fill in the trip details, or use the example trip, then choose “Preview with demo data”.
+              Fill in the trip details, or use the example trip, then choose “Preview the trip”.
             </StatusMessage>
           ) : (
             <div className="results">
               <h2 tabIndex={-1} ref={resultsHeading}>
-                Demo results
+                Results
               </h2>
               <p className="results-summary">
                 {request.origin.name} to {request.destination.name} · {tripLabel(request)} · departs{" "}
@@ -198,9 +198,9 @@ export function PlanTripView({
               )}
 
               <section aria-labelledby="transport-title">
-                <h2 id="transport-title">Transport options (demo)</h2>
+                <h2 id="transport-title">Transport options</h2>
                 {request.trip_type === "ROUND_TRIP" && (
-                  <p className="field-hint">Outbound options only. Return-leg options are not modelled in this prototype.</p>
+                  <p className="field-hint">Outbound options only. Return-leg options are not modelled here.</p>
                 )}
                 <TransportBrowser
                   options={demo.transport}
@@ -211,7 +211,7 @@ export function PlanTripView({
               </section>
 
               <section aria-labelledby="hotel-title">
-                <h2 id="hotel-title">Hotel options (demo)</h2>
+                <h2 id="hotel-title">Hotel options</h2>
                 {stayNights(request) < 1 ? (
                   <StatusMessage kind="info" title="No hotel stay for this trip">
                     A one-way or same-day trip has no hotel stay, so no hotels are shown and none is
@@ -233,7 +233,7 @@ export function PlanTripView({
               </section>
 
               <section aria-labelledby="cost-title">
-                <h2 id="cost-title">Cost estimate (demo)</h2>
+                <h2 id="cost-title">Cost estimate</h2>
                 {transport === null && hotel === null && (
                   <StatusMessage kind="info" title="Nothing selected yet">
                     Select a transport option and a hotel to add them to the estimate.
@@ -278,7 +278,7 @@ export function PlanTripView({
               </section>
 
               <section aria-labelledby="demo-booking-title">
-                <h2 id="demo-booking-title">Demo booking (simulation)</h2>
+                <h2 id="demo-booking-title">Booking simulation</h2>
                 <p className="field-hint">
                   Separate from the approval preview above. A simulated booking is not a real booking
                   and cannot become one.

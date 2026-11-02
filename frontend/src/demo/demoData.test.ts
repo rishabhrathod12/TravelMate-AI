@@ -49,7 +49,7 @@ describe("the demo options are honestly labelled", () => {
   });
 
   test("the source says it is a fixture, not a provider", () => {
-    expect(everyOption[0]?.source.provider_name).toBe("frontend-demo-fixture");
+    expect(everyOption[0]?.source.provider_name).toBe("frontend-sample-fixture");
   });
 
   test("option ids are unique", () => {

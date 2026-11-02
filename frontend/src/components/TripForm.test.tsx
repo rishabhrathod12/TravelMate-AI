@@ -62,7 +62,7 @@ describe("TripForm validation", () => {
   test("an empty submit shows errors, does not submit and focuses the first problem", () => {
     const onSubmit = setup();
 
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent(/fix 4 fields/i);
@@ -78,7 +78,7 @@ describe("TripForm validation", () => {
     fill("Departure date", "2026-12-05");
     fill("Return date", "2026-12-01");
 
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(
@@ -88,11 +88,11 @@ describe("TripForm validation", () => {
 
   test("errors clear once the form is valid", () => {
     const onSubmit = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
     expect(screen.getByRole("alert")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Use example trip/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(onSubmit).toHaveBeenCalledTimes(1);
@@ -104,7 +104,7 @@ describe("TripForm submission", () => {
     const onSubmit = setup();
 
     fireEvent.click(screen.getByRole("button", { name: /Use example trip/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
 
     const request = submitted(onSubmit);
     expect(request.trip_type).toBe("ROUND_TRIP");
@@ -121,7 +121,7 @@ describe("TripForm submission", () => {
     fill("To", "Goa");
     fill("Departure date", "2026-12-01");
 
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
 
     const request = submitted(onSubmit);
     expect(request.trip_type).toBe("ONE_WAY");
@@ -135,7 +135,7 @@ describe("TripForm submission", () => {
     fill("To", "Goa");
     fill("Departure date", "2026-12-01");
 
-    fireEvent.click(screen.getByRole("button", { name: "Preview with demo data" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview the trip" }));
 
     const request = submitted(onSubmit);
     expect(request.trip_type).toBe("ROUND_TRIP");

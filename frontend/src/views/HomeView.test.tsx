@@ -42,7 +42,7 @@ describe("the home screen", () => {
   test("a mock voice adapter is labelled as a mock on the button", () => {
     render(<HomeView adapter={createMockVoiceAdapter()} chatAvailable />);
 
-    expect(screen.getByRole("note")).toHaveTextContent(/MOCK voice/);
+    expect(screen.getByRole("note")).toHaveTextContent(/Scripted voice/);
   });
 
   test("Enter sends, Shift+Enter does not, and the conversation appears only then", async () => {
@@ -116,7 +116,7 @@ describe("the home screen", () => {
 
     // The shared voice panel appears, still labelled as a mock.
     expect(await screen.findByRole("heading", { name: "Talk to TravelMate" })).toBeInTheDocument();
-    expect(screen.getByText(/MOCK voice \(development build\)\./)).toBeInTheDocument();
+    expect(screen.getByText(/Scripted voice \(development build\)\./)).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: "End session" })).toBeInTheDocument());
     // Only one message box: the voice panel's own typed input is hidden.
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
@@ -145,11 +145,11 @@ describe("the home screen", () => {
     type("Indore to Goa on 12 December, one way, 1 person");
     fireEvent.keyDown(screen.getByLabelText("Message TravelMate"), { key: "Enter" });
     await screen.findByText("Here is what I have.");
-    expect(screen.queryByRole("heading", { name: "Demo results" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Results" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Use these details" }));
 
-    expect(await screen.findByRole("heading", { name: "Demo results" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Results" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^(book|pay)/i })).not.toBeInTheDocument();
   });
 });
