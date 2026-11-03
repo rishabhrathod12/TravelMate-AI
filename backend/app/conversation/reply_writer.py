@@ -41,12 +41,12 @@ DEFAULT_REPLY_TIMEOUT_SECONDS = 20.0
 # trip details themselves never depend on this window: they live in the draft.
 DEFAULT_HISTORY_MAX_TURNS = 24
 DEFAULT_HISTORY_MAX_CHARS = 8000
-MAX_REPLY_CHARS = 900
+MAX_REPLY_CHARS = 2400
 MAX_HISTORY_ITEM_CHARS = 800
 
 REPLY_SYSTEM_PROMPT = (
     "You are TravelMate, a friendly travel buddy in a chat. You write ONE reply to the traveller: "
-    "usually one or two short sentences, three at most.\n"
+    "usually one or two short sentences, three at most (a few more when you summarise facts).\n"
     + LANGUAGE_POLICY
     + "\n"
     + TONE_POLICY

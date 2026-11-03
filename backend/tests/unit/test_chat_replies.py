@@ -29,6 +29,7 @@ from app.conversation.manager import ConversationManager, TurnStatus
 from app.conversation.reply_writer import (
     DEFAULT_HISTORY_MAX_CHARS,
     DEFAULT_HISTORY_MAX_TURNS,
+    MAX_REPLY_CHARS,
     HistoryTurn,
     ReplyWriter,
     check_reply,
@@ -172,7 +173,7 @@ class TestCheckReply:
     def test_a_claim_or_offer_to_book_or_pay_is_refused(self, text: str) -> None:
         assert not check_reply(text, allowed=[], must_keep="")
 
-    @pytest.mark.parametrize("text", ["", "{}", "```json```", "x" * 1000])
+    @pytest.mark.parametrize("text", ["", "{}", "```json```", "x" * (MAX_REPLY_CHARS + 1)])
     def test_odd_text_is_refused(self, text: str) -> None:
         assert not check_reply(text, allowed=[], must_keep="")
 
