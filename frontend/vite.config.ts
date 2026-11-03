@@ -1,6 +1,13 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
+// Development only. The backend is expected on port 8000; set BACKEND_PORT to use another port
+// (for example when 8000 is taken), then start the backend with the same port.
+// (`process` is read through globalThis because no Node type package is installed.)
+const nodeEnv = (globalThis as { process?: { env: Record<string, string | undefined> } }).process
+  ?.env;
+const backend = `http://127.0.0.1:${nodeEnv?.BACKEND_PORT ?? "8000"}`;
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -8,8 +15,8 @@ export default defineConfig({
     // CORS. Run the backend on port 8000 (see README). `/api` carries the voice-session
     // endpoints, which exist only when the backend is started with VOICE_ENABLED=true.
     proxy: {
-      "/health": "http://127.0.0.1:8000",
-      "/api": "http://127.0.0.1:8000",
+      "/health": backend,
+      "/api": backend,
     },
   },
   test: {
