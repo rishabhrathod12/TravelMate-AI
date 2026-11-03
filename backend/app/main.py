@@ -18,7 +18,7 @@ from fastapi import FastAPI
 
 from app import __version__
 from app.api.booking import router as booking_router
-from app.api.chat import PlanService
+from app.api.chat import LIVE_NOTICE, ModelInfo, PlanService
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
 from app.api.planning import router as planning_router
@@ -220,8 +220,17 @@ def create_app(
         app.state.conversation_max_chars = int(
             resolved_settings.conversation_max_message_chars or 0
         )
+        # Who reads the messages: the real model when live calls are switched on (it shares the
+        # hourly cap with the plan writer and the workflow), otherwise the offline stand-in.
+        # Either way the quote checks in `app.conversation.claims` decide what is believed.
+        reader: LLMClient = (
+            live if live is not None else DevStandInClient(today=lambda: datetime.now(UTC).date())
+        )
+        app.state.conversation_model = (
+            ModelInfo(kind="OPENAI", notice=LIVE_NOTICE) if live is not None else ModelInfo()
+        )
         app.state.conversation = ConversationManager(
-            DevStandInClient(today=lambda: datetime.now(UTC).date()),
+            reader,
             LLMLimits(
                 max_output_tokens=int(resolved_settings.conversation_llm_max_output_tokens or 0),
                 timeout_seconds=float(resolved_settings.conversation_llm_timeout_seconds or 0),

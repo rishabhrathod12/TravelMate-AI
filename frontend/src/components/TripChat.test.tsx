@@ -34,10 +34,33 @@ const typeAndSend = (message: string) => {
 };
 
 describe("TripChat", () => {
-  test("says before any message that it is a stand-in, not a model", () => {
+  test("before any reply it claims nothing about who reads the message", () => {
     render(<TripChat onUseRequest={vi.fn()} />);
 
-    expect(screen.getByText(/not a language model/i)).toBeInTheDocument();
+    expect(screen.getByText(/reads the details you state/i)).toBeInTheDocument();
+    expect(screen.queryByText(/not a language model/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no model is connected/i)).not.toBeInTheDocument();
+  });
+
+  test("after a reply it shows the server's own wording about who read it: the stand-in", async () => {
+    render(<TripChat onUseRequest={vi.fn()} send={vi.fn().mockResolvedValue(turn())} />);
+
+    typeAndSend("Indore to Goa");
+
+    expect(await screen.findByText(/Development stand-in: not a language model/)).toBeInTheDocument();
+  });
+
+  test("and when an OpenAI model read it, it says so and does not call it a stand-in", async () => {
+    const live = turn({
+      modelKind: "OPENAI",
+      modelNotice: "An OpenAI language model reads your messages. Your text is sent to OpenAI.",
+    });
+    render(<TripChat onUseRequest={vi.fn()} send={vi.fn().mockResolvedValue(live)} />);
+
+    typeAndSend("Indore to Goa");
+
+    expect(await screen.findByText(/Your text is sent to OpenAI/)).toBeInTheDocument();
+    expect(screen.queryByText(/Development stand-in/)).not.toBeInTheDocument();
   });
 
   test("shows what was typed and the reply, and sends the draft back on the next turn", async () => {

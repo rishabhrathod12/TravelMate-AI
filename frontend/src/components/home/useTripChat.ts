@@ -14,8 +14,9 @@ export interface ChatMessage {
   local?: boolean;
 }
 
-const INTRO_NOTICE =
-  "Development stand-in: it reads a few simple patterns in English. It is not a language model, and no model is connected.";
+// Neutral on purpose: which reader answers (the offline stand-in or an OpenAI model) is decided by
+// the server and shown from its first reply on, so this must not claim either.
+const INTRO_NOTICE = "TravelMate reads the details you state and asks for any that are missing.";
 
 function failureText(error: unknown): string {
   if (error instanceof ChatApiError) {

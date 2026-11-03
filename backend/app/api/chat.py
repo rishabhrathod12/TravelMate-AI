@@ -40,6 +40,10 @@ STAND_IN_NOTICE = (
     "Development stand-in: this reads a few simple patterns in English. It is not a language "
     "model, and no model is connected."
 )
+LIVE_NOTICE = (
+    "An OpenAI language model reads your messages (development build). Your text is sent to "
+    "OpenAI. It only reads details you state, and every detail is checked against your own words."
+)
 # The owner's answer to PRD Q14: at most 9 travellers per request.
 PROTOTYPE_MAX_TRAVELLERS = MAX_TRAVELLERS
 
@@ -76,6 +80,12 @@ class TurnResponse(BaseModel):
     model: ModelInfo = Field(default_factory=ModelInfo)
 
 
+def get_model_info(request: Request) -> ModelInfo:
+    """Who reads the messages in this process: the stand-in, or the real model if switched on."""
+    info: ModelInfo = request.app.state.conversation_model
+    return info
+
+
 def get_manager(request: Request) -> ConversationManager:
     manager: ConversationManager = request.app.state.conversation
     return manager
@@ -87,6 +97,7 @@ def get_max_chars(request: Request) -> int:
 
 
 Manager = Annotated[ConversationManager, Depends(get_manager)]
+Reader = Annotated[ModelInfo, Depends(get_model_info)]
 MaxChars = Annotated[int, Depends(get_max_chars)]
 
 
@@ -110,7 +121,7 @@ def _draft_is_too_big(draft: TripDraft, max_chars: int) -> bool:
 
 @router.post("/turns", response_model=TurnResponse)
 def take_turn(
-    body: TurnRequest, manager: Manager, max_chars: MaxChars
+    body: TurnRequest, manager: Manager, max_chars: MaxChars, reader: Reader
 ) -> TurnResponse | JSONResponse:
     draft = body.draft if body.draft is not None else TripDraft()
     if _draft_is_too_big(draft, max_chars):
@@ -128,6 +139,7 @@ def take_turn(
                 "How many people are travelling?"
             ),
             draft=draft,
+            model=reader,
         )
     return TurnResponse(
         status=result.status,
@@ -139,6 +151,7 @@ def take_turn(
         rejections=[
             RejectionOut(field=r.field.value, reason=r.reason.value) for r in result.rejections
         ],
+        model=reader,
     )
 
 
