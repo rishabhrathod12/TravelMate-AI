@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 from app.config import Settings
 from app.llm.budget import HourlyCallLimit
+from app.llm.language_policy import LANGUAGE_POLICY, TONE_POLICY
 from app.llm.openai_transport import SdkRealtimeSecretMinter
 from app.llm.realtime import (
     INSTRUCTIONS,
@@ -27,6 +28,7 @@ from app.llm.realtime import (
     RealtimeSecretError,
     RealtimeVoiceService,
     session_settings,
+    transcription_settings,
 )
 from app.observability.redaction import MASK, Redactor
 
@@ -124,13 +126,36 @@ class TestTheSessionIsFixedOnTheServer:
         assert audio["output"] == {"voice": "v1"}
         assert session["output_modalities"] == ["audio"]
 
-    def test_the_transcript_hint_names_the_languages_and_forces_none(self) -> None:
+    def test_an_unknown_transcription_model_gets_no_extra_field(self) -> None:
         audio: Any = session_settings(config())["audio"]
-        transcription = audio["input"]["transcription"]
+
+        assert audio["input"]["transcription"] == {"model": "test-transcribe-model"}
+
+    @pytest.mark.parametrize("model", ["gpt-live-transcribe", "gpt-transcribe"])
+    def test_the_live_transcribe_models_get_a_language_list_and_no_prompt(self, model: str) -> None:
+        transcription = transcription_settings(model)
+
+        assert transcription == {"model": model, "languages": ["en", "hi"]}
+        assert "language" not in transcription  # one fixed language would break Hinglish
+
+    @pytest.mark.parametrize("model", ["gpt-4o-transcribe", "gpt-4o-mini-transcribe"])
+    def test_the_gpt_4o_models_get_the_text_hint(self, model: str) -> None:
+        transcription = transcription_settings(model)
 
         assert transcription["prompt"] == TRANSCRIPTION_HINT
+        assert "languages" not in transcription
         assert "Hinglish" in TRANSCRIPTION_HINT and "Roman letters" in TRANSCRIPTION_HINT
-        assert "language" not in transcription  # a fixed language would break Hinglish and switches
+
+    @pytest.mark.parametrize(
+        "model", ["whisper-1", "gpt-realtime-whisper", "gpt-4o-transcribe-diarize"]
+    )
+    def test_models_that_take_neither_field_get_neither(self, model: str) -> None:
+        assert transcription_settings(model) == {"model": model}
+
+    def test_voice_and_chat_share_one_language_policy(self) -> None:
+        assert LANGUAGE_POLICY in INSTRUCTIONS
+        assert TONE_POLICY in INSTRUCTIONS
+        assert "spoken Hindi" in INSTRUCTIONS
 
     def test_the_instructions_forbid_booking_and_claiming_it(self) -> None:
         lowered = INSTRUCTIONS.lower()

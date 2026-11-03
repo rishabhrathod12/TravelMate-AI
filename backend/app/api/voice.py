@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from app.api.problems import problem_responses
 from app.config import Settings
 from app.llm.realtime import RealtimeLimitReached, RealtimeSecretError, RealtimeVoiceService
+from app.observability.logs import get_logger
 from app.voice.errors import SessionExpired, SessionNotFound, VoiceError, VoiceLimitExceeded
 from app.voice.sessions import VoiceSession, VoiceSessionService
 
@@ -178,8 +179,13 @@ def start_realtime(
             "Live voice limit reached",
             "The hour's allowance for new live voice sessions is used up. Try again later.",
         )
-    except RealtimeSecretError:
-        # The reason is not repeated: the provider's message can carry the response body.
+    except RealtimeSecretError as error:
+        # The reason is not repeated to the caller: the provider's message can carry the
+        # response body. The server's own log gets only the kind and the HTTP status, so
+        # the owner can tell a rejected setting from a bad key or a network problem.
+        get_logger("voice").warning(
+            "live voice secret could not be minted: kind=%s status=%s", error.kind, error.status
+        )
         return _problem(
             502, "Live voice unavailable", "The voice service could not start a session."
         )
