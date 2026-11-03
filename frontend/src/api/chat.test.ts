@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { ChatApiError, requestPlan, sendChatTurn } from "./chat";
+import {
+  ChatApiError,
+  MAX_HISTORY_ITEMS,
+  MAX_HISTORY_TEXT_CHARS,
+  boundedHistory,
+  requestPlan,
+  sendChatTurn,
+} from "./chat";
 
 const REQUEST = {
   trip_type: "ONE_WAY",
@@ -44,10 +51,24 @@ describe("sendChatTurn", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       message: "Indore to Goa",
       draft: { origin: "Indore" },
+      history: [],
     });
     expect(turn.status).toBe("READY_FOR_REVIEW");
     expect(turn.tripRequest?.destination.name).toBe("Goa");
     expect(turn.modelKind).toBe("DEV_STAND_IN");
+  });
+
+  test("sends the recent conversation so the server can reply in context", async () => {
+    const fetchMock = answer({ ...GOOD, status: "NEEDS_INFO", trip_request: null });
+    const history = [
+      { role: "you", text: "Hi" },
+      { role: "assistant", text: "Hi! Where from?" },
+    ] as const;
+
+    await sendChatTurn("Indore", null, undefined, history);
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect((JSON.parse(init.body as string) as { history: unknown }).history).toEqual(history);
   });
 
   test("sends a null draft on the first turn", async () => {
@@ -193,5 +214,30 @@ describe("requestPlan", () => {
     const error = await requestPlan(ITINERARY).catch((caught: unknown) => caught);
 
     expect((error as ChatApiError).status).toBeNull();
+  });
+});
+
+describe("boundedHistory", () => {
+  test("keeps only the newest lines the server accepts, in order", () => {
+    const lines = Array.from({ length: MAX_HISTORY_ITEMS + 5 }, (_, index) => ({
+      role: "you" as const,
+      text: `line ${index}`,
+    }));
+
+    const kept = boundedHistory(lines);
+
+    expect(kept).toHaveLength(MAX_HISTORY_ITEMS);
+    expect(kept[0]?.text).toBe("line 5");
+    expect(kept.at(-1)?.text).toBe(`line ${MAX_HISTORY_ITEMS + 4}`);
+  });
+
+  test("cuts an over-long line and drops empty ones", () => {
+    const kept = boundedHistory([
+      { role: "you", text: "x".repeat(MAX_HISTORY_TEXT_CHARS + 50) },
+      { role: "assistant", text: "   " },
+    ]);
+
+    expect(kept).toHaveLength(1);
+    expect(kept[0]?.text).toHaveLength(MAX_HISTORY_TEXT_CHARS);
   });
 });

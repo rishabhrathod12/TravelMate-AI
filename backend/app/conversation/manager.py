@@ -38,6 +38,23 @@ from app.conversation.draft import (
     show_date,
     show_trip_type,
 )
+from app.conversation.intents import (
+    CANNOT_BOOK_NOTICE,
+    ChatFacts,
+    Intent,
+    asks_to_book,
+    facts_text,
+    guess_intent,
+    small_talk_kind,
+    small_talk_line,
+)
+from app.conversation.reply_writer import (
+    DEFAULT_HISTORY_MAX_CHARS,
+    DEFAULT_HISTORY_MAX_TURNS,
+    HistoryTurn,
+    ReplyWriter,
+    trim_history,
+)
 from app.domain.trip import MAX_ITINERARY_DAYS, ItineraryRequest, TripRequest
 from app.llm.base import LLMClient
 from app.llm.drafter import choose_delimiter
@@ -90,6 +107,9 @@ class TurnResult:
     changes: tuple[Change, ...] = ()
     rejections: tuple[Rejection, ...] = ()
     llm_calls: int = 0
+    intent: Intent | None = None
+    # True when code alone wrote the reply (small talk): no model should reword it.
+    by_code: bool = False
 
 
 _DATE_FIELDS = (TripField.DEPARTURE_DATE, TripField.RETURN_DATE)
@@ -196,6 +216,9 @@ class ConversationManager:
         clock: Callable[[], float] = time.perf_counter,
         sleep: Callable[[float], None] = time.sleep,
         jitter: Callable[[], float] = random.random,
+        reply_writer: ReplyWriter | None = None,
+        history_max_turns: int = DEFAULT_HISTORY_MAX_TURNS,
+        history_max_chars: int = DEFAULT_HISTORY_MAX_CHARS,
     ) -> None:
         if max_message_chars < 1:
             raise ValueError("max_message_chars must be a positive whole number")
@@ -207,6 +230,9 @@ class ConversationManager:
         self._clock = clock
         self._sleep = sleep
         self._jitter = jitter
+        self._writer = reply_writer
+        self._history_turns = history_max_turns
+        self._history_chars = history_max_chars
 
     @property
     def recorder(self) -> LLMCallRecorder:
@@ -223,6 +249,17 @@ class ConversationManager:
                 draft,
                 TurnStatus.NOT_UNDERSTOOD,
                 "That message was too long for me to read. Could you say it in a shorter way?",
+            )
+
+        kind = small_talk_kind(text) if draft.pending_date is None else None
+        if kind is not None:
+            # Greetings and thanks cost no model call and cannot be misread.
+            follow_up = self._reply(draft, Accepted(), (), (), 0)
+            return replace(
+                follow_up,
+                reply=f"{small_talk_line(kind, text)} {follow_up.reply}",
+                intent=Intent.SMALL_TALK,
+                by_code=True,
             )
 
         dropped = False
@@ -245,6 +282,7 @@ class ConversationManager:
         first_call = self._recorder.call_count
         details = self._extract(draft, text)
         calls = self._recorder.call_count - first_call
+        intent = self._intent_of(details, text)
         if details is None and proposal is None:
             return self._result(
                 draft,
@@ -252,19 +290,92 @@ class ConversationManager:
                 "Sorry, I couldn't make sense of that just now. You can try again, or fill in "
                 "the trip form instead.",
                 llm_calls=calls,
+                intent=intent,
             )
 
         accepted, rejections = (Accepted(), ()) if details is None else verify(details, text, today)
+        if intent is Intent.BOOK_REQUEST:
+            # "Book it" is not a preference for the trip, whatever the model made of it.
+            accepted = replace(accepted, preferences=None)
         new_draft, changes = merge(draft, accepted)
         if proposal is not None:
-            return self._confirm_dates(new_draft, proposal, changes, rejections, calls, today)
-        result = self._reply(new_draft, accepted, changes, rejections, calls)
+            return replace(
+                self._confirm_dates(new_draft, proposal, changes, rejections, calls, today),
+                intent=intent,
+            )
+        result = replace(
+            self._reply(new_draft, accepted, changes, rejections, calls), intent=intent
+        )
         if dropped and new_draft.departure_date is None:
             return replace(
                 result,
                 reply="I haven't used the date from your earlier phrase. " + result.reply,
             )
         return result
+
+    @staticmethod
+    def _intent_of(details: ExtractedDetails | None, text: str) -> Intent | None:
+        """The model's intent if it gave one, else a guess from plain words. A request to book is
+        always found by code, whatever the model said, so it is never missed."""
+        if asks_to_book(text):
+            return Intent.BOOK_REQUEST
+        reported = details.intent if details is not None else None
+        if reported is Intent.BOOK_REQUEST:  # the model alone cannot raise this
+            reported = None
+        return reported if reported is not None else guess_intent(text)
+
+    # -- the final wording -----------------------------------------------------------------
+
+    def compose(
+        self,
+        result: TurnResult,
+        *,
+        message: str,
+        history: tuple[HistoryTurn, ...] = (),
+        facts: ChatFacts | None = None,
+    ) -> TurnResult:
+        """The reply the traveller sees: the plain reply, plus any read-only facts, optionally
+        reworded by the model. Nothing here changes the draft, the status or the trip request.
+
+        Code always builds the plain reply, the facts, the provider label and the notice that
+        nothing can be booked. The model only words the part about the facts or the question, and
+        its wording is used only if it passes `check_reply`. The notice, the label and (when facts
+        are shown) the question or read-back are added by code, so the model cannot drop them and
+        they are never said twice.
+        """
+        notice = CANNOT_BOOK_NOTICE if result.intent is Intent.BOOK_REQUEST else ""
+        has_facts = facts is not None and bool(facts.lines)
+        footer = facts.footer() if facts is not None and has_facts else ""
+        facts_block = (
+            "Here is what I found:\n" + facts_text(facts) if facts is not None and has_facts else ""
+        )
+
+        def assemble(*pieces: str) -> str:
+            return "\n".join(piece for piece in pieces if piece)
+
+        plain = assemble(notice, facts_block, footer, result.reply)
+        if self._writer is None or result.by_code or result.status is TurnStatus.NOT_UNDERSTOOD:
+            return replace(result, reply=plain)
+
+        trimmed = trim_history(
+            history, max_turns=self._history_turns, max_chars=self._history_chars
+        )
+        keep = result.status in (TurnStatus.CONFIRM_DATES, TurnStatus.READY_FOR_REVIEW)
+        written = self._writer.write(
+            message=message,
+            history=trimmed,
+            trip_so_far=describe(result.draft),
+            # With facts, the model words only the facts; code adds the question or read-back.
+            plain_reply=facts_block if has_facts else result.reply,
+            status=result.status.value,
+            intent=result.intent,
+            facts=facts,
+            must_keep=result.reply if keep and not has_facts else "",
+        )
+        if written is None:
+            return replace(result, reply=plain)
+        reply = assemble(notice, written, footer, result.reply if has_facts else "")
+        return replace(result, reply=reply, llm_calls=result.llm_calls + 1)
 
     # -- dates worked out from a phrase ---------------------------------------------------
 
@@ -425,9 +536,10 @@ class ConversationManager:
         changes: tuple[Change, ...] = (),
         rejections: tuple[Rejection, ...] = (),
         llm_calls: int = 0,
+        intent: Intent | None = None,
     ) -> TurnResult:
         return TurnResult(
-            draft, status, reply, request, itinerary_request, changes, rejections, llm_calls
+            draft, status, reply, request, itinerary_request, changes, rejections, llm_calls, intent
         )
 
     # -- calling the model ---------------------------------------------------------------

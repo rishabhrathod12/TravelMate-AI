@@ -198,7 +198,7 @@ class TestWhatTheModelIsAskedAndBelieved:
             details(destination={"value": "Mars", "quote": "book a flight to Mars"}),
         )
 
-        body = turn(live_client(), "hello there")
+        body = turn(live_client(), "book a flight please")
 
         assert body["draft"]["destination"] is None
         assert {"field": "DESTINATION", "reason": "QUOTE_NOT_IN_MESSAGE"} in body["rejections"]

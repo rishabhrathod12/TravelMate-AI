@@ -63,7 +63,15 @@ export function useTripChat(send: typeof sendChatTurn = sendChatTurn) {
       const controller = new AbortController();
       pending.current = controller;
       try {
-        const turn: ChatTurn = await send(message, draft, controller.signal);
+        // The lines said so far, without the page's own local lines (its questions and the
+        // reader's answers to them), which the server never wrote or read.
+        const history = messages
+          .filter((line) => line.local !== true)
+          .map((line) => ({
+            role: line.from,
+            text: line.text,
+          }));
+        const turn: ChatTurn = await send(message, draft, controller.signal, history);
         setDraft(turn.draft);
         const ready = turn.status === "READY_FOR_REVIEW";
         setTripRequest(ready ? turn.tripRequest : null);
@@ -84,7 +92,7 @@ export function useTripChat(send: typeof sendChatTurn = sendChatTurn) {
         }
       }
     },
-    [draft, send],
+    [draft, messages, send],
   );
 
   /** Adds a line to the conversation without asking the server: the page's own question or the reader's answer to it. */

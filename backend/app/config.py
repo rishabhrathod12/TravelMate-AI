@@ -101,6 +101,13 @@ class Settings(BaseSettings):
     conversation_max_message_chars: int | None = None
     conversation_llm_max_output_tokens: int | None = None
     conversation_llm_timeout_seconds: float | None = None
+    # Wording the chat's replies with the model, and how much conversation it may see (ADR 0009).
+    # Optional: when unset, the named caps in `app.conversation.reply_writer` apply. They only
+    # matter when LLM_LIVE_ENABLED is true; without it replies are written by code.
+    conversation_reply_max_output_tokens: int | None = None
+    conversation_reply_timeout_seconds: float | None = None
+    conversation_history_max_turns: int | None = None
+    conversation_history_max_chars: int | None = None
 
     @field_validator(
         "database_url",
@@ -116,6 +123,10 @@ class Settings(BaseSettings):
         "conversation_max_message_chars",
         "conversation_llm_max_output_tokens",
         "conversation_llm_timeout_seconds",
+        "conversation_reply_max_output_tokens",
+        "conversation_reply_timeout_seconds",
+        "conversation_history_max_turns",
+        "conversation_history_max_chars",
         "voice_dev_principal",
         "voice_session_max_seconds",
         "voice_session_idle_seconds",
@@ -211,6 +222,15 @@ class Settings(BaseSettings):
         for name, value in limits.items():
             if value is None or not value > 0:
                 raise ValueError(f"{name} must be set to a positive number when chat is on")
+        optional = {
+            "CONVERSATION_REPLY_MAX_OUTPUT_TOKENS": self.conversation_reply_max_output_tokens,
+            "CONVERSATION_REPLY_TIMEOUT_SECONDS": self.conversation_reply_timeout_seconds,
+            "CONVERSATION_HISTORY_MAX_TURNS": self.conversation_history_max_turns,
+            "CONVERSATION_HISTORY_MAX_CHARS": self.conversation_history_max_chars,
+        }
+        for name, value in optional.items():
+            if value is not None and not value > 0:
+                raise ValueError(f"{name} must be a positive number when it is set")
         return self
 
     @model_validator(mode="after")

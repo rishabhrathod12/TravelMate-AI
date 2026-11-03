@@ -3,7 +3,10 @@
  *
  * The server keeps nothing between turns: each call sends what was typed and the draft so far, and
  * gets back the new draft, a reply, and a validated trip request once everything is known. No
- * language model is connected; the server answers with a labelled development stand-in.
+ * language model is connected by default and the server answers with a labelled development
+ * stand-in; with live calls switched on, an OpenAI model words the replies (ADR 0009). The browser
+ * also sends the last few lines of the conversation, so the server can reply in context. It holds
+ * no key: only the server talks to the model.
  */
 
 import type {
@@ -123,10 +126,29 @@ async function problemDetail(response: Response): Promise<string | null> {
   return null;
 }
 
+/** One earlier line of the conversation, sent so the server can word a reply in context. */
+export interface ChatHistoryItem {
+  role: "you" | "assistant";
+  text: string;
+}
+
+/** The server accepts at most this many earlier lines of at most this many characters each. */
+export const MAX_HISTORY_ITEMS = 40;
+export const MAX_HISTORY_TEXT_CHARS = 2000;
+
+/** The most recent lines that fit what the server accepts. Older lines are dropped, never cut. */
+export function boundedHistory(items: readonly ChatHistoryItem[]): ChatHistoryItem[] {
+  return items
+    .filter((item) => item.text.trim() !== "")
+    .slice(-MAX_HISTORY_ITEMS)
+    .map((item) => ({ role: item.role, text: item.text.slice(0, MAX_HISTORY_TEXT_CHARS) }));
+}
+
 export async function sendChatTurn(
   message: string,
   draft: ChatDraft | null,
   signal?: AbortSignal,
+  history: readonly ChatHistoryItem[] = [],
 ): Promise<ChatTurn> {
   let response: Response;
   try {
@@ -134,7 +156,7 @@ export async function sendChatTurn(
       method: "POST",
       signal,
       headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ message, draft }),
+      body: JSON.stringify({ message, draft, history: boundedHistory(history) }),
     });
   } catch (error) {
     if (signal?.aborted) {

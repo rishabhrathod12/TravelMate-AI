@@ -75,6 +75,12 @@ describe("TripChat", () => {
     typeAndSend("12 December 2026");
     await waitFor(() => expect(send).toHaveBeenCalledTimes(2));
     expect(send.mock.calls[1]?.[1]).toEqual({ origin: "Indore", destination: "Goa" });
+    // The earlier lines go along too, so the server can reply in context.
+    expect(send.mock.calls[0]?.[3]).toEqual([]);
+    expect(send.mock.calls[1]?.[3]).toEqual([
+      { role: "you", text: "Indore to Goa" },
+      { role: "assistant", text: "Which date do you want to leave?" },
+    ]);
   });
 
   test("offers the details only when the server says they are ready", async () => {

@@ -28,6 +28,13 @@ from app.api.voice import router as voice_router
 from app.booking.executor import build_booking_executor
 from app.config import Settings
 from app.conversation.manager import ConversationManager
+from app.conversation.reply_writer import (
+    DEFAULT_HISTORY_MAX_CHARS,
+    DEFAULT_HISTORY_MAX_TURNS,
+    DEFAULT_REPLY_MAX_OUTPUT_TOKENS,
+    DEFAULT_REPLY_TIMEOUT_SECONDS,
+    ReplyWriter,
+)
 from app.conversation.stand_in import DevStandInClient
 from app.llm.base import LLMClient
 from app.llm.budget import HourlyCallLimit, LimitedLLMClient
@@ -236,7 +243,32 @@ def create_app(
                 timeout_seconds=float(resolved_settings.conversation_llm_timeout_seconds or 0),
             ),
             max_message_chars=app.state.conversation_max_chars,
+            # The model words replies only when live calls are on (ADR 0009). Otherwise code does.
+            reply_writer=(
+                ReplyWriter(
+                    live,
+                    LLMLimits(
+                        max_output_tokens=int(
+                            resolved_settings.conversation_reply_max_output_tokens
+                            or DEFAULT_REPLY_MAX_OUTPUT_TOKENS
+                        ),
+                        timeout_seconds=float(
+                            resolved_settings.conversation_reply_timeout_seconds
+                            or DEFAULT_REPLY_TIMEOUT_SECONDS
+                        ),
+                    ),
+                )
+                if live is not None
+                else None
+            ),
+            history_max_turns=int(
+                resolved_settings.conversation_history_max_turns or DEFAULT_HISTORY_MAX_TURNS
+            ),
+            history_max_chars=int(
+                resolved_settings.conversation_history_max_chars or DEFAULT_HISTORY_MAX_CHARS
+            ),
         )
+        app.state.chat_tools = ResearchTools(app.state.providers)
         app.state.plans = _plan_service(resolved_settings, live)
         app.include_router(chat_router)
     if resolved_settings.api_enabled and chosen_executor is not None:

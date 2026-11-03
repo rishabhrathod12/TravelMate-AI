@@ -27,6 +27,7 @@ from pydantic import Field, StrictInt
 
 from app.conversation.dates import parse_explicit_dates
 from app.conversation.draft import Accepted, TripField
+from app.conversation.intents import Intent
 from app.domain.base import DomainModel
 from app.domain.trip import MAX_ITINERARY_DAYS, TripType
 
@@ -62,6 +63,9 @@ class ExtractedDetails(DomainModel):
     traveller_count: CountClaim | None = None
     trip_days: CountClaim | None = None
     preferences: TextClaim | None = None
+    # What the message is about. It only chooses which read-only facts are fetched and how the
+    # reply is worded; it cannot start anything (see `app.conversation.intents`).
+    intent: Intent | None = None
 
 
 class RejectionReason(StrEnum):

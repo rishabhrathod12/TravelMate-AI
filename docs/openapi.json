@@ -316,6 +316,30 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "HistoryItem": {
+        "description": "One earlier line of the conversation. The browser keeps it; the server stores nothing.",
+        "properties": {
+          "role": {
+            "enum": [
+              "you",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 2000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "text"
+        ],
+        "title": "HistoryItem",
+        "type": "object"
+      },
       "HotelOption": {
         "additionalProperties": false,
         "description": "One place to stay.",
@@ -2117,6 +2141,14 @@
               }
             ]
           },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryItem"
+            },
+            "maxItems": 40,
+            "title": "History",
+            "type": "array"
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -2139,6 +2171,17 @@
           },
           "draft": {
             "$ref": "#/components/schemas/TripDraft"
+          },
+          "intent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent"
           },
           "itinerary_request": {
             "anyOf": [

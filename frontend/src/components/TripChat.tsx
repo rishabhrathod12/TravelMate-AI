@@ -62,7 +62,9 @@ export function TripChat({ onUseRequest, onUseItinerary, send = sendChatTurn }: 
     const controller = new AbortController();
     pending.current = controller;
     try {
-      const turn: ChatTurn = await send(message, draft, controller.signal);
+      // The lines said so far (not the one just typed), so the server can reply in context.
+      const history = lines.map((line) => ({ role: line.from, text: line.text }));
+      const turn: ChatTurn = await send(message, draft, controller.signal, history);
       setDraft(turn.draft);
       setReady(turn.status === "READY_FOR_REVIEW" ? turn.tripRequest : null);
       setReadyPlan(turn.status === "READY_FOR_REVIEW" ? turn.itineraryRequest : null);

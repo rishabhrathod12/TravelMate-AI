@@ -6,21 +6,27 @@ reply to show, and a validated trip request once everything is known. The server
 so there is no session to own, lose or leak; the draft is the traveller's own data and is
 re-checked on every turn (sizes here, trip rules by the domain).
 
-No real language model is connected. A development stand-in reads simple patterns, and every
-response says so (`model.kind` is `DEV_STAND_IN`). The reply is a question or a read-back; nothing
-here can search, book, approve or pay.
+By default no real language model is connected: a development stand-in reads simple patterns, and
+every response says so (`model.kind` is `DEV_STAND_IN`). When the owner switches live calls on,
+an OpenAI model reads the message and words the reply (`model.kind` is `OPENAI`, ADR 0009). Either
+way code decides what the reply may say: details are checked against the traveller's own words,
+and facts about transport, cost or weather come only from the read-only research tools, labelled
+MOCK / LIVE. Nothing here can book, approve or pay.
 """
 
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.api.chat_facts import gather_facts
 from app.api.problems import problem_responses
 from app.conversation.draft import TripDraft
+from app.conversation.intents import FACT_INTENTS
 from app.conversation.manager import ConversationManager, TurnStatus
+from app.conversation.reply_writer import HistoryTurn
 from app.domain.suggested_plan import PlanSource, SuggestedPlan
 from app.domain.trip import MAX_ITINERARY_DAYS, MAX_TRAVELLERS, ItineraryRequest, TripRequest
 from app.llm.errors import (
@@ -33,6 +39,7 @@ from app.llm.errors import (
     LLMUnavailable,
 )
 from app.llm.plan_writer import PlanWriter
+from app.tools.research import ResearchTools
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"], responses=problem_responses(422))
 
@@ -48,9 +55,21 @@ LIVE_NOTICE = (
 PROTOTYPE_MAX_TRAVELLERS = MAX_TRAVELLERS
 
 
+MAX_HISTORY_ITEMS = 40
+MAX_HISTORY_TEXT_CHARS = 2000
+
+
+class HistoryItem(BaseModel):
+    """One earlier line of the conversation. The browser keeps it; the server stores nothing."""
+
+    role: Literal["you", "assistant"]
+    text: str = Field(max_length=MAX_HISTORY_TEXT_CHARS)
+
+
 class TurnRequest(BaseModel):
     message: str
     draft: TripDraft | None = None
+    history: list[HistoryItem] = Field(default_factory=list, max_length=MAX_HISTORY_ITEMS)
 
 
 class ModelInfo(BaseModel):
@@ -73,6 +92,7 @@ class TurnResponse(BaseModel):
     status: TurnStatus
     reply: str
     draft: TripDraft
+    intent: str | None = None
     trip_request: TripRequest | None = None
     itinerary_request: ItineraryRequest | None = None
     changes: list[ChangeOut] = Field(default_factory=list)
@@ -96,7 +116,13 @@ def get_max_chars(request: Request) -> int:
     return value
 
 
+def get_tools(request: Request) -> ResearchTools:
+    tools: ResearchTools = request.app.state.chat_tools
+    return tools
+
+
 Manager = Annotated[ConversationManager, Depends(get_manager)]
+Tools = Annotated[ResearchTools, Depends(get_tools)]
 Reader = Annotated[ModelInfo, Depends(get_model_info)]
 MaxChars = Annotated[int, Depends(get_max_chars)]
 
@@ -121,7 +147,7 @@ def _draft_is_too_big(draft: TripDraft, max_chars: int) -> bool:
 
 @router.post("/turns", response_model=TurnResponse)
 def take_turn(
-    body: TurnRequest, manager: Manager, max_chars: MaxChars, reader: Reader
+    body: TurnRequest, manager: Manager, max_chars: MaxChars, reader: Reader, tools: Tools
 ) -> TurnResponse | JSONResponse:
     draft = body.draft if body.draft is not None else TripDraft()
     if _draft_is_too_big(draft, max_chars):
@@ -141,10 +167,18 @@ def take_turn(
             draft=draft,
             model=reader,
         )
+    # Read-only facts for a question about transport, cost or weather. They come from the research
+    # tools through the providers, labelled MOCK / LIVE; nothing here can book.
+    facts = (
+        gather_facts(result.draft, result.intent, tools) if result.intent in FACT_INTENTS else None
+    )
+    history = tuple(HistoryTurn(item.role, item.text) for item in body.history)
+    result = manager.compose(result, message=body.message, history=history, facts=facts)
     return TurnResponse(
         status=result.status,
         reply=result.reply,
         draft=result.draft,
+        intent=None if result.intent is None else result.intent.value,
         trip_request=result.request,
         itinerary_request=result.itinerary_request,
         changes=[ChangeOut(field=c.field.value, old=c.old, new=c.new) for c in result.changes],

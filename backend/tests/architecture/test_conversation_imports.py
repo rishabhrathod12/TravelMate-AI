@@ -2,8 +2,8 @@
 
 It may use the domain, the LLM layer (the interface, never a vendor) and itself. It reaches no
 booking, workflow, providers, voice transport, persistence or network library, so a conversation
-can never trigger a booking or a provider call by import. Only the chat router and the app
-factory (the composition root, ARCHITECTURE §3) import it.
+can never trigger a booking or a provider call by import. Only the chat router, its read-only
+facts module and the app factory (the composition root, ARCHITECTURE §3) import it.
 """
 
 import ast
@@ -92,6 +92,7 @@ def test_conversation_modules_use_no_network_library(path: Path) -> None:
 # modules, which use only the pure draft type (`app.conversation.draft`).
 ALLOWED_IMPORTERS = {
     "api/chat.py",
+    "api/chat_facts.py",
     "api/planning.py",
     "main.py",
     "persistence/sql_store.py",

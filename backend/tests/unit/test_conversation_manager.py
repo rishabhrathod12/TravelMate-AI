@@ -305,7 +305,7 @@ class TestTheModelIsNotTrusted:
     def test_the_model_has_no_tools(self) -> None:
         manager, client, _ = make(details())
 
-        manager.handle(TripDraft(), "hello")
+        manager.handle(TripDraft(), "Goa trip please")
 
         assert set(type(client.requests[0]).model_fields) == {"purpose", "messages", "limits"}
 
