@@ -23,7 +23,6 @@ from enum import StrEnum
 from app.conversation.claims import ExtractedDetails, Rejection, RejectionReason, verify
 from app.conversation.dates import RelativeDate, parse_explicit_dates, resolve_weekend_phrase
 from app.conversation.draft import (
-    QUESTIONS,
     Accepted,
     Change,
     PendingDate,
@@ -35,11 +34,11 @@ from app.conversation.draft import (
     describe,
     merge,
     missing_fields,
+    question_for,
     show_date,
     show_trip_type,
 )
 from app.conversation.intents import (
-    CANNOT_BOOK_NOTICE,
     ChatFacts,
     Intent,
     asks_to_book,
@@ -48,6 +47,7 @@ from app.conversation.intents import (
     small_talk_kind,
     small_talk_line,
 )
+from app.conversation.language import Language, detect_language, say
 from app.conversation.reply_writer import (
     DEFAULT_HISTORY_MAX_CHARS,
     DEFAULT_HISTORY_MAX_TURNS,
@@ -179,13 +179,18 @@ def _known(draft: TripDraft) -> dict[str, str]:
     return known
 
 
-def _changes_lead(changes: tuple[Change, ...]) -> str:
+def _changes_lead(changes: tuple[Change, ...], language: Language = "en") -> str:
     if not changes:
         return ""
     return (
         " ".join(
-            f"Okay, I changed the {c.field.value.lower().replace('_', ' ')} "
-            f"from {c.old} to {c.new}."
+            say(
+                "changed",
+                language,
+                field=c.field.value.lower().replace("_", " "),
+                old=c.old,
+                new=c.new,
+            )
             for c in changes
         )
         + " "
@@ -238,26 +243,26 @@ class ConversationManager:
     def recorder(self) -> LLMCallRecorder:
         return self._recorder
 
-    def handle(self, draft: TripDraft, message: str) -> TurnResult:
+    def handle(
+        self, draft: TripDraft, message: str, language: Language | None = None
+    ) -> TurnResult:
+        """One turn. `language` is the language every sentence code writes comes in. The chat API
+        works it out from the whole conversation (`resolve_language`); without it, this message's
+        own language is used, else English."""
         text = message.strip()
+        language = language if language is not None else detect_language(text) or "en"
         if not text:
-            return self._result(
-                draft, TurnStatus.NEEDS_INFO, "I didn't catch that. Could you say it again?"
-            )
+            return self._result(draft, TurnStatus.NEEDS_INFO, say("empty", language))
         if len(text) > self._max_chars:
-            return self._result(
-                draft,
-                TurnStatus.NOT_UNDERSTOOD,
-                "That message was too long for me to read. Could you say it in a shorter way?",
-            )
+            return self._result(draft, TurnStatus.NOT_UNDERSTOOD, say("too_long", language))
 
         kind = small_talk_kind(text) if draft.pending_date is None else None
         if kind is not None:
             # Greetings and thanks cost no model call and cannot be misread.
-            follow_up = self._reply(draft, Accepted(), (), (), 0)
+            follow_up = self._reply(draft, Accepted(), (), (), 0, language)
             return replace(
                 follow_up,
-                reply=f"{small_talk_line(kind, text)} {follow_up.reply}",
+                reply=f"{small_talk_line(kind, text, language)} {follow_up.reply}",
                 intent=Intent.SMALL_TALK,
                 by_code=True,
             )
@@ -266,9 +271,9 @@ class ConversationManager:
         if draft.pending_date is not None:
             answer = _yes_or_no(text)
             if answer is True:
-                return self._accept_pending(draft, draft.pending_date)
+                return self._accept_pending(draft, draft.pending_date, language)
             if answer is False:
-                return self._decline_pending(draft)
+                return self._decline_pending(draft, language)
             # Anything else is a new message. The worked-out date is not used unless it is
             # offered again.
             draft = draft.model_copy(update={"pending_date": None})
@@ -287,8 +292,7 @@ class ConversationManager:
             return self._result(
                 draft,
                 TurnStatus.NOT_UNDERSTOOD,
-                "Sorry, I couldn't make sense of that just now. You can try again, or fill in "
-                "the trip form instead.",
+                say("not_understood", language),
                 llm_calls=calls,
                 intent=intent,
             )
@@ -300,16 +304,19 @@ class ConversationManager:
         new_draft, changes = merge(draft, accepted)
         if proposal is not None:
             return replace(
-                self._confirm_dates(new_draft, proposal, changes, rejections, calls, today),
+                self._confirm_dates(
+                    new_draft, proposal, changes, rejections, calls, today, language
+                ),
                 intent=intent,
             )
         result = replace(
-            self._reply(new_draft, accepted, changes, rejections, calls), intent=intent
+            self._reply(new_draft, accepted, changes, rejections, calls, language),
+            intent=intent,
         )
         if dropped and new_draft.departure_date is None:
             return replace(
                 result,
-                reply="I haven't used the date from your earlier phrase. " + result.reply,
+                reply=say("dropped_pending", language) + " " + result.reply,
             )
         return result
 
@@ -333,6 +340,7 @@ class ConversationManager:
         message: str,
         history: tuple[HistoryTurn, ...] = (),
         facts: ChatFacts | None = None,
+        language: Language | None = None,
     ) -> TurnResult:
         """The reply the traveller sees: the plain reply, plus any read-only facts, optionally
         reworded by the model. Nothing here changes the draft, the status or the trip request.
@@ -343,11 +351,14 @@ class ConversationManager:
         are shown) the question or read-back are added by code, so the model cannot drop them and
         they are never said twice.
         """
-        notice = CANNOT_BOOK_NOTICE if result.intent is Intent.BOOK_REQUEST else ""
+        language = language if language is not None else detect_language(message) or "en"
+        notice = say("cannot_book", language) if result.intent is Intent.BOOK_REQUEST else ""
         has_facts = facts is not None and bool(facts.lines)
-        footer = facts.footer() if facts is not None and has_facts else ""
+        footer = facts.footer(language) if facts is not None and has_facts else ""
         facts_block = (
-            "Here is what I found:\n" + facts_text(facts) if facts is not None and has_facts else ""
+            say("found", language) + "\n" + facts_text(facts)
+            if facts is not None and has_facts
+            else ""
         )
 
         def assemble(*pieces: str) -> str:
@@ -371,6 +382,7 @@ class ConversationManager:
             intent=result.intent,
             facts=facts,
             must_keep=result.reply if keep and not has_facts else "",
+            language=language,
         )
         if written is None:
             return replace(result, reply=plain)
@@ -387,17 +399,15 @@ class ConversationManager:
         rejections: tuple[Rejection, ...],
         calls: int,
         today: date,
+        language: Language = "en",
     ) -> TurnResult:
         pending = PendingDate(phrase=proposal.phrase, value=proposal.value)
         waiting = draft.model_copy(update={"pending_date": pending})
-        lead = _changes_lead(changes)
+        lead = _changes_lead(changes, language)
         when = f"{_WEEKDAYS[proposal.value.weekday()]} {show_date(proposal.value)}"
         if proposal.value == today:
-            when += " (today)"
-        reply = (
-            f"{lead}I take “{proposal.phrase}” to mean leaving on {when}. Is that right? "
-            "If you meant another day, tell me the exact date."
-        )
+            when += " " + say("today", language)
+        reply = lead + say("confirm_dates", language, phrase=proposal.phrase, when=when)
         return self._result(
             waiting,
             TurnStatus.CONFIRM_DATES,
@@ -407,7 +417,9 @@ class ConversationManager:
             llm_calls=calls,
         )
 
-    def _accept_pending(self, draft: TripDraft, pending: PendingDate) -> TurnResult:
+    def _accept_pending(
+        self, draft: TripDraft, pending: PendingDate, language: Language = "en"
+    ) -> TurnResult:
         before = None if draft.departure_date is None else show_date(draft.departure_date)
         updated = draft.model_copy(
             update={
@@ -422,14 +434,14 @@ class ConversationManager:
         changes: tuple[Change, ...] = ()
         if before is not None and before != after:
             changes = (Change(TripField.DEPARTURE_DATE, before, after),)
-        return self._reply(updated, Accepted(), changes, (), 0)
+        return self._reply(updated, Accepted(), changes, (), 0, language)
 
-    def _decline_pending(self, draft: TripDraft) -> TurnResult:
+    def _decline_pending(self, draft: TripDraft, language: Language = "en") -> TurnResult:
         cleared = draft.model_copy(update={"pending_date": None})
         return self._result(
             cleared,
             TurnStatus.NEEDS_INFO,
-            "Okay. " + QUESTIONS[TripField.DEPARTURE_DATE],
+            say("okay", language) + " " + question_for(TripField.DEPARTURE_DATE, language),
         )
 
     # -- reply wording -------------------------------------------------------------------
@@ -441,13 +453,14 @@ class ConversationManager:
         changes: tuple[Change, ...],
         rejections: tuple[Rejection, ...],
         calls: int,
+        language: Language = "en",
     ) -> TurnResult:
-        lead = _changes_lead(changes)
+        lead = _changes_lead(changes, language)
         assumed = [f for f in draft.year_assumed if f in _DATE_FIELDS]
-        problems = conflicts(draft)
+        problems = conflicts(draft, language)
 
         if problems:
-            reply = lead + " ".join(problems) + " Which one is right?"
+            reply = lead + " ".join(problems) + " " + say("which_right", language)
             return self._result(
                 draft,
                 TurnStatus.CONFLICT,
@@ -465,16 +478,15 @@ class ConversationManager:
             return self._result(
                 draft,
                 TurnStatus.NEEDS_INFO,
-                f"{lead}I can plan up to {MAX_ITINERARY_DAYS} days at a time. "
-                "How many days would you like?",
+                lead + say("max_days_ask", language, max_days=MAX_ITINERARY_DAYS),
                 changes=changes,
                 rejections=rejections,
                 llm_calls=calls,
             )
         if too_long:  # A longer stay was asked for; the earlier length stays, and the user is told.
             lead += (
-                f"I can plan up to {MAX_ITINERARY_DAYS} days at a time, so I kept "
-                f"{draft.trip_days} days. "
+                say("max_days_kept", language, max_days=MAX_ITINERARY_DAYS, days=draft.trip_days)
+                + " "
             )
 
         missing = missing_fields(draft)
@@ -483,8 +495,8 @@ class ConversationManager:
             if any(r.field in _DATE_FIELDS and r.field in missing for r in rejections) and any(
                 r.reason is RejectionReason.NOT_AN_EXPLICIT_DATE for r in rejections
             ):
-                hint = "I need an exact date, not a phrase like “tomorrow”. "
-            reply = lead + hint + QUESTIONS[missing[0]]
+                hint = say("hint_exact_date", language) + " "
+            reply = lead + hint + question_for(missing[0], language)
             return self._result(
                 draft,
                 TurnStatus.NEEDS_INFO,
@@ -497,11 +509,11 @@ class ConversationManager:
         request = build_request(draft)
         itinerary = build_itinerary_request(draft)
         if request is None and itinerary is None:  # Complete but the domain refused it.
-            wording = "itinerary" if draft.trip_days is not None else "trip"
+            invalid = "invalid_itinerary" if draft.trip_days is not None else "invalid_trip"
             return self._result(
                 draft,
                 TurnStatus.NOT_UNDERSTOOD,
-                lead + f"Those details don't make a valid {wording}. Could you check them?",
+                lead + say(invalid, language),
                 changes=changes,
                 rejections=rejections,
                 llm_calls=calls,
@@ -509,11 +521,8 @@ class ConversationManager:
         note = ""
         if assumed:
             years = sorted({str(getattr(draft, f.value.lower()).year) for f in assumed})
-            note = f" (I took the year as {' and '.join(years)}.)"
-        reply = (
-            f"{lead}Here is what I have: {describe(draft)}{note}. "
-            "Is this right? Tell me anything you want to change."
-        )
+            note = " " + say("year_note", language, years=" and ".join(years))
+        reply = lead + say("ready", language, summary=describe(draft), note=note)
         return self._result(
             draft,
             TurnStatus.READY_FOR_REVIEW,

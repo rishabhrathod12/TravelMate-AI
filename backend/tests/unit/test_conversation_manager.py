@@ -64,7 +64,9 @@ class TestAFullConversation:
             ),
         )
 
-        one = manager.handle(TripDraft(), "Mujhe Indore se Goa jana hai. Saste options batao.")
+        one = manager.handle(
+            TripDraft(), "Mujhe Indore se Goa jana hai. Saste options batao.", "en"
+        )
         two = manager.handle(one.draft, "12 December 2026")
         three = manager.handle(two.draft, "a round trip, coming back 15 December, 2 people")
 
@@ -128,7 +130,7 @@ class TestDatesAreNeverInvented:
             )
         )
 
-        result = manager.handle(TripDraft(), "Indore se Goa kal jana hai")
+        result = manager.handle(TripDraft(), "Indore se Goa kal jana hai", "en")
 
         assert result.draft.departure_date is None
         assert result.reply.startswith("I need an exact date, not a phrase like “tomorrow”.")

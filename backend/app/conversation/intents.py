@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal
 
+from app.conversation.language import Language, say
+
 
 class Intent(StrEnum):
     TRIP_DETAILS = "TRIP_DETAILS"
@@ -155,24 +157,12 @@ def is_hinglish(message: str) -> bool:
     return any(word in _HINGLISH_MARKERS for word in words)
 
 
-_ENGLISH = {
-    "greeting": "Hi! I'm TravelMate. I can help you plan a trip.",
-    "how_are_you": "I'm doing well, thank you for asking! I'm ready to help you plan a trip.",
-    "thanks": "You're welcome!",
-    "goodbye": "Goodbye! Come back whenever you want to plan a trip.",
-}
-_HINGLISH = {
-    "greeting": (
-        "Namaste! Main TravelMate hoon. Main aapki trip plan karne mein madad kar sakta hoon."
-    ),
-    "how_are_you": "Main theek hoon, shukriya! Batayiye, kis trip ke liye madad chahiye?",
-    "thanks": "Aapka swagat hai!",
-    "goodbye": "Alvida! Trip plan karni ho to wapas aaiyega.",
-}
-
-
-def small_talk_line(kind: SmallTalkKind, message: str) -> str:
-    return (_HINGLISH if is_hinglish(message) else _ENGLISH)[kind]
+def small_talk_line(kind: SmallTalkKind, message: str, language: Language | None = None) -> str:
+    """The fixed answer to small talk, in the traveller's language (see `language.py`)."""
+    chosen: Language = (
+        language if language is not None else ("hinglish" if is_hinglish(message) else "en")
+    )
+    return say(f"small_{kind}", chosen)
 
 
 # -- the answer to a request for a booking ----------------------------------------------------
@@ -199,12 +189,12 @@ class ChatFacts:
     labels: frozenset[str]
     topic: Intent
 
-    def footer(self) -> str:
+    def footer(self, language: Language = "en") -> str:
         if not self.labels:
             return ""
         if self.labels == {"MOCK"}:
-            return "These are sample (MOCK) results, not live prices or schedules."
-        return "Data source labels: " + ", ".join(sorted(self.labels)) + "."
+            return say("sample_footer", language)
+        return say("labels_footer", language, labels=", ".join(sorted(self.labels)))
 
 
 def facts_text(facts: ChatFacts) -> str:

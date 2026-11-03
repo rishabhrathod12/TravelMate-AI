@@ -12,6 +12,7 @@ from typing import Literal
 
 from pydantic import Field, StrictInt, ValidationError
 
+from app.conversation.language import Language, say
 from app.domain.base import DomainModel
 from app.domain.trip import ItineraryRequest, Location, Traveller, TripRequest, TripType
 
@@ -39,18 +40,24 @@ QUESTION_ORDER: tuple[TripField, ...] = (
 
 
 # What is asked for each missing detail. Shared by the chat and the planning workflow.
-QUESTIONS: dict[TripField, str] = {
-    TripField.ORIGIN: "Where will you be travelling from?",
-    TripField.DESTINATION: "Where would you like to go?",
-    TripField.DEPARTURE_DATE: (
-        "Which date do you want to leave? Please give the day and month, for example 12 December."
-    ),
-    TripField.TRIP_TYPE: "Is this a one-way trip or a round trip?",
-    TripField.RETURN_DATE: (
-        "Which date will you come back? Please give the day and month, for example 15 December."
-    ),
-    TripField.TRAVELLERS: "How many people are travelling?",
+_QUESTION_KEYS: dict[TripField, str] = {
+    TripField.ORIGIN: "q_origin",
+    TripField.DESTINATION: "q_destination",
+    TripField.DEPARTURE_DATE: "q_departure_date",
+    TripField.TRIP_TYPE: "q_trip_type",
+    TripField.RETURN_DATE: "q_return_date",
+    TripField.TRAVELLERS: "q_travellers",
 }
+
+
+# The English questions, kept under this name for the workflow, which asks in English.
+QUESTIONS: dict[TripField, str] = {field: say(key) for field, key in _QUESTION_KEYS.items()}
+
+
+def question_for(field: TripField, language: Language = "en") -> str:
+    """The question that asks for a missing detail, in the traveller's language."""
+    return say(_QUESTION_KEYS[field], language)
+
 
 ITINERARY_QUESTION_ORDER: tuple[TripField, ...] = (
     TripField.DESTINATION,
@@ -203,19 +210,17 @@ def missing_fields(draft: TripDraft) -> tuple[TripField, ...]:
     return tuple(missing)
 
 
-def conflicts(draft: TripDraft) -> tuple[str, ...]:
+def conflicts(draft: TripDraft, language: Language = "en") -> tuple[str, ...]:
     """Contradictions among details already given. They are asked about, never fixed quietly."""
     found: list[str] = []
     if draft.trip_type is TripType.ONE_WAY and draft.return_date is not None:
-        found.append(
-            f"You said one-way, but also gave a return date ({show_date(draft.return_date)})."
-        )
+        found.append(say("conflict_one_way", language, date=show_date(draft.return_date)))
     if (
         draft.departure_date is not None
         and draft.return_date is not None
         and draft.return_date < draft.departure_date
     ):
-        found.append("The return date is before the departure date.")
+        found.append(say("conflict_return_before", language))
     return tuple(found)
 
 

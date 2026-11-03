@@ -25,6 +25,7 @@ from app.api.chat_facts import gather_facts
 from app.api.problems import problem_responses
 from app.conversation.draft import TripDraft
 from app.conversation.intents import FACT_INTENTS
+from app.conversation.language import resolve_language, say
 from app.conversation.manager import ConversationManager, TurnStatus
 from app.conversation.reply_writer import HistoryTurn
 from app.domain.suggested_plan import PlanSource, SuggestedPlan
@@ -153,17 +154,19 @@ def take_turn(
     if _draft_is_too_big(draft, max_chars):
         return _problem(422, "Draft too large", "A value in the draft is longer than allowed.")
 
-    result = manager.handle(draft, body.message)
+    # One language policy for the whole conversation: this message's language, else the traveller's
+    # earlier one, so a short answer such as "12 December" never flips the reply back to English.
+    language = resolve_language(
+        body.message, [item.text for item in body.history if item.role == "you"]
+    )
+    result = manager.handle(draft, body.message, language)
     if (
         result.draft.traveller_count is not None
         and result.draft.traveller_count > PROTOTYPE_MAX_TRAVELLERS
     ):
         return TurnResponse(
             status=TurnStatus.NOT_UNDERSTOOD,
-            reply=(
-                f"This prototype handles up to {PROTOTYPE_MAX_TRAVELLERS} travellers. "
-                "How many people are travelling?"
-            ),
+            reply=say("traveller_cap", language, max_travellers=PROTOTYPE_MAX_TRAVELLERS),
             draft=draft,
             model=reader,
         )
@@ -173,7 +176,9 @@ def take_turn(
         gather_facts(result.draft, result.intent, tools) if result.intent in FACT_INTENTS else None
     )
     history = tuple(HistoryTurn(item.role, item.text) for item in body.history)
-    result = manager.compose(result, message=body.message, history=history, facts=facts)
+    result = manager.compose(
+        result, message=body.message, history=history, facts=facts, language=language
+    )
     return TurnResponse(
         status=result.status,
         reply=result.reply,
