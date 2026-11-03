@@ -35,10 +35,14 @@ from app.llm.types import LLMLimits, LLMMessage, LLMRequest
 # (ADR 0009 records this as a deliberate, small default). They keep a reply short and cheap.
 DEFAULT_REPLY_MAX_OUTPUT_TOKENS = 300
 DEFAULT_REPLY_TIMEOUT_SECONDS = 20.0
-DEFAULT_HISTORY_MAX_TURNS = 6
-DEFAULT_HISTORY_MAX_CHARS = 2000
+# About a dozen exchanges. The browser sends at most 40 lines (`MAX_HISTORY_ITEMS` in the chat
+# API). Six lines and 2000 characters made the model forget the conversation after 10 to 12
+# messages, because one reply that lists options can use up most of 2000 characters. The
+# trip details themselves never depend on this window: they live in the draft.
+DEFAULT_HISTORY_MAX_TURNS = 24
+DEFAULT_HISTORY_MAX_CHARS = 8000
 MAX_REPLY_CHARS = 900
-MAX_HISTORY_ITEM_CHARS = 600
+MAX_HISTORY_ITEM_CHARS = 800
 
 REPLY_SYSTEM_PROMPT = (
     "You are TravelMate, a friendly travel buddy in a chat. You write ONE reply to the traveller: "

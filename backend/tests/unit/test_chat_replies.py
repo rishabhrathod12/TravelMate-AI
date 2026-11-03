@@ -27,6 +27,8 @@ from app.conversation.intents import (
 )
 from app.conversation.manager import ConversationManager, TurnStatus
 from app.conversation.reply_writer import (
+    DEFAULT_HISTORY_MAX_CHARS,
+    DEFAULT_HISTORY_MAX_TURNS,
     HistoryTurn,
     ReplyWriter,
     check_reply,
@@ -535,3 +537,32 @@ class TestRegressionsFoundInTheLiveRun:
         assert reply.count(CANNOT_BOOK_NOTICE) == 1
         assert reply.count("sample (MOCK) results") == 1
         assert reply.splitlines()[-1].startswith("Which date do you want to leave?")
+
+
+class TestALongConversationIsRemembered:
+    def test_a_dozen_exchanges_with_option_lists_fit_in_the_default_window(self) -> None:
+        listing = "Here is what I found:\n" + "\n".join(
+            f"- [MOCK] train {n}: about 9h" for n in range(5)
+        )
+        turns = []
+        for number in range(12):
+            turns.append(HistoryTurn("you", f"message {number}"))
+            turns.append(HistoryTurn("assistant", listing))
+
+        kept = trim_history(
+            turns, max_turns=DEFAULT_HISTORY_MAX_TURNS, max_chars=DEFAULT_HISTORY_MAX_CHARS
+        )
+
+        assert len(kept) >= 20  # the old limit of 6 lines forgot all but the last three exchanges
+        assert kept[-1].text == " ".join(listing.split())
+        assert any(turn.text == "message 6" for turn in kept)
+
+    def test_the_window_is_still_bounded(self) -> None:
+        turns = [HistoryTurn("you", "x" * 700) for _ in range(40)]
+
+        kept = trim_history(
+            turns, max_turns=DEFAULT_HISTORY_MAX_TURNS, max_chars=DEFAULT_HISTORY_MAX_CHARS
+        )
+
+        assert len(kept) <= DEFAULT_HISTORY_MAX_TURNS
+        assert sum(len(turn.text) for turn in kept) <= DEFAULT_HISTORY_MAX_CHARS
