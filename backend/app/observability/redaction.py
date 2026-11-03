@@ -22,6 +22,7 @@ _SENSITIVE_KEY = re.compile(
 _SHAPES = (
     re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{6,}"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{8,}"),
+    re.compile(r"\bek_[A-Za-z0-9_-]{8,}"),
     re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@[^\s]+"),
     re.compile(
         r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)", re.S

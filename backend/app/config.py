@@ -79,6 +79,19 @@ class Settings(BaseSettings):
     voice_session_idle_seconds: int | None = None
     voice_max_active_sessions_per_owner: int | None = None
     voice_max_sessions_per_day_per_owner: int | None = None
+    # Real spoken conversation through OpenAI Realtime (ADR 0008). The owner's separate switch,
+    # like LLM_LIVE_ENABLED: a key being set never starts a session by itself. When true, voice
+    # must be on, the key must be set, and every value below must be set explicitly. The browser
+    # receives only a short-lived secret minted here, never the key. Microphone audio then goes
+    # to OpenAI. Off by default; refused in production because voice has no real authentication.
+    voice_live_enabled: bool = False
+    voice_realtime_model: str | None = None
+    voice_realtime_voice: str | None = None
+    voice_realtime_transcription_model: str | None = None
+    voice_realtime_secret_ttl_seconds: int | None = None
+    voice_realtime_timeout_seconds: float | None = None
+    voice_realtime_max_output_tokens: int | None = None
+    voice_realtime_max_secrets_per_hour: int | None = None
 
     # Typed trip chat (docs/VOICE_ASSISTANT_PLAN.md, V5). Off by default. It uses a development
     # stand-in for the model (no real model is connected), so it refuses to start in production.
@@ -108,6 +121,13 @@ class Settings(BaseSettings):
         "voice_session_idle_seconds",
         "voice_max_active_sessions_per_owner",
         "voice_max_sessions_per_day_per_owner",
+        "voice_realtime_model",
+        "voice_realtime_voice",
+        "voice_realtime_transcription_model",
+        "voice_realtime_secret_ttl_seconds",
+        "voice_realtime_timeout_seconds",
+        "voice_realtime_max_output_tokens",
+        "voice_realtime_max_secrets_per_hour",
         mode="before",
     )
     @classmethod
@@ -138,6 +158,40 @@ class Settings(BaseSettings):
                 raise ValueError(f"{name} must be set to a positive whole number when voice is on")
         if (self.voice_session_idle_seconds or 0) > (self.voice_session_max_seconds or 0):
             raise ValueError("VOICE_SESSION_IDLE_SECONDS cannot exceed VOICE_SESSION_MAX_SECONDS")
+        return self
+
+    @model_validator(mode="after")
+    def _live_voice_needs_every_safeguard(self) -> "Settings":
+        if not self.voice_live_enabled:
+            return self
+        if not self.voice_enabled:
+            raise ValueError("VOICE_LIVE_ENABLED needs VOICE_ENABLED: nothing else uses it")
+        if self.app_env == "production":
+            raise ValueError("VOICE_LIVE_ENABLED cannot be true in production")
+        key = self.openai_api_key.get_secret_value().strip() if self.openai_api_key else ""
+        if not key:
+            raise ValueError("OPENAI_API_KEY must be set when VOICE_LIVE_ENABLED is true")
+        names = {
+            "VOICE_REALTIME_MODEL": self.voice_realtime_model,
+            "VOICE_REALTIME_VOICE": self.voice_realtime_voice,
+            "VOICE_REALTIME_TRANSCRIPTION_MODEL": self.voice_realtime_transcription_model,
+        }
+        for name, text in names.items():
+            if text is None or not text.strip():
+                raise ValueError(f"{name} must be set when VOICE_LIVE_ENABLED is true")
+        whole = {
+            "VOICE_REALTIME_SECRET_TTL_SECONDS": self.voice_realtime_secret_ttl_seconds,
+            "VOICE_REALTIME_MAX_OUTPUT_TOKENS": self.voice_realtime_max_output_tokens,
+            "VOICE_REALTIME_MAX_SECRETS_PER_HOUR": self.voice_realtime_max_secrets_per_hour,
+        }
+        for name, number in whole.items():
+            if number is None or number < 1:
+                raise ValueError(f"{name} must be a positive whole number when live voice is on")
+        timeout = self.voice_realtime_timeout_seconds
+        if timeout is None or not timeout > 0:
+            raise ValueError(
+                "VOICE_REALTIME_TIMEOUT_SECONDS must be positive when live voice is on"
+            )
         return self
 
     @model_validator(mode="after")

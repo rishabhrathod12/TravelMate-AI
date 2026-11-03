@@ -25,8 +25,22 @@ describe("chooseVoiceAdapter", () => {
     expect(adapter?.playsAudio).toBe(false);
   });
 
+  test("VITE_VOICE_ADAPTER=realtime is the one opt-in to live voice, and it says so", () => {
+    const adapter = chooseVoiceAdapter(true, "realtime");
+
+    expect(adapter?.isMock).toBe(false);
+    expect(adapter?.hearsUser).toBe(true);
+    expect(adapter?.playsAudio).toBe(true);
+    expect(adapter?.audioDisclosure).toMatch(/sent to OpenAI/);
+  });
+
   test("any other value falls back to the mock, never to something real", () => {
-    expect(chooseVoiceAdapter(true, "realtime")?.isMock).toBe(true);
-    expect(chooseVoiceAdapter(true, "")?.isMock).toBe(true);
+    for (const value of ["", "live", "openai", "Realtime", "realtime ", "true"]) {
+      expect(chooseVoiceAdapter(true, value)?.isMock).toBe(true);
+    }
+  });
+
+  test("with the dev adapters off, even the live opt-in gives no adapter", () => {
+    expect(chooseVoiceAdapter(false, "realtime")).toBeNull();
   });
 });

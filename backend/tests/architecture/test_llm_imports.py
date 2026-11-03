@@ -69,6 +69,7 @@ def test_the_llm_package_is_present_and_not_empty() -> None:
         "openai_client.py",
         "openai_transport.py",
         "plan_writer.py",
+        "realtime.py",
         "scripted.py",
         "types.py",
     } <= names

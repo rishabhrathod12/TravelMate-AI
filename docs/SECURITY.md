@@ -131,6 +131,10 @@ A mock quote in MOCK mode goes through the same comparison, so the path is teste
 
 ## 12. Voice sessions
 
+**Live voice (ADR 0008, 2026-11-03).** Off unless `VOICE_LIVE_ENABLED=true`, which also needs `VOICE_ENABLED=true`, `OPENAI_API_KEY` and every `VOICE_REALTIME_*` value; never in production. The backend mints one short-lived client secret per session (`POST /api/v1/voice/sessions/{id}/realtime`), after the existing owner check, with the model, voice, instructions, token limit and an empty tool list fixed on the server; the response is `Cache-Control: no-store` and the secret is shown once. The real key never leaves the server and is not in any response, error or log; `ek_...` shaped strings are redacted like `sk-...` keys. A failure to mint returns a plain 502 with no provider detail. Microphone audio goes to OpenAI during a session and the interface says so. **Residual risk:** a browser holding the secret can usually try to change its own session (for example the instructions); with no tools that cannot reach booking, approval or data, and it is limited by the short secret, the hourly cap, the session limits and a spending cap the owner sets in the OpenAI dashboard.
+
+(The rest of this section describes the voice session foundation that live voice sits on.)
+
 Status: **foundation only.** No voice provider, audio or key exists. Decisions: ADR 0002 (architecture), ADR 0003 (demo booking is separate). Plan: `docs/VOICE_ASSISTANT_PLAN.md`.
 
 What exists now:

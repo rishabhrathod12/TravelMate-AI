@@ -23,6 +23,7 @@ from app.api.chat import router as chat_router
 from app.api.health import router as health_router
 from app.api.planning import router as planning_router
 from app.api.problems import register_problem_handlers
+from app.api.voice import realtime_router
 from app.api.voice import router as voice_router
 from app.booking.executor import build_booking_executor
 from app.config import Settings
@@ -32,8 +33,9 @@ from app.llm.base import LLMClient
 from app.llm.budget import HourlyCallLimit, LimitedLLMClient
 from app.llm.drafter import ItineraryDrafter
 from app.llm.openai_client import OpenAIChatClient
-from app.llm.openai_transport import SdkChatTransport
+from app.llm.openai_transport import SdkChatTransport, SdkRealtimeSecretMinter
 from app.llm.plan_writer import PlanWriter
+from app.llm.realtime import RealtimeConfig, RealtimeVoiceService
 from app.llm.scripted import ScriptedItineraryClient, ScriptedPlanClient
 from app.llm.types import LLMLimits
 from app.observability.logs import configure_logging
@@ -78,6 +80,31 @@ def _live_client(settings: Settings) -> LLMClient | None:
         transport=SdkChatTransport(),
     )
     return LimitedLLMClient(real, HourlyCallLimit(int(settings.llm_max_calls_per_hour or 0)))
+
+
+def _realtime_voice(settings: Settings) -> RealtimeVoiceService | None:
+    """The Realtime secret service, only if live voice is switched on (ADR 0008).
+
+    The settings validator has then required voice, the key and every value. The key is read
+    here and handed to the service; nothing else holds it.
+    """
+    if not settings.voice_live_enabled:
+        return None
+    assert settings.openai_api_key is not None  # guaranteed by the settings validator
+    config = RealtimeConfig(
+        model=str(settings.voice_realtime_model),
+        voice=str(settings.voice_realtime_voice),
+        transcription_model=str(settings.voice_realtime_transcription_model),
+        ttl_seconds=int(settings.voice_realtime_secret_ttl_seconds or 0),
+        timeout_seconds=float(settings.voice_realtime_timeout_seconds or 0),
+        max_output_tokens=int(settings.voice_realtime_max_output_tokens or 0),
+        max_per_hour=int(settings.voice_realtime_max_secrets_per_hour or 0),
+    )
+    return RealtimeVoiceService(
+        SdkRealtimeSecretMinter(),
+        api_key=settings.openai_api_key.get_secret_value(),
+        config=config,
+    )
 
 
 def _plan_service(settings: Settings, live: LLMClient | None) -> PlanService:
@@ -182,6 +209,11 @@ def create_app(
         # Mounted only on request, so a normal start has no voice routes at all.
         app.state.voice_sessions = VoiceSessionService(VoiceLimits.from_settings(resolved_settings))
         app.include_router(voice_router)
+        realtime = _realtime_voice(resolved_settings)
+        if realtime is not None:
+            # Live spoken conversation (ADR 0008): only if the owner switched it on.
+            app.state.realtime_voice = realtime
+            app.include_router(realtime_router)
     if resolved_settings.conversation_enabled:
         # Typed chat on a development stand-in for the model (no real model is connected). The
         # settings validator has already required every limit and refused production.

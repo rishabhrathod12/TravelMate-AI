@@ -87,6 +87,23 @@ What is real and what is not:
 
 To point the interface at a backend on another address, set `VITE_API_BASE_URL` in a local `frontend/.env.local` file (git-ignored). That value is visible in the browser, so it must never hold a secret. The backend has no CORS policy, so a different origin is blocked unless you use the Vite proxy.
 
+## Live voice with OpenAI (optional, development only)
+
+The default voice button is a scripted stand-in. To try a real spoken conversation (ADR 0008) you need your own OpenAI key. **Type the key into your own terminal only; never paste it into a file that is committed, or into a chat.** Microphone audio goes to OpenAI while a session is open, and OpenAI bills your account for it, so set a spending cap in the OpenAI dashboard first.
+
+Start the backend with live voice switched on. Replace the four `<...>` values with names from OpenAI's current documentation (the project does not guess them), and set the key in the shell first (`export OPENAI_API_KEY=...`):
+
+```bash
+VOICE_ENABLED=true VOICE_DEV_PRINCIPAL=dev VOICE_SESSION_MAX_SECONDS=300 VOICE_SESSION_IDLE_SECONDS=120 \
+VOICE_MAX_ACTIVE_SESSIONS_PER_OWNER=1 VOICE_MAX_SESSIONS_PER_DAY_PER_OWNER=10 \
+VOICE_LIVE_ENABLED=true VOICE_REALTIME_MODEL=<realtime model> VOICE_REALTIME_VOICE=<voice> \
+VOICE_REALTIME_TRANSCRIPTION_MODEL=<transcription model> VOICE_REALTIME_SECRET_TTL_SECONDS=60 \
+VOICE_REALTIME_TIMEOUT_SECONDS=10 VOICE_REALTIME_MAX_OUTPUT_TOKENS=300 VOICE_REALTIME_MAX_SECRETS_PER_HOUR=20 \
+backend/.venv/Scripts/python.exe -m uvicorn app.main:app --app-dir backend --port 8000
+```
+
+Start the interface with `VITE_VOICE_ADAPTER=realtime npm run dev` (in `frontend/`), open `http://localhost:5173/`, and press the voice button. The assistant can talk and cannot search, book or approve anything. The project has not exercised this against the live service: the first run is the test, and Hindi and Hinglish quality is unknown. A normal start does none of this, and a production build contains none of it.
+
 ## Local database
 
 PostgreSQL runs from Docker Compose. Choose a local password and export it (or put it in an uncommitted `.env`):

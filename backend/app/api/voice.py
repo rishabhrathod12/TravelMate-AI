@@ -15,10 +15,15 @@ from pydantic import BaseModel
 
 from app.api.problems import problem_responses
 from app.config import Settings
+from app.llm.realtime import RealtimeLimitReached, RealtimeSecretError, RealtimeVoiceService
 from app.voice.errors import SessionExpired, SessionNotFound, VoiceError, VoiceLimitExceeded
 from app.voice.sessions import VoiceSession, VoiceSessionService
 
 router = APIRouter(prefix="/api/v1/voice", tags=["voice"], responses=problem_responses(422))
+# Mounted only when `VOICE_LIVE_ENABLED` is true (ADR 0008), so a normal start has no such route.
+realtime_router = APIRouter(
+    prefix="/api/v1/voice", tags=["voice"], responses=problem_responses(422)
+)
 
 NO_PROVIDER_NOTICE = (
     "No voice provider is connected. This session carries no audio and cannot hear or speak."
@@ -39,8 +44,14 @@ def get_service(request: Request) -> VoiceSessionService:
     return service
 
 
+def get_realtime(request: Request) -> RealtimeVoiceService:
+    realtime: RealtimeVoiceService = request.app.state.realtime_voice
+    return realtime
+
+
 Principal = Annotated[str, Depends(get_principal)]
 Service = Annotated[VoiceSessionService, Depends(get_service)]
+Realtime = Annotated[RealtimeVoiceService, Depends(get_realtime)]
 
 
 class VoiceSessionResponse(BaseModel):
@@ -119,3 +130,65 @@ def end_session(session_id: str, principal: Principal, service: Service) -> Resp
     except VoiceError as error:
         return _error_response(error)
     return Response(status_code=204)
+
+
+REALTIME_NOTICE = (
+    "Live voice (development build): your microphone audio is sent to OpenAI while this session "
+    "is open. The assistant can talk and cannot search, book or approve anything."
+)
+
+
+class RealtimeConnection(BaseModel):
+    """What the browser needs to open its own connection to OpenAI. The secret is a credential."""
+
+    session_id: str
+    client_secret: str
+    secret_expires_at: datetime
+    model: str
+    voice: str
+    max_seconds: int
+    notice: str = REALTIME_NOTICE
+
+
+@realtime_router.post(
+    "/sessions/{session_id}/realtime", status_code=201, response_model=RealtimeConnection
+)
+def start_realtime(
+    session_id: str,
+    principal: Principal,
+    service: Service,
+    realtime: Realtime,
+    response: Response,
+) -> RealtimeConnection | JSONResponse:
+    """Mint a short-lived secret for this voice session. The browser sends nothing that matters.
+
+    The model, the voice, the instructions and the (empty) tool list are fixed on the server.
+    The session must exist, belong to the caller and still be open. The secret is shown once, is
+    never logged, and the response is marked `no-store`.
+    """
+    try:
+        session = service.touch(session_id, principal)
+    except VoiceError as error:
+        return _error_response(error)
+    try:
+        grant = realtime.start()
+    except RealtimeLimitReached:
+        return _problem(
+            429,
+            "Live voice limit reached",
+            "The hour's allowance for new live voice sessions is used up. Try again later.",
+        )
+    except RealtimeSecretError:
+        # The reason is not repeated: the provider's message can carry the response body.
+        return _problem(
+            502, "Live voice unavailable", "The voice service could not start a session."
+        )
+    response.headers["Cache-Control"] = "no-store"
+    return RealtimeConnection(
+        session_id=session.id,
+        client_secret=grant.secret.value,
+        secret_expires_at=grant.secret.expires_at,
+        model=grant.model,
+        voice=grant.voice,
+        max_seconds=service.limits.max_seconds,
+    )

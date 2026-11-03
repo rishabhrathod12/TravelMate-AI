@@ -127,3 +127,61 @@ export const voiceSessionApi: VoiceSessionApi = {
   activity: recordVoiceActivity,
   end: endVoiceSession,
 };
+
+/** What the server returns for a live voice session. `client_secret` is a credential: see below. */
+export interface RealtimeConnection {
+  session_id: string;
+  client_secret: string;
+  secret_expires_at: string;
+  model: string;
+  voice: string;
+  max_seconds: number;
+  notice: string;
+}
+
+function isRealtimeConnection(value: unknown): value is RealtimeConnection {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.session_id === "string" &&
+    typeof v.client_secret === "string" &&
+    v.client_secret.length > 0 &&
+    typeof v.secret_expires_at === "string" &&
+    typeof v.model === "string" &&
+    typeof v.voice === "string" &&
+    typeof v.max_seconds === "number" &&
+    typeof v.notice === "string"
+  );
+}
+
+/**
+ * Ask the server for a short-lived secret for this session. The secret is held in memory by the
+ * adapter for the one connection it opens: it is never stored, logged or shown. The server fixes
+ * the model, voice, instructions and tools; nothing is sent from here that could change them.
+ */
+export async function startRealtimeVoice(
+  sessionId: string,
+  signal?: AbortSignal,
+): Promise<RealtimeConnection> {
+  const response = await send(`${pathFor(sessionId)}/realtime`, "POST", signal);
+  const body: unknown = await response.json();
+  if (!isRealtimeConnection(body)) {
+    throw new VoiceApiError(response.status, "The server's answer did not have the expected shape.");
+  }
+  return body;
+}
+
+/** The operations the live adapter needs, so tests can supply a fake. */
+export interface RealtimeVoiceApi {
+  create(signal?: AbortSignal): Promise<VoiceSessionInfo>;
+  realtime(sessionId: string, signal?: AbortSignal): Promise<RealtimeConnection>;
+  end(sessionId: string, signal?: AbortSignal): Promise<void>;
+}
+
+export const realtimeVoiceApi: RealtimeVoiceApi = {
+  create: createVoiceSession,
+  realtime: startRealtimeVoice,
+  end: endVoiceSession,
+};
