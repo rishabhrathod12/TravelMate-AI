@@ -89,6 +89,8 @@ To point the interface at a backend on another address, set `VITE_API_BASE_URL` 
 
 ## Live voice with OpenAI (optional, development only)
 
+**Quickest way:** put your key and the three OpenAI names in the git-ignored `.env` file in the project root, set `VOICE_LIVE_ENABLED=true`, then run `.\scripts\start-live-voice.ps1 -CheckOnly` to see what is still missing (it shows names only, never values), and `.\scripts\start-live-voice.ps1 -WithFrontend` to start the backend and the web interface. The manual commands below do the same thing by hand.
+
 The default voice button is a scripted stand-in. To try a real spoken conversation (ADR 0008) you need your own OpenAI key. **Type the key into your own terminal only; never paste it into a file that is committed, or into a chat.** Microphone audio goes to OpenAI while a session is open, and OpenAI bills your account for it, so set a spending cap in the OpenAI dashboard first.
 
 Start the backend with live voice switched on. Replace the four `<...>` values with names from OpenAI's current documentation (the project does not guess them), and set the key in the shell first (`export OPENAI_API_KEY=...`):
