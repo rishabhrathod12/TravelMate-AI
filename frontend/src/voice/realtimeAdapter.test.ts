@@ -371,6 +371,53 @@ describe("during a session", () => {
     ]);
   });
 
+  test("the end of speech alone does not show thinking; the reply starting does", async () => {
+    const { r, events } = await open();
+    const channel = r.peer.channels[0] as FakeChannel;
+    const deliver = (message: unknown) => channel.onmessage?.({ data: JSON.stringify(message) });
+
+    deliver({ type: "input_audio_buffer.speech_stopped" });
+    expect(events).toEqual([]);
+    deliver({ type: "response.created" });
+    expect(events).toEqual([{ type: "thinking" }]);
+  });
+
+  test("a reply the person talks over is dropped, and the next reply is shown", async () => {
+    const { r, events } = await open();
+    const channel = r.peer.channels[0] as FakeChannel;
+    const deliver = (message: unknown) => channel.onmessage?.({ data: JSON.stringify(message) });
+
+    deliver({ type: "response.created" });
+    deliver({ type: "input_audio_buffer.speech_started" });
+    deliver({ type: "response.output_audio_transcript.delta", delta: "Sure" });
+    deliver({ type: "response.output_audio_transcript.done", transcript: "Sure, which" });
+    deliver({ type: "response.done" });
+    events.length = 0;
+    deliver({ type: "response.created" });
+    deliver({ type: "response.output_audio_transcript.done", transcript: "Which day?" });
+
+    expect(events).toEqual([
+      { type: "thinking" },
+      { type: "transcript", speaker: "assistant", text: "Which day?", source: "assistant" },
+    ]);
+  });
+
+  test("typed text during a running reply waits and then asks once", async () => {
+    const { adapter, r } = await open();
+    const channel = r.peer.channels[0] as FakeChannel;
+    const deliver = (message: unknown) => channel.onmessage?.({ data: JSON.stringify(message) });
+
+    deliver({ type: "response.created" });
+    adapter.sendText("to Goa");
+    expect(channel.sent.filter((m) => (m as { type: string }).type === "response.create")).toEqual([]);
+    deliver({ type: "response.done" });
+    deliver({ type: "response.done" });
+
+    expect(channel.sent.filter((m) => (m as { type: string }).type === "response.create")).toEqual([
+      { type: "response.create" },
+    ]);
+  });
+
   test("the session ends at the server's time limit and releases everything", async () => {
     const { r, events } = await open();
 

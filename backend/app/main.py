@@ -42,7 +42,13 @@ from app.llm.drafter import ItineraryDrafter
 from app.llm.openai_client import OpenAIChatClient
 from app.llm.openai_transport import SdkChatTransport, SdkRealtimeSecretMinter
 from app.llm.plan_writer import PlanWriter
-from app.llm.realtime import RealtimeConfig, RealtimeVoiceService
+from app.llm.realtime import (
+    DEFAULT_TURN_EAGERNESS,
+    DEFAULT_TURN_MODE,
+    DEFAULT_TURN_SILENCE_MS,
+    RealtimeConfig,
+    RealtimeVoiceService,
+)
 from app.llm.scripted import ScriptedItineraryClient, ScriptedPlanClient
 from app.llm.types import LLMLimits
 from app.observability.logs import configure_logging
@@ -106,6 +112,9 @@ def _realtime_voice(settings: Settings) -> RealtimeVoiceService | None:
         timeout_seconds=float(settings.voice_realtime_timeout_seconds or 0),
         max_output_tokens=int(settings.voice_realtime_max_output_tokens or 0),
         max_per_hour=int(settings.voice_realtime_max_secrets_per_hour or 0),
+        turn_mode=settings.voice_turn_mode or DEFAULT_TURN_MODE,
+        turn_eagerness=settings.voice_turn_eagerness or DEFAULT_TURN_EAGERNESS,
+        turn_silence_ms=settings.voice_turn_silence_ms or DEFAULT_TURN_SILENCE_MS,
     )
     return RealtimeVoiceService(
         SdkRealtimeSecretMinter(),

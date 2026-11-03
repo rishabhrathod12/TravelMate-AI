@@ -92,6 +92,11 @@ class Settings(BaseSettings):
     voice_realtime_timeout_seconds: float | None = None
     voice_realtime_max_output_tokens: int | None = None
     voice_realtime_max_secrets_per_hour: int | None = None
+    # Turn-taking for live voice. Optional: when unset, the named defaults in `app.llm.realtime`
+    # apply (semantic detection, low eagerness, 1500 ms for the fixed-silence mode).
+    voice_turn_mode: Literal["semantic", "server"] | None = None
+    voice_turn_eagerness: Literal["low", "medium", "high", "auto"] | None = None
+    voice_turn_silence_ms: int | None = None
 
     # Typed trip chat (docs/VOICE_ASSISTANT_PLAN.md, V5). Off by default. It uses a development
     # stand-in for the model (no real model is connected), so it refuses to start in production.
@@ -139,6 +144,9 @@ class Settings(BaseSettings):
         "voice_realtime_timeout_seconds",
         "voice_realtime_max_output_tokens",
         "voice_realtime_max_secrets_per_hour",
+        "voice_turn_mode",
+        "voice_turn_eagerness",
+        "voice_turn_silence_ms",
         mode="before",
     )
     @classmethod
@@ -203,6 +211,9 @@ class Settings(BaseSettings):
             raise ValueError(
                 "VOICE_REALTIME_TIMEOUT_SECONDS must be positive when live voice is on"
             )
+        silence = self.voice_turn_silence_ms
+        if silence is not None and not 300 <= silence <= 10_000:
+            raise ValueError("VOICE_TURN_SILENCE_MS must be 300 to 10000 when set")
         return self
 
     @model_validator(mode="after")

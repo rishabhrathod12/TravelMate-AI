@@ -120,6 +120,14 @@ function microphoneError(error: unknown): VoiceConnectionError {
   return new VoiceConnectionError("no_microphone", "The microphone could not be used.");
 }
 
+function safeParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
 }
@@ -142,6 +150,9 @@ export function eventFromMessage(raw: unknown): AdapterEvent | null {
     case "input_audio_buffer.speech_started":
       return { type: "listening" };
     case "input_audio_buffer.speech_stopped":
+      // Not "thinking": with turn detection the provider may still be waiting for the person to
+      // go on, and showing a thinking state here made a short pause look like the end of a turn.
+      return null;
     case "response.created":
       return { type: "thinking" };
     case "conversation.item.input_audio_transcription.completed":
@@ -178,6 +189,12 @@ export function createRealtimeAdapter(options: RealtimeAdapterOptions = {}): Voi
   let stream: RtcStream | null = null;
   let audio: RtcAudio | null = null;
   let limitTimer: unknown = null;
+  // One reply at a time. `active` is true from response.created to response.done. `suppress` drops
+  // the leftovers of a reply the person talked over, so they cannot reappear after the cancel.
+  // `deferred` holds a typed message's reply request that arrived while a reply was running.
+  let active = false;
+  let suppress = false;
+  let deferred = false;
 
   const emit = (event: AdapterEvent) => listener?.(event);
 
@@ -199,6 +216,41 @@ export function createRealtimeAdapter(options: RealtimeAdapterOptions = {}): Voi
     peer = null;
     stream = null;
     audio = null;
+    active = false;
+    suppress = false;
+    deferred = false;
+  }
+
+  function track(raw: unknown): { drop: boolean } {
+    const type = typeof raw === "string" ? (asRecord(safeParse(raw))?.type ?? "") : "";
+    switch (type) {
+      case "response.created":
+        active = true;
+        suppress = false;
+        break;
+      case "input_audio_buffer.speech_started":
+        // The provider cancels the running reply when the person speaks again.
+        if (active) {
+          suppress = true;
+        }
+        break;
+      case "response.done":
+        active = false;
+        suppress = false;
+        if (deferred) {
+          deferred = false;
+          send({ type: "response.create" });
+        }
+        break;
+      case "response.output_audio_transcript.delta":
+      case "response.audio_transcript.delta":
+      case "response.output_audio_transcript.done":
+      case "response.audio_transcript.done":
+        return { drop: suppress };
+      default:
+        break;
+    }
+    return { drop: false };
   }
 
   function send(payload: Record<string, unknown>) {
@@ -253,7 +305,8 @@ export function createRealtimeAdapter(options: RealtimeAdapterOptions = {}): Voi
         const events = connection.createDataChannel(EVENTS_CHANNEL);
         channel = events;
         events.onmessage = (message) => {
-          const event = eventFromMessage(message.data);
+          const { drop } = track(message.data);
+          const event = drop ? null : eventFromMessage(message.data);
           if (event !== null) {
             emit(event);
           }
@@ -330,6 +383,10 @@ export function createRealtimeAdapter(options: RealtimeAdapterOptions = {}): Voi
     },
 
     interrupt() {
+      if (active) {
+        suppress = true;
+      }
+      deferred = false;
       send({ type: "response.cancel" });
       send({ type: "output_audio_buffer.clear" });
       emit({ type: "listening" });
@@ -344,7 +401,11 @@ export function createRealtimeAdapter(options: RealtimeAdapterOptions = {}): Voi
         type: "conversation.item.create",
         item: { type: "message", role: "user", content: [{ type: "input_text", text: trimmed }] },
       });
-      send({ type: "response.create" });
+      if (active) {
+        deferred = true; // one reply at a time: ask again when the running one is done
+      } else {
+        send({ type: "response.create" });
+      }
       emit({ type: "transcript", speaker: "user", text: trimmed, source: "typed" });
       emit({ type: "thinking" });
     },

@@ -19,6 +19,7 @@ from app.llm.budget import HourlyCallLimit
 from app.llm.openai_transport import SdkRealtimeSecretMinter
 from app.llm.realtime import (
     INSTRUCTIONS,
+    TRANSCRIPTION_HINT,
     FakeRealtimeSecretMinter,
     RealtimeConfig,
     RealtimeLimitReached,
@@ -56,6 +57,59 @@ def service(minter: object | None = None, **changes: Any) -> RealtimeVoiceServic
     )
 
 
+class TestTurnTaking:
+    def test_the_default_is_semantic_detection_at_low_eagerness(self) -> None:
+        detection = session_settings(config())["audio"]["input"]["turn_detection"]  # type: ignore[index]
+
+        assert detection == {
+            "type": "semantic_vad",
+            "eagerness": "low",
+            "create_response": True,
+            "interrupt_response": True,
+        }
+
+    def test_the_fixed_silence_mode_uses_the_configured_silence(self) -> None:
+        detection = session_settings(config(turn_mode="server", turn_silence_ms=1800))["audio"][  # type: ignore[index]
+            "input"
+        ]["turn_detection"]
+
+        assert detection["type"] == "server_vad"
+        assert detection["silence_duration_ms"] == 1800
+        assert detection["create_response"] is True
+        assert detection["interrupt_response"] is True
+
+    @pytest.mark.parametrize(
+        "changes",
+        [
+            {"turn_mode": "instant"},
+            {"turn_eagerness": "eager"},
+            {"turn_silence_ms": 100},
+            {"turn_silence_ms": 60_000},
+        ],
+    )
+    def test_a_bad_turn_value_is_refused(self, changes: dict[str, Any]) -> None:
+        with pytest.raises(ValueError):
+            config(**changes)
+
+    def test_instructions_follow_the_persons_language_and_wait_for_them(self) -> None:
+        lowered = INSTRUCTIONS.lower()
+
+        assert "hinglish" in lowered and "roman letters" in lowered
+        assert "change with them" in lowered
+        assert "finished" in lowered
+
+    def test_turn_settings_are_optional_and_checked(self) -> None:
+        assert settings().voice_turn_mode is None
+        assert (
+            settings(voice_turn_mode="server", voice_turn_silence_ms=1500).voice_turn_mode
+            == "server"
+        )
+        with pytest.raises(ValidationError, match="VOICE_TURN_SILENCE_MS"):
+            settings(voice_turn_silence_ms=50)
+        with pytest.raises(ValidationError):
+            settings(voice_turn_mode="instant")
+
+
 class TestTheSessionIsFixedOnTheServer:
     def test_it_has_no_tools_so_the_assistant_can_only_talk(self) -> None:
         assert session_settings(config())["tools"] == []
@@ -65,11 +119,18 @@ class TestTheSessionIsFixedOnTheServer:
 
         assert session["model"] == "m1"
         assert session["max_output_tokens"] == 123
-        assert session["audio"] == {
-            "input": {"transcription": {"model": "test-transcribe-model"}},
-            "output": {"voice": "v1"},
-        }
+        audio: Any = session["audio"]
+        assert audio["input"]["transcription"]["model"] == "test-transcribe-model"
+        assert audio["output"] == {"voice": "v1"}
         assert session["output_modalities"] == ["audio"]
+
+    def test_the_transcript_hint_names_the_languages_and_forces_none(self) -> None:
+        audio: Any = session_settings(config())["audio"]
+        transcription = audio["input"]["transcription"]
+
+        assert transcription["prompt"] == TRANSCRIPTION_HINT
+        assert "Hinglish" in TRANSCRIPTION_HINT and "Roman letters" in TRANSCRIPTION_HINT
+        assert "language" not in transcription  # a fixed language would break Hinglish and switches
 
     def test_the_instructions_forbid_booking_and_claiming_it(self) -> None:
         lowered = INSTRUCTIONS.lower()
