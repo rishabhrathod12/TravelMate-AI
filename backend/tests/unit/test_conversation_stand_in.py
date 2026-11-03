@@ -73,8 +73,9 @@ def test_a_bare_place_answers_the_question_just_asked() -> None:
 def test_relative_dates_are_not_turned_into_dates() -> None:
     result = say("Indore to Goa tomorrow")
 
-    assert result.draft.departure_date is None
-    assert "day and month" in result.reply
+    assert result.draft.departure_date is None  # only a proposal, until the traveller says yes
+    assert result.draft.pending_date is not None
+    assert "Is that right?" in result.reply
 
 
 def test_a_sentence_is_not_mistaken_for_place_names() -> None:

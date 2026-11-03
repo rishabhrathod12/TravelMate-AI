@@ -36,7 +36,11 @@ _HINGLISH_WORDS = frozenset(
     karni karo karein kare karenge batao bataiye bataao bataiyega dikhao dikhaiye dekho dekhna
     chalo chaliye theek thik accha achha sahi galat bahut thoda zyada jyada kam sasta sasti
     mehenga mehengi saath akele wapas yahan wahan isse usse unka inka
-    shukriya dhanyavad namaste yaar bhai""".split()
+    shukriya dhanyavad namaste yaar bhai thodi jayegi jayega milega milegi mil niklu niklun nikle
+    nikalni dikha banao bana banado pehle pehla pichle pichla wale wala wali agle agla agli iska
+    uska apna apni hamara hota hoti lagega lagegi padega rahe raha rahi sakta sakte sakti karunga
+    karungi chalega chalegi kyunki isliye matlab bilkul ek teen chaar paanch chhe saat aath nau
+    das lena lenge dena denge bolo bolna baat samjhao samjha batana bata dijiye kijiye""".split()
 )
 _ENGLISH_WORDS = frozenset(
     """the a an i is are was were am be been want wants wanted to from for my me we our you your
@@ -66,13 +70,49 @@ def detect_language(message: str) -> Language | None:
     return None
 
 
+_ASKS_FOR_ENGLISH = re.compile(
+    r"(?:in\s+english|english\s+(?:mein|me|main|please|pls)|speak\s+english|"
+    r"english\s+bolo|english\s+mei)",
+    re.IGNORECASE,
+)
+_ASKS_FOR_HINGLISH = re.compile(r"hinglish", re.IGNORECASE)
+_ASKS_FOR_HINDI = re.compile(
+    r"(?:in\s+hindi|hindi\s+(?:mein|me|main|bolo|please)|speak\s+hindi)", re.IGNORECASE
+)
+_ASKS_FOR_DEVANAGARI = re.compile(r"devanagari|देवनागरी|हिंदी\s*में|हिन्दी\s*में", re.IGNORECASE)
+
+
+def requested_language(message: str) -> Language | None:
+    """The language the traveller asked for in words ("explain in English", "Hinglish mein baat
+    karo"), or None. A request wins over how the same message happens to be written.
+
+    "Hindi" asked for in Roman letters is answered in Roman-script Hinglish, the way it was asked.
+    Devanagari is used only when the traveller writes in it or names it.
+    """
+    if _ASKS_FOR_DEVANAGARI.search(message):
+        return "hi"
+    if _ASKS_FOR_ENGLISH.search(message):
+        return "en"
+    if _ASKS_FOR_HINGLISH.search(message):
+        return "hinglish"
+    if _ASKS_FOR_HINDI.search(message):
+        return "hi" if _DEVANAGARI.search(message) else "hinglish"
+    return None
+
+
+def _language_of(message: str) -> Language | None:
+    requested = requested_language(message)
+    return requested if requested is not None else detect_language(message)
+
+
 def resolve_language(message: str, earlier_traveller_messages: Sequence[str] = ()) -> Language:
-    """The language to reply in: this message's, else the most recent earlier one, else English."""
-    found = detect_language(message)
+    """The language to reply in: asked for, else this message's, else the most recent earlier one,
+    else English."""
+    found = _language_of(message)
     if found is not None:
         return found
     for earlier in reversed(earlier_traveller_messages):
-        found = detect_language(earlier)
+        found = _language_of(earlier)
         if found is not None:
             return found
     return "en"

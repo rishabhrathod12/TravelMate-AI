@@ -145,13 +145,35 @@ def parse_explicit_dates(text: str, today: date) -> tuple[ParsedDate, ...]:
 
 SATURDAY = 5
 SUNDAY = 6
-_WEEKEND_PHRASE = re.compile(r"\b(this|next)\s+weekend\b", re.IGNORECASE)
+# "weekend" alone and "is weekend" (this weekend) or "agle weekend" (next weekend) are how
+# Hinglish speakers say it. Whatever the wording, the result is only a proposal to confirm.
+_WEEKEND_PHRASE = re.compile(r"\b(?:(this|next|is|agle|agla|agli)\s+)?weekend\b", re.IGNORECASE)
+_NEXT_WORDS = frozenset({"next", "agle", "agla", "agli"})
+# "the weekend", "every weekend", "last weekend": no particular weekend is meant.
+_NO_PARTICULAR_WEEKEND = re.compile(
+    r"\b(?:the|a|every|each|last|har|pichle|pichla)\s+weekend\b", re.IGNORECASE
+)
+
+DatePhrase = Literal[
+    "this weekend",
+    "next weekend",
+    "today",
+    "tomorrow",
+    "day after tomorrow",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+]
 
 
 @dataclass(frozen=True)
 class RelativeDate:
-    phrase: Literal["this weekend", "next weekend"]
-    value: date  # the Saturday it starts on
+    phrase: DatePhrase
+    value: date  # the Saturday for a weekend phrase, otherwise the day itself
 
 
 def resolve_weekend_phrase(text: str, today: date) -> RelativeDate | None:
@@ -163,7 +185,12 @@ def resolve_weekend_phrase(text: str, today: date) -> RelativeDate | None:
       six days away.
     - Both phrases in one message, or neither, give None.
     """
-    phrases = {match[1].casefold() for match in _WEEKEND_PHRASE.finditer(text)}
+    if _NO_PARTICULAR_WEEKEND.search(text):
+        return None
+    phrases = {
+        "next" if (match[1] or "").casefold() in _NEXT_WORDS else "this"
+        for match in _WEEKEND_PHRASE.finditer(text)
+    }
     if len(phrases) != 1:
         return None
     weekday = today.weekday()
@@ -174,3 +201,78 @@ def resolve_weekend_phrase(text: str, today: date) -> RelativeDate | None:
     if weekday == SUNDAY:
         return RelativeDate("next weekend", today + timedelta(days=6))
     return RelativeDate("next weekend", today + timedelta(days=SATURDAY - weekday + 7))
+
+
+# -- other relative days (ADR 0011) -----------------------------------------------------------
+# "Saturday ko", "kal", "parso", "aaj". Same rule as the weekend: code works out the date from
+# today's date, the model never does, and the traveller must say yes before it is used. A phrase
+# that could be read two ways gives nothing, so the traveller is asked for an exact date.
+
+_WEEKDAYS: dict[str, int] = {
+    "monday": 0, "somvar": 0, "somvaar": 0,
+    "tuesday": 1, "mangalvar": 1, "mangalvaar": 1,
+    "wednesday": 2, "budhvar": 2, "budhvaar": 2,
+    "thursday": 3, "guruvar": 3, "guruvaar": 3, "brihaspativar": 3, "vrihaspativar": 3,
+    "friday": 4, "shukravar": 4, "shukravaar": 4,
+    "saturday": 5, "shanivar": 5, "shanivaar": 5,
+    "sunday": 6, "ravivar": 6, "ravivaar": 6, "itwar": 6, "itvar": 6,
+}  # fmt: skip
+_WEEKDAY_PHRASE = re.compile(
+    rf"\b(?:(next|agle|agla|agli|last|pichle|pichla|pichli)\s+)?({'|'.join(_WEEKDAYS)})\b",
+    re.IGNORECASE,
+)
+_DAY_AFTER = re.compile(r"\b(?:day\s+after\s+tomorrow|parso|parson|parsoon)\b", re.IGNORECASE)
+_TOMORROW = re.compile(r"\b(?:tomorrow|tmrw|kal)\b", re.IGNORECASE)
+_TODAY = re.compile(r"\b(?:today|aaj)\b", re.IGNORECASE)
+# Words that show the day is about coming back, not leaving. A proposal would put it in the wrong
+# field, so none is made and the traveller is asked for an exact date.
+_RETURN_WORDS = re.compile(
+    r"\b(?:return|returning|wapas|vapas|lautna|lautne|lautunga|lautungi|come\s+back)\b",
+    re.IGNORECASE,
+)
+_WEEKDAY_NAMES: tuple[DatePhrase, ...] = (
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+)
+
+
+def resolve_day_phrase(text: str, today: date) -> RelativeDate | None:
+    """The one day meant by "today", "tomorrow", "day after tomorrow" or a weekday name, or None
+    if it is not clear. Worked out, never guessed:
+
+    - a weekday name is the next such day after today (a week away if today is that day);
+    - "next Friday" and "last Friday" are ambiguous, so they give nothing;
+    - two different phrases, or a word about returning, give nothing.
+    """
+    if _RETURN_WORDS.search(text):
+        return None
+    found: dict[DatePhrase, date] = {}
+    if _DAY_AFTER.search(text):
+        found["day after tomorrow"] = today + timedelta(days=2)
+    # "day after tomorrow" contains "tomorrow": look for the plain word only outside it.
+    if _TOMORROW.search(_DAY_AFTER.sub(" ", text)):
+        found["tomorrow"] = today + timedelta(days=1)
+    if _TODAY.search(text):
+        found["today"] = today
+    for match in _WEEKDAY_PHRASE.finditer(text):
+        if match[1]:  # next / last: which one is meant is not clear
+            return None
+        index = _WEEKDAYS[match[2].casefold()]
+        found[_WEEKDAY_NAMES[index]] = today + timedelta(days=(index - today.weekday()) % 7 or 7)
+    if len(found) != 1:
+        return None
+    phrase, value = next(iter(found.items()))
+    return RelativeDate(phrase, value)
+
+
+def resolve_date_phrase(text: str, today: date) -> RelativeDate | None:
+    """A proposal for any relative day the traveller wrote, or None. A weekend phrase is handled
+    first; if the message talks about a weekend at all, no other day is guessed alongside it."""
+    if _WEEKEND_PHRASE.search(text):
+        return resolve_weekend_phrase(text, today)
+    return resolve_day_phrase(text, today)

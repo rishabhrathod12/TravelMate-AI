@@ -139,10 +139,20 @@ _FIXED_PARTY: tuple[tuple[re.Pattern[str], int], ...] = (
     ),
     (
         re.compile(
-            r"\b(?:solo|by myself|just me|only me|(?:travelling|traveling|going)\s+alone)\b",
+            r"\b(?:solo|by myself|just me|only me|(?:travelling|traveling|going)\s+alone|"
+            r"akela|akele|akeli|sirf\s+main)\b",
             re.IGNORECASE,
         ),
         1,
+    ),
+    (
+        re.compile(
+            r"\b(?:main|mai|mein)\s+aur\s+(?:meri|mera|mere)\s+"
+            r"(?:wife|biwi|patni|husband|pati|girlfriend|boyfriend|dost|friend|bhai|behen|"
+            r"sister|brother)\b|\bhum\s+dono\b",
+            re.IGNORECASE,
+        ),
+        2,
     ),
 )
 

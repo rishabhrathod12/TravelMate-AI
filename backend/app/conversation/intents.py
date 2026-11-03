@@ -50,8 +50,8 @@ _WEATHER = re.compile(
     re.IGNORECASE,
 )
 _COST = re.compile(
-    r"\b(?:cost|costs|price|prices|budget|how\s+much|kitna|kitne|kharcha|kharch|paisa|paise|"
-    r"expense|expenses|expensive|estimate|rates?)\b",
+    r"\b(?:cost|costs|price|prices|how\s+much|kitna|kitne|kharcha|kharch|paisa|paise|"
+    r"expense|expenses|estimate|rates?)\b",
     re.IGNORECASE,
 )
 _COMPARE = re.compile(
@@ -72,17 +72,38 @@ def asks_to_book(message: str) -> bool:
     return _BOOK.search(message) is not None
 
 
+# A clause that says "no" ("Hotel nahi chahiye", "I don't want a cab") is a preference, not a
+# question about hotels or cabs, so its words are not used to guess what is being asked. Clauses
+# are cut at punctuation and at "but" / "lekin" / "par", so "no cab, but show trains" still asks
+# about trains.
+_NEGATION = re.compile(
+    r"\b(?:nahi|nahin|nhi|na|no|not|don't|dont|doesn't|without|bina|mat)\b", re.IGNORECASE
+)
+_CLAUSE_BREAK = re.compile(r"[,.;?!\n]|\b(?:but|lekin|magar|par|aur|and)\b", re.IGNORECASE)
+
+
+def _asked_clauses(message: str) -> str:
+    """The message without any clause that says no."""
+    kept = [c for c in _CLAUSE_BREAK.split(message) if c and not _NEGATION.search(c)]
+    return " . ".join(kept)
+
+
 def guess_intent(message: str) -> Intent | None:
-    """A best guess from plain words, or None when the message is only trip details."""
+    """A best guess from plain words, or None when the message is only trip details.
+
+    "Mera budget 10000 hai" and "Hotel nahi chahiye" are statements about the trip, so they are
+    not read as questions about cost or hotels.
+    """
     if asks_to_book(message):
         return Intent.BOOK_REQUEST
-    if _WEATHER.search(message):
+    asked = _asked_clauses(message)
+    if _WEATHER.search(asked):
         return Intent.ASK_WEATHER
-    if _COST.search(message):
+    if _COST.search(asked):
         return Intent.ASK_COST
-    if _COMPARE.search(message):
+    if _COMPARE.search(asked):
         return Intent.ASK_COMPARE
-    if _TRANSPORT.search(message):
+    if _TRANSPORT.search(asked):
         return Intent.ASK_TRANSPORT
     if _CHANGE.search(message):
         return Intent.CHANGE_DETAIL

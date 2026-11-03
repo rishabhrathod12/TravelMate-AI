@@ -58,8 +58,8 @@ class TestTheResolver:
         "text",
         [
             "",
-            "weekend",
             "the weekend",
+            "every weekend",
             "this weekends",
             "next week",
             "tomorrow",
@@ -69,6 +69,17 @@ class TestTheResolver:
     )
     def test_anything_else_is_not_resolved(self, text: str) -> None:
         assert resolve(text, WEDNESDAY) is None
+
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("Goa weekend par jana hai", SATURDAY),
+            ("is weekend", SATURDAY),
+            ("agle weekend", date(2026, 11, 14)),
+        ],
+    )
+    def test_hinglish_ways_of_saying_it_are_proposals_too(self, text: str, expected: date) -> None:
+        assert resolve(text, WEDNESDAY) == expected
 
     def test_the_strict_date_reader_still_refuses_the_phrase(self) -> None:
         assert parse_explicit_dates("this weekend", WEDNESDAY) == ()

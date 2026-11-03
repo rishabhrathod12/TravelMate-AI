@@ -121,7 +121,7 @@ class TestAFullConversation:
 
 
 class TestDatesAreNeverInvented:
-    def test_tomorrow_is_not_a_date_and_the_traveller_is_asked_for_one(self) -> None:
+    def test_tomorrow_is_only_a_proposal_until_the_traveller_says_yes(self) -> None:
         manager, _, _ = make(
             details(
                 origin={"value": "Indore", "quote": "Indore"},
@@ -132,9 +132,12 @@ class TestDatesAreNeverInvented:
 
         result = manager.handle(TripDraft(), "Indore se Goa kal jana hai", "en")
 
-        assert result.draft.departure_date is None
-        assert result.reply.startswith("I need an exact date, not a phrase like “tomorrow”.")
-        assert "day and month" in result.reply
+        assert result.draft.departure_date is None  # not used until confirmed
+        assert result.status is TurnStatus.CONFIRM_DATES
+        assert result.draft.pending_date is not None
+        assert result.draft.pending_date.phrase == "tomorrow"
+        assert result.draft.pending_date.value == date(2026, 11, 2)  # TODAY is 1 November
+        assert "Is that right?" in result.reply
         assert [(r.field, r.reason) for r in result.rejections] == [
             (TripField.DEPARTURE_DATE, RejectionReason.NOT_AN_EXPLICIT_DATE)
         ]

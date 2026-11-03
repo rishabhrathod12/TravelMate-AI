@@ -8,10 +8,10 @@ decided by the domain model, not here.
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
-from typing import Literal
 
 from pydantic import Field, StrictInt, ValidationError
 
+from app.conversation.dates import DatePhrase
 from app.conversation.language import Language, say
 from app.domain.base import DomainModel
 from app.domain.trip import ItineraryRequest, Location, Traveller, TripRequest, TripType
@@ -65,14 +65,18 @@ ITINERARY_QUESTION_ORDER: tuple[TripField, ...] = (
 )
 
 
+# Several statements are kept together up to this length, then the newest one is kept alone.
+MAX_PREFERENCES_CHARS = 300
+
+
 class PendingDate(DomainModel):
     """A departure date worked out by code from a phrase, waiting for the traveller to say yes.
 
-    It is never used until confirmed (ADR 0004). The phrase is one of a fixed pair, so a draft sent
+    It is never used until confirmed (ADR 0004). The phrase is one of a fixed list, so a draft sent
     back by the browser cannot carry arbitrary text here.
     """
 
-    phrase: Literal["this weekend", "next weekend"]
+    phrase: DatePhrase
     value: date
 
 
@@ -166,6 +170,14 @@ def merge(draft: TripDraft, accepted: Accepted) -> tuple[TripDraft, tuple[Change
         if value is None:
             continue
         before = _shown(field, draft)
+        if field is TripField.PREFERENCES and isinstance(value, str) and draft.preferences:
+            # "Hotel nahi chahiye", then "mera budget 10000 hai": both stand. A new statement is
+            # added to the earlier ones, so it is never reported as a change of the first.
+            earlier = draft.preferences
+            if value.casefold() not in earlier.casefold():
+                combined = f"{earlier}; {value}"
+                updates[attribute] = combined if len(combined) <= MAX_PREFERENCES_CHARS else value
+            continue
         updates[attribute] = value
         if field in accepted.year_assumed:
             year_assumed.add(field)

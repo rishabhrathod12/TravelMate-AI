@@ -23,6 +23,7 @@ from app.conversation.manager import ConversationManager, TurnStatus
 from app.conversation.reply_writer import ReplyWriter
 from app.llm.errors import LLMUnavailable
 from app.llm.fake import FakeLLMClient
+from app.llm.language_policy import LANGUAGE_POLICY, STYLE_EXAMPLES, TONE_POLICY
 from app.llm.types import LLMLimits
 
 TODAY = date(2026, 11, 1)  # a Sunday
@@ -246,7 +247,9 @@ class TestComposedReplies:
         request = client.requests[0]
         assert '"reply_language": "hinglish"' in request.messages[1].content
         assert "Roman letters" in request.messages[0].content
-        assert "Goa kab jaana chahte ho" in request.messages[0].content
+        assert LANGUAGE_POLICY in request.messages[0].content
+        assert TONE_POLICY in request.messages[0].content
+        assert STYLE_EXAMPLES in request.messages[0].content
 
     def test_a_model_reply_with_a_new_number_is_still_refused_in_hinglish(self) -> None:
         writer = ReplyWriter(FakeLLMClient(["Bilkul! Aap 25 December ko jaana chahte ho?"]), LIMITS)

@@ -40,6 +40,7 @@ from app.llm.errors import (
     LLMUnavailable,
 )
 from app.llm.plan_writer import PlanWriter
+from app.observability.logs import get_logger
 from app.tools.research import ResearchTools
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"], responses=problem_responses(422))
@@ -159,7 +160,8 @@ def take_turn(
     language = resolve_language(
         body.message, [item.text for item in body.history if item.role == "you"]
     )
-    result = manager.handle(draft, body.message, language)
+    history = tuple(HistoryTurn(item.role, item.text) for item in body.history)
+    result = manager.handle(draft, body.message, language, history)
     if (
         result.draft.traveller_count is not None
         and result.draft.traveller_count > PROTOTYPE_MAX_TRAVELLERS
@@ -175,7 +177,6 @@ def take_turn(
     facts = (
         gather_facts(result.draft, result.intent, tools) if result.intent in FACT_INTENTS else None
     )
-    history = tuple(HistoryTurn(item.role, item.text) for item in body.history)
     result = manager.compose(
         result, message=body.message, history=history, facts=facts, language=language
     )
@@ -237,6 +238,8 @@ Plans = Annotated[PlanService, Depends(get_plan_service)]
 
 
 def _plan_problem(error: LLMError) -> JSONResponse:
+    # Only the kind of failure is logged: never the model's text, the request or any key.
+    get_logger("chat").warning("a plan could not be written: %s", type(error).__name__)
     """A Problem Details body for a failed plan. It never repeats the model's text or any key."""
     if isinstance(error, LLMRateLimited):
         return _problem(429, "Plan limit reached", "Too many plans were requested. Try later.")

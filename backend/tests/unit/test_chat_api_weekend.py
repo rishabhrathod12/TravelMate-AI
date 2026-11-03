@@ -43,7 +43,7 @@ def test_a_draft_cannot_carry_any_other_phrase() -> None:
         URL,
         json={
             "message": "yes",
-            "draft": {"pending_date": {"phrase": "tomorrow", "value": "2026-11-07"}},
+            "draft": {"pending_date": {"phrase": "someday", "value": "2026-11-07"}},
         },
     )
 
