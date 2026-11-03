@@ -39,6 +39,13 @@ describe("the home screen", () => {
     expect(screen.queryByRole("button", { name: /example trip|preview/i })).not.toBeInTheDocument();
   });
 
+  test("the message box shows no example line (owner's request, 2026-11-03)", () => {
+    render(<HomeView adapter={createMockVoiceAdapter()} chatAvailable />);
+
+    expect(screen.queryByText(/For example/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Plan my trip\./)).not.toBeInTheDocument();
+  });
+
   test("the home screen carries no explanatory sentences under the voice button or the message box", () => {
     render(<HomeView adapter={createMockVoiceAdapter()} chatAvailable />);
 

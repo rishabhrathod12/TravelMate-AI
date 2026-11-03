@@ -65,7 +65,6 @@ const useChat = import.meta.env.DEV ? useTripChat : useUnavailableChat;
 const usePlanning = import.meta.env.DEV ? usePlanningRun : useUnavailablePlanning;
 const ConversationScreen = import.meta.env.DEV ? Conversation : null;
 
-const EXAMPLE = "For example: I want to go to Goa this weekend. Plan my trip.";
 
 /**
  * The home screen: a voice button and a message box, nothing else. The conversation view appears
@@ -159,7 +158,6 @@ export function HomeView({
         onSubmit={submit}
         disabled={!chatAvailable}
         busy={chat.busy}
-        example={engaged ? undefined : EXAMPLE}
         footnote={
           chatAvailable && import.meta.env.DEV ? undefined : "Chat isn't available yet in this version."
         }

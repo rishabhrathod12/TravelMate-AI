@@ -25,7 +25,8 @@ param(
     [switch]$CheckOnly,
     [switch]$WithFrontend,
     [string]$EnvFile = '',
-    [int]$Port = 8000
+    [int]$Port = 8000,
+    [int]$FrontendPort = 5174
 )
 
 $ErrorActionPreference = 'Stop'
@@ -151,11 +152,13 @@ if (-not $python) {
 
 if ($WithFrontend) {
     $frontend = Join-Path $root 'frontend'
-    $command = "`$env:VITE_VOICE_ADAPTER='realtime'; Set-Location -LiteralPath '$frontend'; npm run dev"
+    # The port is pinned: without --strictPort Vite quietly moves to another port when one is busy,
+    # and the page you open can then be a different server without live voice.
+    $command = "`$env:VITE_VOICE_ADAPTER='realtime'; Set-Location -LiteralPath '$frontend'; npm run dev -- --port $FrontendPort --strictPort"
     Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoExit', '-Command', $command | Out-Null
-    Write-Host 'Started the web interface in a new window: http://localhost:5173/'
+    Write-Host "Started the web interface in a new window. Open http://localhost:$FrontendPort/ (live voice is selected there only)."
 } else {
-    Write-Host 'Web interface: in another terminal run  $env:VITE_VOICE_ADAPTER="realtime"; cd frontend; npm run dev'
+    Write-Host "Web interface: in another terminal run  `$env:VITE_VOICE_ADAPTER='realtime'; cd frontend; npm run dev -- --port $FrontendPort --strictPort"
 }
 
 Write-Host "Starting the backend on http://127.0.0.1:$Port (Ctrl+C stops it)."
